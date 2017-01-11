@@ -35,7 +35,7 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum{
-    E_HAP_TYPE_UNKONWN              = 0,
+    E_HAP_TYPE_UNKNOWN              = 0,
     E_HAP_TYPE_OTHER                = 1,
     E_HAP_TYPE_BRIDGE               = 2,
     E_HAP_TYPE_FAN                  = 3,
@@ -50,7 +50,7 @@ typedef enum{
     E_HAP_TYPE_DOOR                 = 12,
     E_HAP_TYPE_WINDOW               = 13,
     E_HAP_TYPE_WINDOW_COVERING      = 14,
-    E_HAP_TYPE_PROGRAMMALBE_SWITCH  = 15,
+    E_HAP_TYPE_PROGRAMMABLE_SWITCH  = 15,
     E_HAP_TYPE_IP_CAMERA            = 17,
 } teAccessoryType;
 

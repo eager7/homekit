@@ -26,7 +26,7 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-
+#include "characteristic.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -35,9 +35,9 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef struct{
-    uint64 u64IID; //Instance Id
-    char auType[MDBF];
-    tsCharacteristics *psCharacteristics;
+    char                *psType;
+    uint64              u64IID; //Instance Id
+    tsCharacteristics   *psCharacteristics;
 } tsServices;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/

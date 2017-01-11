@@ -26,7 +26,9 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-
+#include "characteristic.h"
+#include "service.h"
+#include "accessory_type.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -34,6 +36,11 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
+typedef enum {
+    E_ACCESSORY_OK = 0x00,
+    E_ACCESSORY_ERROR = 0x01,
+} teAcyStatus;
+
 typedef struct {
     char auName[MIBF];
     char auSerialNumber[MIBF];
@@ -44,21 +51,19 @@ typedef struct {
 typedef struct {
     tsServices *psService;
     tsCharacteristics sName;
-    tsCharacteristics sIndentify;
+    tsCharacteristics sIdentify;
     tsCharacteristics sManufacturer;
     tsCharacteristics sModel;
     tsCharacteristics sSerialNumber;
-    
-    
 } tsAccessoryInformation;
 
 typedef struct{
     uint64 u64AIDs; //Accessory Instance Id
     tsServices *psServices;
     teAccessoryType eAccessoryType;
-    //tsAccessoryInformation *psAccessoryInformation;
+    tsAccessoryInformation sAccessoryInformation;
     int64 idCount;
-    func ;
+    //func ;
 } tsAccessroy;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -74,6 +79,7 @@ typedef struct{
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+teAcyStatus eCreateNewAccessory(char *psName, char *psSerialNumber, char *psManufacturer, char *psModel);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

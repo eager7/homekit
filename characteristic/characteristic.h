@@ -35,6 +35,10 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
+    E_CHARACTERISTIC_OK = 0,
+    E_CHARACTERISTIC_ERROR = 1,
+} teCharStatus;
+typedef enum {
     E_CHARACTERISTIC_ADMINNISTRATOR_ONLY_ACCESS             = 0x00000001,
     E_CHARACTERISTIC_AUDIO_FEEDBACK                         = 0x00000005,
     E_CHARACTERISTIC_BRIGHTNESS                             = 0x00000008,
@@ -85,7 +89,23 @@ typedef enum {
     E_TYPE_ARRAY,
     E_TYPE_DICT,
     E_TYPE_NULL,    
-} tsValueType;
+} teValueType;
+
+typedef enum {
+    E_UNIT_NULL,        /* no this option */
+    E_UNIT_CELSIUS,     /* The unit is only "degrees Celsius" */
+    E_UNIT_PERCENTAGE,  /* The unit is in percentage "%" */
+    E_UNIT_ARCDEGREES,  /* The unit is in arc degrees */
+} teUnitType;
+
+typedef enum {
+    E_PERM_READ             = 0x01, /*  */
+    E_PERM_WRITE            = 0x02, /*  */
+    E_PERM_PAIRED_READ      = 0x04, /* This characteristic can only be read by paired controllers */
+    E_PERM_PAIRED_WRITE     = 0x08, /* This characteristic can only be written by paired controllers */
+    E_PERM_NOTIFY           = 0x10, /*  */
+    E_PERM_EVENT            = 0x20, /* This characteristic supports events. The HAP Characteristic object must contain the "ev" key if it supports events. */
+} tePermissions;
 
 typedef union {
     bool_t  bData;
@@ -93,32 +113,35 @@ typedef union {
     float   fData;
     char    *pcData;
     char    *psData;
-    
-} tuAttributeValue;
+} tuCharValue;
 
 typedef union {
     int     iValue;
     float   fValue;
-} tuThresHold;
+} tuThreshold;
 
 typedef struct {
+    bool_t bEnable;
+    tuThreshold uData;
+} tsThreshold;
+
+typedef struct {
+    char            *psType;
     uint64          u64IID;     //Instance Id
-    char            auType[MDBF];
+    teValueType     eValueType;
+    tuCharValue     uValue;
+    uint8           u8Permissions;
+    bool_t          bEventNotification;
+    char            *psDescription;
+    char            *psFormat;
+    teUnitType      eUnit;
 
-    tuThresHold     uMinimumValue;
-    tuThresHold     uMaximumValue;
-    tuThresHold     uSetpValue;
-    tuThresHold     uMaximumLen;
-    tuThresHold     uMaximumDataLen;
-    tsValueType     sType;
-
-    uint8           u8Perms;
-    
-    char            auDescription[MDBF];
-    char            auFormat[MIBF];
-    char            auUnit[MIBF];
+    tsThreshold     sMinimumValue;
+    tsThreshold     sMaximumValue;
+    tsThreshold     sSetupValue;
+    tsThreshold     sMaximumLen;
+    tsThreshold     sMaximumDataLen;
 } tsCharacteristics;
-
 
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -134,6 +157,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+teCharStatus eCharCreateNew(tsCharacteristics *psCharacteristics);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
