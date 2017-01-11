@@ -37,11 +37,8 @@
 /***        Exported Variables                                            ***/
 /****************************************************************************/
 tsCharacteristics asCharacteristics[] = {
-    {E_CHARACTERISTIC_ON, "public.hap.characteristic.on", E_PERM_READ | E_PERM_WRITE | E_PERM_PAIRED_WRITE | E_PERM_NOTIFY, E_TYPE_BOOL, {0}, {0}, {0}, E_UNIT_NULL},
-    {E_CHARACTERISTIC_BRIGHTNESS, "public.hap.characteristic.brightness", E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_NOTIFY, E_TYPE_INT, {0}, {100}, {1}, E_UNIT_PERCENTAGE},
-    {E_CHARACTERISTIC_NAME, "public.hap.characteristic.name", E_PERM_READ, E_TYPE_STRING, {0}, {0}, {0}, E_UNIT_NULL},
-    {E_CHARACTERISTIC_SERIAL_NUMBER, "public.hap.characteristic.serial-number", E_PERM_PAIRED_READ, E_TYPE_STRING, {0}, {0}, {0}, E_UNIT_NULL},
-    {E_CHARACTERISTIC_IDENTIFY, "public.hap.characteristic.identify", E_PERM_PAIRED_WRITE, E_TYPE_BOOL, {0}, {0}, {0}, E_UNIT_NULL},
+    {"public.hap.characteristic.name", E_CHARACTERISTIC_NAME, E_TYPE_STRING, {.psData="NULL"}, E_PERM_PAIRED_READ, NULL, E_UNIT_NULL, {T_FALSE,{0}}, {T_FALSE,{0}}, {T_FALSE,{0}}},
+    {"public.hap.characteristic.on", E_CHARACTERISTIC_ON, E_TYPE_BOOL, {.bData=T_FALSE}, E_PERM_READ | E_PERM_WRITE | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOTIFYCATION, NULL, E_UNIT_NULL, {T_FALSE,{0}}, {T_FALSE,{0}}, {T_FALSE,{0}}},
 };
 /****************************************************************************/
 /***        Local Variables                                               ***/

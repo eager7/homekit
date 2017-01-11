@@ -89,7 +89,7 @@ typedef enum {
     E_TYPE_ARRAY,
     E_TYPE_DICT,
     E_TYPE_NULL,    
-} teValueType;
+} teTypeFormat;
 
 typedef enum {
     E_UNIT_NULL,        /* no this option */
@@ -99,19 +99,18 @@ typedef enum {
 } teUnitType;
 
 typedef enum {
-    E_PERM_READ             = 0x01, /*  */
-    E_PERM_WRITE            = 0x02, /*  */
-    E_PERM_PAIRED_READ      = 0x04, /* This characteristic can only be read by paired controllers */
-    E_PERM_PAIRED_WRITE     = 0x08, /* This characteristic can only be written by paired controllers */
-    E_PERM_NOTIFY           = 0x10, /*  */
-    E_PERM_EVENT            = 0x20, /* This characteristic supports events. The HAP Characteristic object must contain the "ev" key if it supports events. */
+    E_PERM_READ                 = 0x01, /*  */
+    E_PERM_WRITE                = 0x02, /*  */
+    E_PERM_PAIRED_READ          = 0x04, /* This characteristic can only be read by paired controllers */
+    E_PERM_PAIRED_WRITE         = 0x08, /* This characteristic can only be written by paired controllers */
+    E_PERM_EVENT_NOTIFYCATION   = 0x10, /* Boolean indicating if event notifications are enabled for this characteristic. */
+    E_PERM_EVENT                = 0x20, /* This characteristic supports events. The HAP Characteristic object must contain the "ev" key if it supports events. */
 } tePermissions;
 
 typedef union {
     bool_t  bData;
     int     iData;
     float   fData;
-    char    *pcData;
     char    *psData;
 } tuCharValue;
 
@@ -128,12 +127,10 @@ typedef struct {
 typedef struct {
     char            *psType;
     uint64          u64IID;     //Instance Id
-    teValueType     eValueType;
+    teTypeFormat    eFormat;
     tuCharValue     uValue;
     uint8           u8Permissions;
-    bool_t          bEventNotification;
     char            *psDescription;
-    char            *psFormat;
     teUnitType      eUnit;
 
     tsThreshold     sMinimumValue;

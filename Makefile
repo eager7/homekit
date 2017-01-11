@@ -55,7 +55,7 @@ INCFLAGS += -I$(LIB_INC)
 #########################################################################
 # Dependency rules
 
-PROJ_LIBS += -lpthread -ljson-c -lsqlite3 -lzmq
+PROJ_LIBS += -ljson-c 
 CC ?= gcc
 RM ?= -rm
 CFLAGS += -ggdb -Wno-unused-but-set-variable -Wall -O0
@@ -74,8 +74,8 @@ endif
 all:$(TARGET).a $(TARGET).so
 
 -include $(DEPS)
-%.d:
-	rm -f $*.o
+#%.d:
+#	rm -f $*.o
 
 %.o: %.S
 	$(info Assembling $< ...)
