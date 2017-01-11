@@ -37,10 +37,16 @@ extern "C" {
 #include <arpa/inet.h>
 #include <syslog.h>
 
-#include <sqlite3.h>
+//#include <sqlite3.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
+#ifdef DEBUG
+#define LOG 1
+#else
+#define LOG 0
+#endif
+
 #define mLogInitSetPid(pid)    openlog(pid, LOG_PID|LOG_CONS, LOG_USER)
 #define UI_RED(x)       "\e[31;1m"x"\e[0m"
 #define UI_GREEN(x)     "\e[32;1m"x"\e[0m"
@@ -48,15 +54,15 @@ extern "C" {
 #define UI_BLUE(x)      "\e[34;1m"x"\e[0m"
 #define UI_PURPLE(x)    "\e[35;1m"x"\e[0m"
 #define DBG_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(daemonize){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_BLUE   ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_BLUE   ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
 #define INF_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(daemonize){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_YELLOW ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_YELLOW ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
 #define NOT_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(daemonize){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_GREEN  ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_GREEN  ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
 #define WAR_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(daemonize){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_PURPLE ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_PURPLE ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
 #define ERR_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(daemonize){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_RED    ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_RED    ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
 #define PERR_vPrintf(x) ERR_vPrintf(1,x ":%s\n", strerror(errno))
 
 #define MIBF    256
@@ -68,16 +74,6 @@ extern "C" {
 #define CHECK_STATUS(fun,value,ret) do{ if(value!=fun){ERR_vPrintf(T_TRUE, "Error:%s\n", strerror(errno));return ret;}}while(0)
 #define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintf(T_TRUE, "Pointer is NULL\n");return ret;}}while(0)
 #define FREE(p) do{ if(p){free(p); p=NULL;} }while(0)
-#define CALL(f, x) do{ if(f){ f(x); } }while(0)
-
-#define Swap64(ll) (((ll) >> 56) |                          \
-                    (((ll) & 0x00ff000000000000) >> 40) |   \
-                    (((ll) & 0x0000ff0000000000) >> 24) |   \
-                    (((ll) & 0x000000ff00000000) >> 8)  |   \
-                    (((ll) & 0x00000000ff000000) << 8)  |   \
-                    (((ll) & 0x0000000000ff0000) << 24) |   \
-                    (((ll) & 0x000000000000ff00) << 40) |   \
-                    (((ll) << 56)))  
 
 
 /****************************************************************************/
@@ -87,6 +83,7 @@ typedef unsigned char       uint8;
 typedef unsigned short      uint16;
 typedef unsigned int        uint32;
 typedef unsigned long long  uint64;
+typedef long long           int64;
 
 typedef enum
 {
@@ -101,8 +98,6 @@ typedef enum
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-extern int daemonize;
-extern int verbosity;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/

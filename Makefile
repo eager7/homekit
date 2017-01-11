@@ -28,7 +28,7 @@ LIB_HOMEKIT_SONAME = $(TARGET).so.$(LIB_VERSION_MAJOR)
 ##############################################################################
 # Path definitions
 
-LIB_BASE_DIR = $(abspath ..)
+LIB_BASE_DIR = $(abspath .)
 LIB_INC = $(LIB_BASE_DIR)/include
 LIB_ACCESSORY = $(LIB_BASE_DIR)/accessory
 LIB_SERVICE = $(LIB_BASE_DIR)/service
@@ -39,8 +39,13 @@ LIB_CHARACTERISTIC = $(LIB_BASE_DIR)/characteristic
 # Library object files
 
 vpath % $(LIB_INC) $(LIB_ACCESSORY) $(LIB_SERVICE) $(LIB_IP) $(LIB_CHARACTERISTIC)
-SOURCE := $(wildcard $(SRC_DIR)/*.c)
+SOURCE += $(wildcard $(LIB_IP)/*.c)
+SOURCE += $(wildcard $(LIB_SERVICE)/*.c)
+SOURCE += $(wildcard $(LIB_ACCESSORY)/*.c)
+SOURCE += $(wildcard $(LIB_CHARACTERISTIC)/*.c)
+
 OBJS := $(patsubst %.c,%.o,$(SOURCE))
+DEPS = $(OBJS:.o=.d)
 
 ##############################################################################
 # Library header search paths
@@ -55,8 +60,32 @@ CC ?= gcc
 RM ?= -rm
 CFLAGS += -ggdb -Wno-unused-but-set-variable -Wall -O0
 
+##############################################################################
+# Debugging 
+
+DEBUG = 0
+
+ifeq ($(DEBUG), 1)
+CFLAGS  += -DDEBUG
+$(info Building debug version ...)
+endif
+
 .PHONY: all clean install
 all:$(TARGET).a $(TARGET).so
+
+-include $(DEPS)
+%.d:
+	rm -f $*.o
+
+%.o: %.S
+	$(info Assembling $< ...)
+	$(CC) -c -o $*.o $(CFLAGS) $(INCFLAGS) $< -MD -MF $*.d -MP
+	@echo
+
+%.o: %.c
+	$(info Compiling $(<F) ...)
+	$(CC) -c -o $*.o $(CFLAGS) $(INCFLAGS) $(PROJ_CFLAGS) $< -MD -MF $*.d -MP
+	@echo
 
 $(TARGET).a:$(OBJS)
 	$(info Archiving $@ ...)
@@ -73,4 +102,9 @@ install:
 	$(info install $@ ...)
 
 clean:
-	$(RM) -f $(LIB_HOMEKIT_NAME)*
+	$(RM) -f $(TARGET)*
+	$(RM) -f $(OBJS)
+	$(RM) -f $(DEPS)
+
+test:
+	@echo $(OBJS)
