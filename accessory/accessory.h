@@ -34,12 +34,23 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef struct{
+typedef struct {
     char auName[MIBF];
     char auSerialNumber[MIBF];
     char auManufacturer[MIBF];
     char auModel[MIBF];
 } tsAccessoryInfo;
+
+typedef struct {
+    tsServices *psService;
+    tsCharacteristics sName;
+    tsCharacteristics sIndentify;
+    tsCharacteristics sManufacturer;
+    tsCharacteristics sModel;
+    tsCharacteristics sSerialNumber;
+    
+    
+} tsAccessoryInformation;
 
 typedef struct{
     uint64 u64AIDs; //Accessory Instance Id
