@@ -42,7 +42,7 @@ extern "C" {
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
 #ifdef DEBUG
-#define LOG 1
+#define LOG DEBUG
 #else
 #define LOG 0
 #endif
@@ -53,17 +53,17 @@ extern "C" {
 #define UI_YELLOW(x)    "\e[33;1m"x"\e[0m"
 #define UI_BLUE(x)      "\e[34;1m"x"\e[0m"
 #define UI_PURPLE(x)    "\e[35;1m"x"\e[0m"
-#define DBG_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_BLUE   ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
-#define INF_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_YELLOW ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
-#define NOT_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_GREEN  ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
-#define WAR_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_PURPLE ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
-#define ERR_vPrintf(a,b,ARGS...)  \
-    do {if (a) {if(LOG){syslog(LOG_DEBUG|LOG_USER, "[%d]" b, __LINE__, ## ARGS);} else {printf(UI_RED    ("[%d]" b), __LINE__, ## ARGS);}}} while(0)
-#define PERR_vPrintf(x) ERR_vPrintf(1,x ":%s\n", strerror(errno))
+#define DBG_vPrintln(a,b,ARGS...)  \
+    do {if (a) {printf(UI_BLUE   ("[%d]" b "\n"), __LINE__, ## ARGS);}} while(0)
+#define INF_vPrintln(a,b,ARGS...)  \
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_YELLOW ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+#define NOT_vPrintln(a,b,ARGS...)  \
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_GREEN  ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+#define WAR_vPrintln(a,b,ARGS...)  \
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_PURPLE ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+#define ERR_vPrintln(a,b,ARGS...)  \
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_RED    ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+#define PERR_vPrintln(x) ERR_vPrintf(1,x ":%s\n", strerror(errno))
 
 #define MIBF    256
 #define MDBF    1024
@@ -71,8 +71,8 @@ extern "C" {
 #define PACKED __attribute__((__packed__))
 
 #define CHECK_RESULT(fun,value,ret) do{ if(value!=fun)return ret;}while(0)
-#define CHECK_STATUS(fun,value,ret) do{ if(value!=fun){ERR_vPrintf(T_TRUE, "Error:%s\n", strerror(errno));return ret;}}while(0)
-#define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintf(T_TRUE, "Pointer is NULL\n");return ret;}}while(0)
+#define CHECK_STATUS(fun,value,ret) do{ if(value!=fun){ERR_vPrintln(T_TRUE, "Error:%s", strerror(errno));return ret;}}while(0)
+#define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintln(T_TRUE, "Pointer is NULL");return ret;}}while(0)
 #define FREE(p) do{ if(p){free(p); p=NULL;} }while(0)
 
 
