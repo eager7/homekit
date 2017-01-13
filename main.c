@@ -3,12 +3,13 @@
 //
 #include "utils.h"
 #include "light_bulb.h"
+#include "bonjour.h"
 
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
     eLightBulbProfileInit("DimmerLight", "12345678", "TopBand", "1234");
-
+    eBonjourInit(&sLightBulb);
 
 
     eLightBulbProfileFinished();
