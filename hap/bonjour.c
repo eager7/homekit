@@ -58,7 +58,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x01; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
-    sBonjour.sBonjourText.psModelName = "Device1,1";
+    sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32iCurrentStaNumber = 1;
@@ -67,26 +67,22 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
 
     sBonjour.psTextRecord = pcTextRecordFormat(&sBonjour.sBonjourText);
 
-    //if(eBonjourMdnsInit() != E_BONJOUR_STATUS_OK){
-    //   return E_BONJOUR_STATUS_ERROR;
-    //}
+    if(eBonjourMdnsInit() != E_BONJOUR_STATUS_OK){
+       return E_BONJOUR_STATUS_ERROR;
+    }
 
-    //sBonjour.sThread.pvThreadData = psProfile;
-    //CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
-
+    sBonjour.sThread.pvThreadData = psProfile;
+    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
+    printf("%d-%s\n", (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord);
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0, sBonjour.psInstanceName, sBonjour.psServiceName,
-                                                  "", sBonjour.psHostName, sBonjour.u16Port, 0, "", NULL,NULL);
+                                                  "", sBonjour.psHostName, sBonjour.u16Port, (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord, NULL,NULL);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
     }
 
-    printf("%d-%s\n", (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord);
-    ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord, 0);
-    if(ret){
-        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
-        return E_BONJOUR_STATUS_ERROR;
-    }
+
+
 
     return E_BONJOUR_STATUS_OK;
 }
@@ -102,7 +98,7 @@ teBonjStatus eBonjourFinished(tsProfile *psProfile)
 /****************************************************************************/
 static teBonjStatus eBonjourMdnsInit(void)
 {
-    sBonjour.iSocketFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sBonjour.iSocketFd == -1){
         ERR_vPrintln(T_TRUE, "socket create failed:[%s]", strerror(errno));
         return E_BONJOUR_STATUS_ERROR;
@@ -112,7 +108,7 @@ static teBonjStatus eBonjourMdnsInit(void)
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(MULTICAST_DNS_PORT);
+    addr.sin_port = htons(0);
     int ret = bind(sBonjour.iSocketFd, (struct sockaddr*)&addr, sizeof(addr));
     if(ret == -1){
         ERR_vPrintln(T_TRUE, "bind address failed:[%s]", strerror(errno));
@@ -120,14 +116,9 @@ static teBonjStatus eBonjourMdnsInit(void)
         return E_BONJOUR_STATUS_ERROR;
     }
 
-    struct ip_mreq multi_addr;
-    memset(&multi_addr, 0, sizeof(multi_addr));
-    multi_addr.imr_multiaddr.s_addr = inet_addr(MULTICAST_DNS_ADDRESS);
-    multi_addr.imr_interface.s_addr = htonl(INADDR_ANY);
-
     int re = 1;
     setsockopt(sBonjour.iSocketFd, SOL_SOCKET, SO_REUSEADDR, &re, sizeof(re));
-    setsockopt(sBonjour.iSocketFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&multi_addr, sizeof(multi_addr));
+    listen(sBonjour.iSocketFd, 5);
 
     return E_BONJOUR_STATUS_OK;
 }
@@ -138,8 +129,20 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
     psThreadInfo->eState = E_THREAD_RUNNING;
 
-    while(psThreadInfo->eState == E_THREAD_RUNNING){
+    int iSockClient;
+    struct sockaddr_in client_addr;
+    memset(&client_addr, 0, sizeof(client_addr));
+    socklen_t client_len = sizeof(client_addr);
 
+    while(psThreadInfo->eState == E_THREAD_RUNNING){
+        int s = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, &client_len);
+        if(s == -1){
+            printf("error:%s\n", strerror(errno));
+            continue;
+        }
+
+        printf("client ipaddr:%s\n", inet_ntoa(client_addr.sin_addr));
+        sleep(1);
     }
     DBG_vPrintln(DBG_BONJOUR, "pvBonjourThreadHandle Exit");
     vThreadFinish(psThreadInfo);
@@ -151,8 +154,11 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 {
     char temp[MDBF] = {0};
     uint8 u8Index = 0;
+
+
     char temp_csharp[MIBF] = {0};
     sprintf(temp_csharp, "c#=%llu", psBonjourText->u64CurrentCfgNumber);
+
     temp[u8Index] = (uint8)strlen(temp_csharp);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_csharp, strlen(temp_csharp));
@@ -161,6 +167,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_ff[MIBF] = {0};
     sprintf(temp_ff, "ff=%d", psBonjourText->u8FeatureFlag);
+
     temp[u8Index] = (uint8)strlen(temp_ff);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_ff, strlen(temp_ff));
@@ -174,6 +181,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
             (uint8)(psBonjourText->u64DeviceID>>8*2 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*1 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*0 & 0xff));
+
     temp[u8Index] = (uint8)strlen(temp_id);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_id, strlen(temp_id));
@@ -181,6 +189,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_md[MIBF] = {0};
     sprintf(temp_md, "md=%s", psBonjourText->psModelName);
+
     temp[u8Index] = (uint8)strlen(temp_md);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_md, strlen(temp_md));
@@ -188,6 +197,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_pv[MIBF] = {0};
     sprintf(temp_pv, "pv=%d.%d", psBonjourText->auProtocolVersion[0], psBonjourText->auProtocolVersion[1]);
+
     temp[u8Index] = (uint8)strlen(temp_pv);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_pv, strlen(temp_pv));
@@ -195,6 +205,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_scharp[MIBF] = {0};
     sprintf(temp_scharp, "s#=%d", psBonjourText->u32iCurrentStaNumber);
+
     temp[u8Index] = (uint8)strlen(temp_scharp);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_scharp, strlen(temp_scharp));
@@ -202,6 +213,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_sf[MIBF] = {0};
     sprintf(temp_sf, "sf=%d", psBonjourText->u8StatusFlag);
+
     temp[u8Index] = (uint8)strlen(temp_sf);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_sf, strlen(temp_sf));
@@ -209,6 +221,7 @@ static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
 
     char temp_ci[MIBF] = {0};
     sprintf(temp_ci, "ci=%d", psBonjourText->eAccessoryCategoryID);
+
     temp[u8Index] = (uint8)strlen(temp_ci);
     u8Index += sizeof(uint8);
     memcpy(&temp[u8Index], temp_ci, strlen(temp_ci));
