@@ -35,7 +35,7 @@
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
 static teBonjStatus eBonjourMdnsInit(void);
-static char *pcTextRecordFormat(tsBonjourText *psBonjourText);
+static TXTRecordRef TextRecordFormat(tsBonjourText *psBonjourText);
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
@@ -65,7 +65,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
     sBonjour.sBonjourText.u8StatusFlag = 0;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
 
-    sBonjour.psTextRecord = pcTextRecordFormat(&sBonjour.sBonjourText);
+    sBonjour.txtRecord = TextRecordFormat(&sBonjour.sBonjourText);
 
     if(eBonjourMdnsInit() != E_BONJOUR_STATUS_OK){
        return E_BONJOUR_STATUS_ERROR;
@@ -73,9 +73,10 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
 
     sBonjour.sThread.pvThreadData = psProfile;
     CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
-    printf("%d-%s\n", (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord);
+    printf("%d-%s\n", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0, sBonjour.psInstanceName, sBonjour.psServiceName,
-                                                  "", sBonjour.psHostName, sBonjour.u16Port, (uint16_t)strlen(sBonjour.psTextRecord), sBonjour.psTextRecord, NULL,NULL);
+                                                  "", sBonjour.psHostName, sBonjour.u16Port, TXTRecordGetLength(&sBonjour.txtRecord), TXTRecordGetBytesPtr(&sBonjour.txtRecord), NULL,NULL);
+    TXTRecordDeallocate(&sBonjour.txtRecord);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
@@ -89,7 +90,6 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
 
 teBonjStatus eBonjourFinished(tsProfile *psProfile)
 {
-    FREE(sBonjour.psTextRecord);
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     return E_BONJOUR_STATUS_OK;
 }
@@ -150,88 +150,48 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     return NULL;
 }
 
-static char *pcTextRecordFormat(tsBonjourText *psBonjourText)
+static TXTRecordRef TextRecordFormat(tsBonjourText *psBonjourText)
 {
-    char temp[MDBF] = {0};
-    uint8 u8Index = 0;
-
+    TXTRecordRef txtRecord;
+    TXTRecordCreate(&txtRecord, 0, NULL);
 
     char temp_csharp[MIBF] = {0};
-    sprintf(temp_csharp, "c#=%llu", psBonjourText->u64CurrentCfgNumber);
-
-    temp[u8Index] = (uint8)strlen(temp_csharp);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_csharp, strlen(temp_csharp));
-    u8Index += strlen(temp_csharp);
-
+    sprintf(temp_csharp, "%llu", psBonjourText->u64CurrentCfgNumber);
+    TXTRecordSetValue(&txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
 
     char temp_ff[MIBF] = {0};
-    sprintf(temp_ff, "ff=%d", psBonjourText->u8FeatureFlag);
-
-    temp[u8Index] = (uint8)strlen(temp_ff);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_ff, strlen(temp_ff));
-    u8Index += strlen(temp_ff);
+    sprintf(temp_ff, "%d", psBonjourText->u8FeatureFlag);
+    TXTRecordSetValue(&txtRecord, "ff", 1, temp_ff);
 
     char temp_id[MIBF] = {0};
-    sprintf(temp_id, "id=%02x:%02x:%02x:%02x:%02x:%02x",
+    sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
             (uint8)(psBonjourText->u64DeviceID>>8*5 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*4 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*3 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*2 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*1 & 0xff),
             (uint8)(psBonjourText->u64DeviceID>>8*0 & 0xff));
-
-    temp[u8Index] = (uint8)strlen(temp_id);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_id, strlen(temp_id));
-    u8Index += strlen(temp_id);
+    TXTRecordSetValue(&txtRecord, "id", (uint8)strlen(temp_id), temp_id);
 
     char temp_md[MIBF] = {0};
-    sprintf(temp_md, "md=%s", psBonjourText->psModelName);
-
-    temp[u8Index] = (uint8)strlen(temp_md);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_md, strlen(temp_md));
-    u8Index += strlen(temp_md);
+    sprintf(temp_md, "%s", psBonjourText->psModelName);
+    TXTRecordSetValue(&txtRecord, "md", (uint8)strlen(temp_md), temp_md);
 
     char temp_pv[MIBF] = {0};
-    sprintf(temp_pv, "pv=%d.%d", psBonjourText->auProtocolVersion[0], psBonjourText->auProtocolVersion[1]);
-
-    temp[u8Index] = (uint8)strlen(temp_pv);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_pv, strlen(temp_pv));
-    u8Index += strlen(temp_pv);
+    sprintf(temp_pv, "%d.%d", psBonjourText->auProtocolVersion[0], psBonjourText->auProtocolVersion[1]);
+    TXTRecordSetValue(&txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
 
     char temp_scharp[MIBF] = {0};
-    sprintf(temp_scharp, "s#=%d", psBonjourText->u32iCurrentStaNumber);
-
-    temp[u8Index] = (uint8)strlen(temp_scharp);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_scharp, strlen(temp_scharp));
-    u8Index += strlen(temp_scharp);
+    sprintf(temp_scharp, "%d", psBonjourText->u32iCurrentStaNumber);
+    TXTRecordSetValue(&txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
 
     char temp_sf[MIBF] = {0};
-    sprintf(temp_sf, "sf=%d", psBonjourText->u8StatusFlag);
-
-    temp[u8Index] = (uint8)strlen(temp_sf);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_sf, strlen(temp_sf));
-    u8Index += strlen(temp_sf);
+    sprintf(temp_sf, "%d", psBonjourText->u8StatusFlag);
+    TXTRecordSetValue(&txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
 
     char temp_ci[MIBF] = {0};
-    sprintf(temp_ci, "ci=%d", psBonjourText->eAccessoryCategoryID);
+    sprintf(temp_ci, "%d", psBonjourText->eAccessoryCategoryID);
+    TXTRecordSetValue(&txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
 
-    temp[u8Index] = (uint8)strlen(temp_ci);
-    u8Index += sizeof(uint8);
-    memcpy(&temp[u8Index], temp_ci, strlen(temp_ci));
-    u8Index += strlen(temp_ci);
-    printf("u8Index:%d\n", u8Index);
-
-    DBG_vPrintln(DBG_BONJOUR, "TextRecord[%d]:%s", (int)strlen(temp), temp);
-
-    char *record = (char*)malloc(strlen(temp));
-    memset(record, 0, strlen(temp));
-    memcpy(record, temp, strlen(temp));
-    return record;
+    return txtRecord;
 }

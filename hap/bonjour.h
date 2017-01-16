@@ -67,7 +67,7 @@ typedef struct {
     char *psServiceName;
     char *psHostName;
     char *psInstanceName;
-    char *psTextRecord;
+    TXTRecordRef txtRecord;
     uint16 u16Port;
     int  iSocketFd;
     tsThread sThread;
