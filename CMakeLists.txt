@@ -11,4 +11,4 @@ set(SOURCE_FILES  main.c
 
 add_executable(light_bulb ${SOURCE_FILES})
 
-target_link_libraries(light_bulb libpthread.so)
+target_link_libraries(light_bulb libpthread.so libdns_sd.so)

@@ -27,6 +27,7 @@ extern "C" {
 #include "profile.h"
 #include "accessory.h"
 #include "mthread.h"
+#include <dns_sd.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -54,12 +55,12 @@ typedef enum {
 typedef struct {
     uint64  u64CurrentCfgNumber;    /* c#---Current configuration number */
     uint8   u8FeatureFlag;          /* ff---Required if non-zero */
-    char    *psDeviceID;            /* id---The Device ID must be formatted as XX:XX:XX:XX:XX:XX */
+    uint64  u64DeviceID;            /* id---The Device ID must be formatted as XX:XX:XX:XX:XX:XX */
     char    *psModelName;           /* md---Model name of the accessory */
-    char    *psProtocolVersion;     /* pv---Protocol version string <major>.<minor> */
+    char    auProtocolVersion[2];   /* pv---Protocol version string <major>.<minor> */
     uint32  u32iCurrentStaNumber;   /* s#---Current state number,This must have a value of "1" */
     uint8   u8StatusFlag;           /* sf---Value should be an unsigned integer. Required if non-zero */
-    uint16  u16AccessoryCategoryID; /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory */
+    teAccessoryType  eAccessoryCategoryID; /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory */
 } tsBonjourText;
 
 typedef struct {
@@ -70,6 +71,8 @@ typedef struct {
     uint16 u16Port;
     int  iSocketFd;
     tsThread sThread;
+    DNSServiceRef psDnsRef;
+    tsBonjourText sBonjourText;
 } tsBonjour;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -86,6 +89,7 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 teBonjStatus eBonjourInit(tsProfile *psProfile);
+teBonjStatus eBonjourFinished(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

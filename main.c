@@ -11,7 +11,11 @@ int main(void)
     eLightBulbProfileInit("DimmerLight", "12345678", "TopBand", "1234");
     eBonjourInit(&sLightBulb);
 
+    while(1){
+        sleep(1);
+    }
 
+    eBonjourFinished(&sLightBulb);
     eLightBulbProfileFinished();
 
     return 0;
