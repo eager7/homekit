@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(homekit)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-include_directories(include accessory profiles hap srp)
+include_directories(include accessory profiles hap srp rfc6234-master)
 
 set(SOURCE_FILES  main.c
         accessory/accessory.c
@@ -10,6 +10,7 @@ set(SOURCE_FILES  main.c
         hap/bonjour.c hap/mthread.c hap/http_handle.c hap/http_handle.h hap/pairing.c hap/pairing.h
         srp/cstr.c  srp/srp6_server.c  srp/srp.c  srp/t_conf.c  srp/t_conv.c  srp/t_math.c
         srp/t_misc.c  srp/t_pw.c  srp/t_read.c  srp/t_truerand.c
+        rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha.c
 
         )
 

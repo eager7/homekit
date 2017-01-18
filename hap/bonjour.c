@@ -200,9 +200,9 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
                             tsHttpEntry sHttpEntry;
                             eHttpParser(buf, (uint16)len, &sHttpEntry);
-                            if(strstr(sHttpEntry.acDirectory, "pair-setup")){
+                            if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
                                 ePairSetup(iSockClient, sBonjour.pcSetupCode, &sHttpEntry);
-                            } else if(strstr(sHttpEntry.acDirectory, "pair-verify")){
+                            } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
 
                             }
 

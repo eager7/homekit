@@ -20,7 +20,7 @@
 /****************************************************************************/
 #include "pairing.h"
 #include "http_handle.h"
-
+#include "hkdf.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -33,6 +33,7 @@
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
 static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
+static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint16 *pu16LengthOut);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
@@ -62,11 +63,10 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
     switch(ePair){
         case (E_PAIR_SETUP_SRP_START_REQUEST):{
             eSrpStartResponse(iSockFd, pSetupCode, psHttpEntry);
-            ePair = E_PAIR_SETUP_SRP_START_RESPONSE;
         }
             break;
-        case (E_PAIR_SETUP_SRP_START_RESPONSE):{
-
+        case (E_PAIR_SETUP_SRP_VERIFY_REQUEST):{
+            eSrpVerifyResponse(iSockFd, psHttpEntry);
         }
             break;
         default:
@@ -159,6 +159,32 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
 
     psHttpEntry->iHttpStatus = 200;
     eHttpResponse(iSockFd, psHttpEntry, data, LenOut);
+
+    return E_PAIRING_STATUS_OK;
+}
+
+static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
+{
+    SRP *pSrpResp = NULL;
+    cstr *pSecretKey = NULL, *pResponse = NULL;
+    const char *pKeyStr = 0;
+    int iKeyLen = 0;
+    const char *pProofStr = NULL;
+    int iProofLen = 0;
+    SRP_RESULT ret = SRP_compute_key(pSrpResp, &pSecretKey, (const unsigned char*)pKeyStr, iKeyLen);
+    ret = SRP_verify(pSrpResp, (const unsigned char*)pProofStr, iProofLen);
+    if(SRP_OK(ret)){
+        DBG_vPrintln(DBG_PAIR, "Setup Code is Correct");
+        SRP_respond(pSrpResp, &pResponse);
+    } else {
+        WAR_vPrintln(DBG_PAIR, "Invalid Setup Code");
+    }
+
+    const char salt[] = "Pair-Setup-Encrypt-Salt";
+    const char info[] = "Pair-Setup-Encrypt-Info";
+    uint8 auSessionKey[64];
+    int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)pSecretKey->data, pSecretKey->length,
+                 (const unsigned char*)info, strlen(info), auSessionKey, 32);
 
     return E_PAIRING_STATUS_OK;
 }

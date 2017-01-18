@@ -31,7 +31,7 @@
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
-static char *pcStrtokString(char *pcBuf, char *pcStart, char *pcEnd);
+
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -91,8 +91,6 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, char *pBuffer,
     char temp[MABF] = {0};
     snprintf(temp, sizeof(temp), "HTTP/1.1 %d OK\r\nContent-Type:%s\r\nContent-Length: %d\r\n\r\n",
              psHttpEntry->iHttpStatus, psHttpEntry->acContentType, u16Length);
-
-    DBG_vPrintln(DBG_HTTP, "%s", temp);
     ssize_t ret = send(iSockFd, temp, strlen(temp), 0);
     if(ret == -1){
         ERR_vPrintln(T_TRUE, "send failed:%s", strerror(errno));
@@ -106,15 +104,4 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, char *pBuffer,
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static char *pcStrtokString(char *pcBuf, char *pcStart, char *pcEnd)
-{
-    CHECK_POINTER(pcBuf, NULL);
-    CHECK_POINTER(pcStart, NULL);
-    CHECK_POINTER(pcEnd, NULL);
 
-    char *pIndexStart = strstr(pcBuf, pcStart);
-    char *pIndexEnd = strstr(pcBuf, pcEnd);
-    printf("S:%s,E:%s\n", pIndexStart, pIndexEnd);
-
-    return NULL;
-}
