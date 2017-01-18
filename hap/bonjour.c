@@ -23,6 +23,8 @@
 #include <accessory.h>
 #include "bonjour.h"
 #include "mthread.h"
+#include "pairing.h"
+#include "http_handle.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -47,22 +49,23 @@ static tsBonjour sBonjour;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile)
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
 {
     memset(&sBonjour, 0, sizeof(sBonjour));
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
-    sBonjour.u16Port = 1200;
+    sBonjour.u16Port = ACCESSORY_SERVER_PORT;
     sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.pcSetupCode = pcSetupCode;
 
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
-    sBonjour.sBonjourText.u8FeatureFlag = 0x01; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
+    sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
     sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
-    sBonjour.sBonjourText.u32iCurrentStaNumber = 1;
-    sBonjour.sBonjourText.u8StatusFlag = 0;
+    sBonjour.sBonjourText.u32iCurrentStaNumber = 4;
+    sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
 
     sBonjour.txtRecord = TextRecordFormat(&sBonjour.sBonjourText);
@@ -73,17 +76,18 @@ teBonjStatus eBonjourInit(tsProfile *psProfile)
 
     sBonjour.sThread.pvThreadData = psProfile;
     CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
-    printf("%d-%s\n", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
-    DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0, sBonjour.psInstanceName, sBonjour.psServiceName,
-                                                  "", sBonjour.psHostName, sBonjour.u16Port, TXTRecordGetLength(&sBonjour.txtRecord), TXTRecordGetBytesPtr(&sBonjour.txtRecord), NULL,NULL);
+    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
+    DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
+                                                  sBonjour.psInstanceName,
+                                                  sBonjour.psServiceName, "",
+                                                  sBonjour.psHostName, sBonjour.u16Port,
+                                                  TXTRecordGetLength(&sBonjour.txtRecord),
+                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), NULL,NULL);
     TXTRecordDeallocate(&sBonjour.txtRecord);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
     }
-
-
-
 
     return E_BONJOUR_STATUS_OK;
 }
@@ -104,21 +108,27 @@ static teBonjStatus eBonjourMdnsInit(void)
         return E_BONJOUR_STATUS_ERROR;
     }
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(0);
-    int ret = bind(sBonjour.iSocketFd, (struct sockaddr*)&addr, sizeof(addr));
+    int re = 1;
+    setsockopt(sBonjour.iSocketFd, SOL_SOCKET, SO_REUSEADDR, &re, sizeof(re));
+
+    struct sockaddr_in addr_sever;
+    memset(&addr_sever, 0, sizeof(addr_sever));
+    addr_sever.sin_family = AF_INET;
+    addr_sever.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr_sever.sin_port = htons(sBonjour.u16Port);
+    int ret = bind(sBonjour.iSocketFd, (struct sockaddr*)&addr_sever, sizeof(addr_sever));
     if(ret == -1){
         ERR_vPrintln(T_TRUE, "bind address failed:[%s]", strerror(errno));
         close(sBonjour.iSocketFd);
         return E_BONJOUR_STATUS_ERROR;
     }
 
-    int re = 1;
-    setsockopt(sBonjour.iSocketFd, SOL_SOCKET, SO_REUSEADDR, &re, sizeof(re));
-    listen(sBonjour.iSocketFd, 5);
+    listen(sBonjour.iSocketFd, ACCESSORY_SERVER_LISTEN);
+
+    struct sockaddr_in addr_t; socklen_t len = sizeof(addr_t);
+    getsockname(sBonjour.iSocketFd, (struct sockaddr *)&addr_t, &len);
+    sBonjour.u16Port = addr_t.sin_port;
+    printf("port:%d\n", sBonjour.u16Port);
 
     return E_BONJOUR_STATUS_OK;
 }
@@ -129,20 +139,79 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
     psThreadInfo->eState = E_THREAD_RUNNING;
 
+    fd_set fdSelect, fdTemp;
+    FD_ZERO(&fdSelect);//Init fd
+    FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket fd into select fd
+    int iListenFD = 0;
+    if(sBonjour.iSocketFd > iListenFD) {
+        iListenFD = sBonjour.iSocketFd;
+    }
+
     int iSockClient;
-    struct sockaddr_in client_addr;
-    memset(&client_addr, 0, sizeof(client_addr));
-    socklen_t client_len = sizeof(client_addr);
-
+    static int iNumberClient = 0;
     while(psThreadInfo->eState == E_THREAD_RUNNING){
-        int s = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, &client_len);
-        if(s == -1){
-            printf("error:%s\n", strerror(errno));
-            continue;
-        }
+        fdTemp = fdSelect;  /* use temp value, because this value will be clear */
+        int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
+        switch(iResult) {
+            case 0:
+                DBG_vPrintln(DBG_BONJOUR, "receive message time out \n");
+                break;
 
-        printf("client ipaddr:%s\n", inet_ntoa(client_addr.sin_addr));
-        sleep(1);
+            case -1:
+                WAR_vPrintln(T_TRUE, "receive message error:%s \n", strerror(errno));
+                break;
+
+            default: {
+                if( FD_ISSET(sBonjour.iSocketFd, &fdTemp) ){//there is client accept
+                    DBG_vPrintln(DBG_BONJOUR, "A client connecting... \n");
+                    if(iNumberClient >= MAX_NUMBER_CLIENT){
+                        DBG_vPrintln(DBG_BONJOUR, "Client already connected full, don't allow to connected\n");
+                        FD_CLR(sBonjour.iSocketFd, &fdSelect);//delete this Server from select set
+                        break;
+                    } else {
+                        struct sockaddr_in client_addr;
+                        memset(&client_addr, 0, sizeof(client_addr));
+                        socklen_t client_len = sizeof(client_addr);
+                        iSockClient = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+                        if(-1 == iSockClient){
+                            ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
+                            break;
+                        } else {
+                            DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
+                            FD_SET(iSockClient, &fdSelect);
+                            if(iSockClient > iListenFD){
+                                iListenFD = iSockClient;
+                            }
+                            iNumberClient ++;
+                        }
+                    }
+                } else {    /* Client Communication */
+                    if(FD_ISSET(iSockClient, &fdTemp)){
+                        char buf[MABF] = {0};
+                        ssize_t len = recv(iSockClient, buf, sizeof(buf), 0);
+                        if(0 == len){
+                            ERR_vPrintln(T_TRUE, "Close Client\n");
+                            close(iSockClient);
+                            FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                            FD_CLR(iSockClient, &fdSelect);//delete this client from select set
+                            iNumberClient --;
+                            ePair = E_PAIR_SETUP_SRP_START_REQUEST;
+                        } else {
+                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
+                            tsHttpEntry sHttpEntry;
+                            eHttpParser(buf, (uint16)len, &sHttpEntry);
+                            if(strstr(sHttpEntry.acDirectory, "pair-setup")){
+                                ePairSetup(iSockClient, sBonjour.pcSetupCode, &sHttpEntry);
+                            } else if(strstr(sHttpEntry.acDirectory, "pair-verify")){
+
+                            }
+
+                            //HandleHomeKitMsg(buf);
+                        }
+                    }
+                }
+            }   break;
+        }
     }
     DBG_vPrintln(DBG_BONJOUR, "pvBonjourThreadHandle Exit");
     vThreadFinish(psThreadInfo);
@@ -195,3 +264,4 @@ static TXTRecordRef TextRecordFormat(tsBonjourText *psBonjourText)
 
     return txtRecord;
 }
+

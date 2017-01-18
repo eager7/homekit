@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             bonjour.h
+ * MODULE:             http parse.h
  *
  * COMPONENT:          home kit interface
  *
@@ -15,8 +15,8 @@
  * Copyright panchangtao@gmail.com 2017. All rights reserved
  *
  ***************************************************************************/
-#ifndef HOMEKIT_BONJOUR_H
-#define HOMEKIT_BONJOUR_H
+#ifndef HOMEKIT_PAIRING_H
+#define HOMEKIT_PAIRING_H
 #if defined __cplusplus
 extern "C" {
 #endif
@@ -24,62 +24,35 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-#include "profile.h"
-#include "accessory.h"
-#include "mthread.h"
-#include <dns_sd.h>
+#include <srp.h>
+#include "http_handle.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define BONJOUR_SERVER_TYPE "_hap._tcp."
-#define MULTICAST_DNS_ADDRESS "224.0.0.251"
-#define MULTICAST_DNS_PORT 5353
 
-#define ACCESSORY_SERVER_LISTEN 5
-#define ACCESSORY_SERVER_PORT 0
-#define MAX_NUMBER_CLIENT 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_BONJOUR_STATUS_OK,
-    E_BONJOUR_STATUS_ERROR,
-} teBonjStatus;
+    E_PAIRING_STATUS_OK = 0x00,
+    E_PAIRING_STATUS_ERROR,
+} tePairStatus;
 
 typedef enum {
-    E_BONJOUR_FEATURE_FLAG_PAIRING = 0x01,
-} tsFeatureFlag;
+    E_PAIR_SETUP_SRP_START_REQUEST,
+    E_PAIR_SETUP_SRP_START_RESPONSE,
+    E_PAIR_SETUP_SRP_VERIFY_REQUEST,
+    E_PAIR_SETUP_SRP_VERIFY_RESPONSE,
+    E_PAIR_SETUP_EXCHANGE_REQUEST,
+    E_PAIR_SETUP_EXCHANGE_RESPONSE,
+} tePairSetup;
 
 typedef enum {
-    E_BONJOUR_TXT_STATUS_FLAG_UNPAIRED = 0x01,
-    E_BONJOUR_TXT_STATUS_FLAG_UNCONFIGURED_WIFI = 0x02,
-    E_BONJOUR_TXT_STATUS_FLAG_DETECTED_PROBLEM = 0x04,
-} tsTxtStatusFlag;
-
-typedef struct {
-    uint64  u64CurrentCfgNumber;    /* c#---Current configuration number */
-    uint8   u8FeatureFlag;          /* ff---Required if non-zero */
-    uint64  u64DeviceID;            /* id---The Device ID must be formatted as XX:XX:XX:XX:XX:XX */
-    char    *psModelName;           /* md---Model name of the accessory */
-    char    auProtocolVersion[2];   /* pv---Protocol version string <major>.<minor> */
-    uint32  u32iCurrentStaNumber;   /* s#---Current state number,This must have a value of "1" */
-    uint8   u8StatusFlag;           /* sf---Value should be an unsigned integer. Required if non-zero */
-    teAccessoryType  eAccessoryCategoryID; /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory */
-} tsBonjourText;
-
-typedef struct {
-    char *psServiceName;            /* homekit bonjour server name, _hap._tcp. */
-    char *psHostName;               /* accessory host name, can be NULL */
-    char *psInstanceName;           /* same as accessory name */
-    char *pcSetupCode;              /* Setup Code */
-
-    int  iSocketFd;                 /* Accessory server socket */
-    uint16 u16Port;                 /* Accessory server socket port */
-    tsThread sThread;               /* server socket's thread */
-    DNSServiceRef psDnsRef;         /* mDNS pointer */
-    TXTRecordRef  txtRecord;        /* txt record */
-    tsBonjourText sBonjourText;     /* txt record struct */
-} tsBonjour;
+    E_PAIR_VERIFY_START_REQUEST,
+    E_PAIR_VERIFY_START_RESPONSE,
+    E_PAIR_VERIFY_FINISHED_REQUEST,
+    E_PAIR_VERIFY_FINISHED_RESPONSE,
+} tePairVerify;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -87,6 +60,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+extern tePairSetup ePair;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -94,12 +68,11 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
-teBonjStatus eBonjourFinished(tsProfile *psProfile);
+tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 #if defined __cplusplus
 }
 #endif
-#endif //HOMEKIT_BONJOUR_H
+#endif //HOMEKIT_PAIRING_H
