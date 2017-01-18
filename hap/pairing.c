@@ -33,10 +33,11 @@
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
 static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
+static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint16 *pu16LengthOut);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-tePairSetup ePair = E_PAIR_SETUP_SRP_START_REQUEST;
+
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -47,6 +48,17 @@ tePairSetup ePair = E_PAIR_SETUP_SRP_START_REQUEST;
 
 tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
 {
+    tePairSetupState ePair = E_PAIR_SETUP_SRP_START_NULL;
+    for (int i = 0; i < psHttpEntry->u16ContentLen; ++i) {
+        if (psHttpEntry->acContentData[i] == E_TLV_VALUE_TYPE_STATE){
+            ePair = (tePairSetupState)psHttpEntry->acContentData[i+1];
+        }
+    }
+    if (ePair == E_PAIR_SETUP_SRP_START_NULL){
+        WAR_vPrintln(DBG_PAIR, "Can't find kTLVType_State Data");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    DBG_vPrintln(DBG_PAIR, "PairSetup:%d", ePair);
     switch(ePair){
         case (E_PAIR_SETUP_SRP_START_REQUEST):{
             eSrpStartResponse(iSockFd, pSetupCode, psHttpEntry);
@@ -116,8 +128,64 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
     SRP_set_auth_password(pSrpResp, pSetupCode);
     cstr *psPublicKey = NULL;
     SRP_gen_pub(pSrpResp, &psPublicKey);
+
+    uint8 data[MABF] = {0};
+    uint16 LenOut = 0, LenOutTemp = 0;
+
+    uint8 value[1] = {E_PAIR_SETUP_SRP_START_RESPONSE};
+    uint8 *psStateData = puTlvTypeFormat(E_TLV_VALUE_TYPE_STATE, 0x01, value, &LenOutTemp);
+    CHECK_POINTER(psStateData, E_PAIRING_STATUS_ERROR);
+    memcpy(data, psStateData, LenOutTemp);
+    LenOut += LenOutTemp;
+    FREE(psStateData);
+
+
+    uint8 *psKeyData = puTlvTypeFormat(E_TLV_VALUE_TYPE_PUBLIC_KEY, (uint16)psPublicKey->length, (uint8*)psPublicKey->data, &LenOutTemp);
+    CHECK_POINTER(psKeyData, E_PAIRING_STATUS_ERROR);
+    memcpy(&data[LenOut], psKeyData, LenOutTemp);
+    LenOut += LenOutTemp;
+    FREE(psKeyData);
+
+    uint8 *psSaltData = puTlvTypeFormat(E_TLV_VALUE_TYPE_SALT, sizeof(auSalt), auSalt, &LenOutTemp);
+    CHECK_POINTER(psSaltData, E_PAIRING_STATUS_ERROR);
+    memcpy(&data[LenOut], psSaltData, LenOutTemp);
+    LenOut += LenOutTemp;
+    FREE(psSaltData);
+    //Don't Know Why yet
+    data[LenOut] = 0x06;
+    data[LenOut+1] = 0x01;
+    data[LenOut+2] = 0x02;
+    LenOut += 3;
+
     psHttpEntry->iHttpStatus = 200;
-    eHttpResponse(iSockFd, psHttpEntry, psPublicKey->data, (uint16)psPublicKey->length);
+    eHttpResponse(iSockFd, psHttpEntry, data, LenOut);
 
     return E_PAIRING_STATUS_OK;
+}
+
+static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint16 *pu16LengthOut)
+{
+    CHECK_POINTER(puValue, NULL);
+    uint8 *psData = NULL;
+
+    unsigned int num = (unsigned int)(u16Len / 0xff);
+    if(num * 0xff != u16Len){
+        num ++;
+    }
+    psData = (uint8*)malloc(u16Len + 2 * num);
+    *pu16LengthOut = (uint16)(u16Len + 2 * num);
+    DBG_vPrintln(DBG_PAIR, "Tlv Len %d", *pu16LengthOut);
+    int i = 0;
+    for (i = 0; i < num - 1; ++i) {
+        DBG_vPrintln(DBG_PAIR, "Fragment %d", i+1);
+        psData[0xff*i] = u8Type;
+        psData[0xff*i + 1] = (char)0xff;
+        memcpy(&psData[0xff*i + 2], &puValue[0xff*i], 0xff);
+    }
+    DBG_vPrintln(DBG_PAIR, "Fragment %d", i+1);
+    psData[(0xff + 2) * i] = u8Type;
+    psData[(0xff + 2) * i + 1] = (uint8)(u16Len - 0xff * i);
+    memcpy(&psData[(0xff + 2) * i + 2], &puValue[0xff * i], (size_t)(u16Len - 0xff * i));
+
+    return psData;
 }

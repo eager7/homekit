@@ -58,14 +58,6 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     char *psContentType = strtok(NULL, "\r\n");
     CHECK_POINTER(psContentType, E_HTTP_PARSER_ERROR);
 
-    char *psContentData = strtok(NULL, "\r\n");
-    if(psContentData == NULL){
-        memset(psHttpEntry->acContentData, 0, sizeof(psHttpEntry->acContentData));
-    } else {
-        memcpy(psHttpEntry->acContentData, psContentData, sizeof(psHttpEntry->acContentData));
-    }
-
-
     char *psMethod = strtok(psHeader, " ");
     CHECK_POINTER(psMethod, E_HTTP_PARSER_ERROR);
     memcpy(psHttpEntry->acHttpMethod, psMethod, sizeof(psHttpEntry->acHttpMethod));
@@ -75,19 +67,25 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     char *psHttpVer = strtok(NULL, " ");
     CHECK_POINTER(psHttpVer, E_HTTP_PARSER_ERROR);
     memcpy(psHttpEntry->acHttpVersion, psHttpVer, sizeof(psHttpEntry->acHttpVersion));
-    printf("Method:%s,Dir:%s,Version:%s\n", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
+    DBG_vPrintln(DBG_HTTP, "Method:%s,Dir:%s,Version:%s", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
 
     char *psLen = strtok(psContentLen, ":");
     psLen = strtok(NULL, ":");
     CHECK_POINTER(psLen, E_HTTP_PARSER_ERROR);
     psHttpEntry->u16ContentLen = (uint16)atoi(psLen);
-    printf("Len:%d\n", psHttpEntry->u16ContentLen);
+    DBG_vPrintln(DBG_HTTP, "Len:%d", psHttpEntry->u16ContentLen);
 
     char *psType = strtok(psContentType, ":");
     psType = strtok(NULL, ":");
     CHECK_POINTER(psType, E_HTTP_PARSER_ERROR);
     memcpy(psHttpEntry->acContentType, psType, sizeof(psHttpEntry->acContentType));
-    printf("Type:%s\n", psHttpEntry->acContentType);
+    DBG_vPrintln(DBG_HTTP, "Type:%s", psHttpEntry->acContentType);
+
+
+    memcpy(psHttpEntry->acContentData, &pBuf[u16Len - psHttpEntry->u16ContentLen + 1], psHttpEntry->u16ContentLen);
+    for (int i = 0; i < psHttpEntry->u16ContentLen; ++i) {
+        if(DBG_HTTP)printf("0x%02x ", psHttpEntry->acContentData[i]);
+    }printf("\n");
 
     return E_HTTP_PARSER_OK;
 }

@@ -151,6 +151,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     static int iNumberClient = 0;
     while(psThreadInfo->eState == E_THREAD_RUNNING){
         fdTemp = fdSelect;  /* use temp value, because this value will be clear */
+        DBG_vPrintln(DBG_BONJOUR, "select \n");
         int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
         switch(iResult) {
             case 0:
@@ -195,7 +196,6 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
                             FD_CLR(iSockClient, &fdSelect);//delete this client from select set
                             iNumberClient --;
-                            ePair = E_PAIR_SETUP_SRP_START_REQUEST;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
                             tsHttpEntry sHttpEntry;
