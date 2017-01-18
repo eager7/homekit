@@ -45,12 +45,12 @@ typedef enum {
 
 typedef struct {
     int  iHttpStatus;
-    char acHttpMethod[5];
-    char acDirectory[40];
-    char acHttpVersion[9];
+    uint8 acHttpMethod[5];
+    uint8 acDirectory[40];
+    uint8 acHttpVersion[9];
     uint16 u16ContentLen;
-    char acContentType[40];
-    char acContentData[MABF];
+    uint8 acContentType[40];
+    uint8 acContentData[MABF];
 } tsHttpEntry;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/

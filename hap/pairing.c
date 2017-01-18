@@ -51,7 +51,7 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
     tePairSetupState ePair = E_PAIR_SETUP_SRP_START_NULL;
     for (int i = 0; i < psHttpEntry->u16ContentLen; ++i) {
         if (psHttpEntry->acContentData[i] == E_TLV_VALUE_TYPE_STATE){
-            ePair = (tePairSetupState)psHttpEntry->acContentData[i+1];
+            ePair = (tePairSetupState)psHttpEntry->acContentData[i+2];
         }
     }
     if (ePair == E_PAIR_SETUP_SRP_START_NULL){
