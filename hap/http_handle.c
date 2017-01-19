@@ -81,8 +81,12 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     memcpy(psHttpEntry->acContentType, psType, sizeof(psHttpEntry->acContentType));
     DBG_vPrintln(DBG_HTTP, "Type:%s", psHttpEntry->acContentType);
 
-    memcpy(psHttpEntry->acContentData, &pBuf[u16Len - psHttpEntry->u16ContentLen + 1], psHttpEntry->u16ContentLen);
-
+    memcpy(psHttpEntry->acContentData, &pBuf[u16Len - psHttpEntry->u16ContentLen], psHttpEntry->u16ContentLen);
+    if(DBG_HTTP){
+        for (int i = 0; i < psHttpEntry->u16ContentLen; ++i) {
+            printf("0x%02x,", psHttpEntry->acContentData[i]);
+        }printf("\n");
+    }
     return E_HTTP_PARSER_OK;
 }
 

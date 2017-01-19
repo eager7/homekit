@@ -34,7 +34,8 @@
 /****************************************************************************/
 static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
 static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
-static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint16 *pu16LengthOut);
+static uint8* puTlvTypeMalloc(teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData, uint16 *pu16LengthOut);
+static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -42,7 +43,9 @@ static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint1
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-
+SRP *pSrp = NULL;
+uint8 auSessionKey[64] = {0};
+cstr *pSecretKey = NULL;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -50,22 +53,22 @@ static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint1
 tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
 {
     tePairSetupState ePair = E_PAIR_SETUP_SRP_START_NULL;
-    for (int i = 0; i < psHttpEntry->u16ContentLen; ++i) {
-        if (psHttpEntry->acContentData[i] == E_TLV_VALUE_TYPE_STATE){
-            ePair = (tePairSetupState)psHttpEntry->acContentData[i+2];
-        }
-    }
-    if (ePair == E_PAIR_SETUP_SRP_START_NULL){
+    tsTlvType sTlvType;
+    memset(&sTlvType, 0, sizeof(sTlvType));
+    if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_STATE, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvType)){
         WAR_vPrintln(DBG_PAIR, "Can't find kTLVType_State Data");
         return E_PAIRING_STATUS_ERROR;
     }
+    ePair = (tePairSetupState)sTlvType.psValue[0];
+    FREE(sTlvType.psValue);
+
     DBG_vPrintln(DBG_PAIR, "PairSetup:%d", ePair);
     switch(ePair){
-        case (E_PAIR_SETUP_SRP_START_REQUEST):{
+        case (E_PAIR_SETUP_M1_SRP_START_REQUEST):{
             eSrpStartResponse(iSockFd, pSetupCode, psHttpEntry);
         }
             break;
-        case (E_PAIR_SETUP_SRP_VERIFY_REQUEST):{
+        case (E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST):{
             eSrpVerifyResponse(iSockFd, psHttpEntry);
         }
             break;
@@ -118,44 +121,46 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
 
     const unsigned char generator[] = {0x05};
 
-    SRP *pSrpResp =  SRP_new(SRP6a_server_method());
-    SRP_set_username(pSrpResp, "Pair-Setup");
+    pSrp =  SRP_new(SRP6a_server_method());
+    SRP_set_username(pSrp, "Pair-Setup");
     uint8 auSalt[16] = {0};
     for(int j = 0; j < 16; j++){
         auSalt[j] = (uint8)rand();
     }
-    SRP_set_params(pSrpResp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, 1, auSalt, sizeof(auSalt));
-    SRP_set_auth_password(pSrpResp, pSetupCode);
+    SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, 1, auSalt, sizeof(auSalt));
+    SRP_set_auth_password(pSrp, pSetupCode);
     cstr *psPublicKey = NULL;
-    SRP_gen_pub(pSrpResp, &psPublicKey);
+    SRP_gen_pub(pSrp, &psPublicKey);
 
     uint8 data[MABF] = {0};
     uint16 LenOut = 0, LenOutTemp = 0;
 
-    uint8 value[1] = {E_PAIR_SETUP_SRP_START_RESPONSE};
-    uint8 *psStateData = puTlvTypeFormat(E_TLV_VALUE_TYPE_STATE, 0x01, value, &LenOutTemp);
-    CHECK_POINTER(psStateData, E_PAIRING_STATUS_ERROR);
-    memcpy(data, psStateData, LenOutTemp);
+    uint8 value_rep[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
+    uint8 *psStateRespData = puTlvTypeMalloc(E_TLV_VALUE_TYPE_STATE, 0x01, value_rep, &LenOutTemp);
+    CHECK_POINTER(psStateRespData, E_PAIRING_STATUS_ERROR);
+    memcpy(data, psStateRespData, LenOutTemp);
     LenOut += LenOutTemp;
-    FREE(psStateData);
+    FREE(psStateRespData);
 
-
-    uint8 *psKeyData = puTlvTypeFormat(E_TLV_VALUE_TYPE_PUBLIC_KEY, (uint16)psPublicKey->length, (uint8*)psPublicKey->data, &LenOutTemp);
+    uint8 *psKeyData = puTlvTypeMalloc(E_TLV_VALUE_TYPE_PUBLIC_KEY, (uint16) psPublicKey->length,
+                                       (uint8 *) psPublicKey->data, &LenOutTemp);
     CHECK_POINTER(psKeyData, E_PAIRING_STATUS_ERROR);
     memcpy(&data[LenOut], psKeyData, LenOutTemp);
     LenOut += LenOutTemp;
     FREE(psKeyData);
 
-    uint8 *psSaltData = puTlvTypeFormat(E_TLV_VALUE_TYPE_SALT, sizeof(auSalt), auSalt, &LenOutTemp);
+    uint8 *psSaltData = puTlvTypeMalloc(E_TLV_VALUE_TYPE_SALT, sizeof(auSalt), auSalt, &LenOutTemp);
     CHECK_POINTER(psSaltData, E_PAIRING_STATUS_ERROR);
     memcpy(&data[LenOut], psSaltData, LenOutTemp);
     LenOut += LenOutTemp;
     FREE(psSaltData);
-    //Don't Know Why yet
-    data[LenOut] = 0x06;
-    data[LenOut+1] = 0x01;
-    data[LenOut+2] = 0x02;
-    LenOut += 3;
+
+    uint8 value_req[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
+    uint8 *psStateReqData = puTlvTypeMalloc(E_TLV_VALUE_TYPE_STATE, 0x01, value_req, &LenOutTemp);
+    CHECK_POINTER(psStateReqData, E_PAIRING_STATUS_ERROR);
+    memcpy(data, psStateReqData, LenOutTemp);
+    LenOut += LenOutTemp;
+    FREE(psStateReqData);
 
     psHttpEntry->iHttpStatus = 200;
     eHttpResponse(iSockFd, psHttpEntry, data, LenOut);
@@ -165,53 +170,118 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
 
 static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 {
-    SRP *pSrpResp = NULL;
-    cstr *pSecretKey = NULL, *pResponse = NULL;
-    const char *pKeyStr = 0;
-    int iKeyLen = 0;
+    cstr *pResponse = NULL;
+
     const char *pProofStr = NULL;
     int iProofLen = 0;
-    SRP_RESULT ret = SRP_compute_key(pSrpResp, &pSecretKey, (const unsigned char*)pKeyStr, iKeyLen);
-    ret = SRP_verify(pSrpResp, (const unsigned char*)pProofStr, iProofLen);
-    if(SRP_OK(ret)){
-        DBG_vPrintln(DBG_PAIR, "Setup Code is Correct");
-        SRP_respond(pSrpResp, &pResponse);
-    } else {
-        WAR_vPrintln(DBG_PAIR, "Invalid Setup Code");
+
+    tsTlvType sTlvType;
+    memset(&sTlvType, 0, sizeof(sTlvType));
+    if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvType)){
+        WAR_vPrintln(DBG_PAIR, "Can't find kTLVType_PublicKey Data");
+        return E_PAIRING_STATUS_ERROR;
     }
 
+    tsTlvType sTlvType2;
+    memset(&sTlvType2, 0, sizeof(sTlvType2));
+    if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvType2)){
+        WAR_vPrintln(DBG_PAIR, "Can't find kTLVType_State Data");
+        return E_PAIRING_STATUS_ERROR;
+    }
+
+    DBG_vPrintln(DBG_PAIR, "SRP_compute_key");
+
+    //char * p = (char*)malloc(2);
+    //SRP_RESULT ret = SRP_compute_key(pSrp, &pSecretKey, NULL, 0);
+#if 0
+    ret = SRP_verify(pSrp, (const unsigned char*)pProofStr, iProofLen);
+    if(!SRP_OK(ret)){
+        WAR_vPrintln(DBG_PAIR, "Invalid Setup Code");
+        return E_PAIRING_STATUS_ERROR_KEY;
+    }
+    DBG_vPrintln(DBG_PAIR, "Setup Code is Correct");
+    SRP_respond(pSrp, &pResponse);
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
     uint8 auSessionKey[64];
     int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)pSecretKey->data, pSecretKey->length,
                  (const unsigned char*)info, strlen(info), auSessionKey, 32);
 
+    uint8 data[MABF] = {0};
+    uint16 LenOut = 0, LenOutTemp = 0;
+
+    uint8 value_rep[1] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
+    uint8 *psStateRespData = puTlvTypeMalloc(E_TLV_VALUE_TYPE_STATE, 0x01, value_rep, &LenOutTemp);
+    CHECK_POINTER(psStateRespData, E_PAIRING_STATUS_ERROR);
+    memcpy(data, psStateRespData, LenOutTemp);
+    LenOut += LenOutTemp;
+    FREE(psStateRespData);
+
+#endif
+
     return E_PAIRING_STATUS_OK;
 }
 
-static uint8* puTlvTypeFormat(uint8 u8Type, uint16 u16Len, uint8 *puValue, uint16 *pu16LengthOut)
+static uint8* puTlvTypeMalloc(teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData, uint16 *pu16LengthOut)
 {
-    CHECK_POINTER(puValue, NULL);
-    uint8 *psData = NULL;
+    CHECK_POINTER(puValueData, NULL);
+    CHECK_POINTER(pu16LengthOut, NULL);
 
-    unsigned int num = (unsigned int)(u16Len / 0xff);
-    if(num * 0xff != u16Len){
+    unsigned int num = (unsigned int)(u16ValueLen / TLV_FRAGMENTED);
+    if(u16ValueLen % TLV_FRAGMENTED){
         num ++;
     }
-    psData = (uint8*)malloc(u16Len + 2 * num);
-    *pu16LengthOut = (uint16)(u16Len + 2 * num);
-    DBG_vPrintln(DBG_PAIR, "Tlv Len %d", *pu16LengthOut);
+    *pu16LengthOut = (uint16)(u16ValueLen + TLV_HEADER * num);
+    uint8 *psReturnData = (uint8*)malloc(*pu16LengthOut);
+    CHECK_POINTER(psReturnData, NULL);
+
+    //DBG_vPrintln(DBG_PAIR, "Tlv Len %d", *pu16LengthOut);
     int i = 0;
     for (i = 0; i < num - 1; ++i) {
-        DBG_vPrintln(DBG_PAIR, "Fragment %d", i+1);
-        psData[0xff*i] = u8Type;
-        psData[0xff*i + 1] = (char)0xff;
-        memcpy(&psData[0xff*i + 2], &puValue[0xff*i], 0xff);
+        psReturnData[TLV_FRAGMENTED*i] = eTlvValue;
+        psReturnData[TLV_FRAGMENTED*i + TLV_TYPE_LEN] = TLV_FRAGMENTED;
+        memcpy(&psReturnData[TLV_FRAGMENTED*i + TLV_HEADER], &puValueData[TLV_FRAGMENTED*i], TLV_FRAGMENTED);
     }
-    DBG_vPrintln(DBG_PAIR, "Fragment %d", i+1);
-    psData[(0xff + 2) * i] = u8Type;
-    psData[(0xff + 2) * i + 1] = (uint8)(u16Len - 0xff * i);
-    memcpy(&psData[(0xff + 2) * i + 2], &puValue[0xff * i], (size_t)(u16Len - 0xff * i));
+    psReturnData[(TLV_FRAGMENTED + TLV_HEADER) * i] = eTlvValue;
+    psReturnData[(TLV_FRAGMENTED + TLV_HEADER) * i + TLV_TYPE_LEN] = (uint8)(u16ValueLen - TLV_FRAGMENTED * i);
+    memcpy(&psReturnData[(TLV_FRAGMENTED + TLV_HEADER) * i + TLV_HEADER], &puValueData[TLV_FRAGMENTED * i], (size_t)(u16ValueLen - TLV_FRAGMENTED * i));
 
-    return psData;
+    return psReturnData;
+}
+
+static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType)
+{
+    int index = 0;
+    int offset = 0;
+
+    do {
+        if(pBuffer[index] == eTlvValue){
+            psTlvType->u8Type = eTlvValue;
+
+            psTlvType->u16Len += pBuffer[index + TLV_TYPE_LEN];
+            printf("len --- %d\n", psTlvType->u16Len);
+            uint8* psTemp = (uint8*)realloc(psTlvType->psValue, psTlvType->u16Len);
+            CHECK_POINTER(psTemp, E_PAIRING_STATUS_ERROR);
+            psTlvType->psValue = psTemp;
+
+            memcpy(&psTlvType->psValue[offset], &pBuffer[index + TLV_HEADER], psTlvType->u16Len);
+            offset += psTlvType->u16Len;
+        }
+        int len = pBuffer[index + TLV_TYPE_LEN] + TLV_HEADER;
+        index += len;
+        if((index >= u16Len) || (pBuffer[index] != eTlvValue)) break;
+    } while(T_TRUE);
+
+    if(offset == 0){
+        return E_PAIRING_STATUS_NOT_FOUND;
+    }
+
+    DBG_vPrintln(DBG_PAIR, "eTlvTypeGetObject[%d][%d]", psTlvType->u8Type, psTlvType->u16Len);
+    if(DBG_PAIR){
+        for (int i = 0; i < psTlvType->u16Len; ++i) {
+            printf("0x%02x ", psTlvType->psValue[i]);
+        }printf("\n");
+    }
+
+    return E_PAIRING_STATUS_OK;
 }

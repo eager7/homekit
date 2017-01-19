@@ -45,11 +45,11 @@ typedef enum {
 
 typedef struct {
     int  iHttpStatus;
-    uint8 acHttpMethod[5];
-    uint8 acDirectory[40];
-    uint8 acHttpVersion[9];
+    uint8 acHttpMethod[MIBF];
+    uint8 acDirectory[MIBF];
+    uint8 acHttpVersion[MIBF];
     uint16 u16ContentLen;
-    uint8 acContentType[40];
+    uint8 acContentType[MIBF];
     uint8 acContentData[MABF];
 } tsHttpEntry;
 /****************************************************************************/

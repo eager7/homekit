@@ -29,23 +29,28 @@ extern "C" {
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
+#define TLV_TYPE_LEN 1
+#define TLV_LEN_LEN 1
+#define TLV_HEADER (TLV_TYPE_LEN + TLV_LEN_LEN)
+#define TLV_FRAGMENTED 255
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
     E_PAIRING_STATUS_OK = 0x00,
     E_PAIRING_STATUS_ERROR,
+    E_PAIRING_STATUS_ERROR_KEY,
+    E_PAIRING_STATUS_NOT_FOUND,
 } tePairStatus;
 
 typedef enum {
     E_PAIR_SETUP_SRP_START_NULL         = 0x00,
-    E_PAIR_SETUP_SRP_START_REQUEST      = 0x01,
-    E_PAIR_SETUP_SRP_START_RESPONSE     = 0x02,
-    E_PAIR_SETUP_SRP_VERIFY_REQUEST     = 0x03,
-    E_PAIR_SETUP_SRP_VERIFY_RESPONSE    = 0x04,
-    E_PAIR_SETUP_EXCHANGE_REQUEST       = 0x05,
-    E_PAIR_SETUP_EXCHANGE_RESPONSE      = 0x06,
+    E_PAIR_SETUP_M1_SRP_START_REQUEST      = 0x01,
+    E_PAIR_SETUP_M2_SRP_START_RESPONSE     = 0x02,
+    E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST     = 0x03,
+    E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE    = 0x04,
+    E_PAIR_SETUP_M5_EXCHANGE_REQUEST       = 0x05,
+    E_PAIR_SETUP_M6_EXCHANGE_RESPONSE      = 0x06,
 } tePairSetupState;
 
 typedef enum {
@@ -74,9 +79,9 @@ typedef enum {
 } tePairVerify;
 
 typedef struct {
-    uint8 u8Type;
-    uint8 u8Len;
-    uint8 *psValue;
+    uint8   u8Type;
+    uint16  u16Len;
+    uint8   *psValue;
 } tsTlvType;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/

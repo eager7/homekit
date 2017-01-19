@@ -36,8 +36,8 @@
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
-static teBonjStatus eBonjourMdnsInit(void);
-static TXTRecordRef TextRecordFormat(tsBonjourText *psBonjourText);
+static teBonjStatus eBonjourSocketInit(void);
+static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
@@ -55,22 +55,21 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
     sBonjour.u16Port = ACCESSORY_SERVER_PORT;
-    sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.psInstanceName = "DimmerLight";//psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.pcSetupCode = pcSetupCode;
 
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
-    sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.sBonjourText.psModelName = "DimmerLight";//psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32iCurrentStaNumber = 4;
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
-    sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
+    sBonjour.sBonjourText.eAccessoryCategoryID = 5;//psProfile->sAccessory.eAccessoryType;
+    eTextRecordFormat(&sBonjour);
 
-    sBonjour.txtRecord = TextRecordFormat(&sBonjour.sBonjourText);
-
-    if(eBonjourMdnsInit() != E_BONJOUR_STATUS_OK){
+    if(eBonjourSocketInit() != E_BONJOUR_STATUS_OK){
        return E_BONJOUR_STATUS_ERROR;
     }
 
@@ -100,7 +99,7 @@ teBonjStatus eBonjourFinished(tsProfile *psProfile)
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static teBonjStatus eBonjourMdnsInit(void)
+static teBonjStatus eBonjourSocketInit(void)
 {
     sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sBonjour.iSocketFd == -1){
@@ -136,7 +135,7 @@ static teBonjStatus eBonjourMdnsInit(void)
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
     tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
-    tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
+    //tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
     psThreadInfo->eState = E_THREAD_RUNNING;
 
     fd_set fdSelect, fdTemp;
@@ -197,7 +196,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             FD_CLR(iSockClient, &fdSelect);//delete this client from select set
                             iNumberClient --;
                         } else {
-                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
+                            //DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
                             tsHttpEntry sHttpEntry;
                             eHttpParser(buf, (uint16)len, &sHttpEntry);
                             if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
@@ -219,49 +218,48 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     return NULL;
 }
 
-static TXTRecordRef TextRecordFormat(tsBonjourText *psBonjourText)
+static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
 {
-    TXTRecordRef txtRecord;
-    TXTRecordCreate(&txtRecord, 0, NULL);
+    TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
 
     char temp_csharp[MIBF] = {0};
-    sprintf(temp_csharp, "%llu", psBonjourText->u64CurrentCfgNumber);
-    TXTRecordSetValue(&txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
+    sprintf(temp_csharp, "%llu", psBonjour->sBonjourText.u64CurrentCfgNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
 
     char temp_ff[MIBF] = {0};
-    sprintf(temp_ff, "%d", psBonjourText->u8FeatureFlag);
-    TXTRecordSetValue(&txtRecord, "ff", 1, temp_ff);
+    sprintf(temp_ff, "%d", psBonjour->sBonjourText.u8FeatureFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ff", 1, temp_ff);
 
     char temp_id[MIBF] = {0};
     sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
-            (uint8)(psBonjourText->u64DeviceID>>8*5 & 0xff),
-            (uint8)(psBonjourText->u64DeviceID>>8*4 & 0xff),
-            (uint8)(psBonjourText->u64DeviceID>>8*3 & 0xff),
-            (uint8)(psBonjourText->u64DeviceID>>8*2 & 0xff),
-            (uint8)(psBonjourText->u64DeviceID>>8*1 & 0xff),
-            (uint8)(psBonjourText->u64DeviceID>>8*0 & 0xff));
-    TXTRecordSetValue(&txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*5 & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*4 & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*3 & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*2 & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*1 & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*0 & 0xff));
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
 
     char temp_md[MIBF] = {0};
-    sprintf(temp_md, "%s", psBonjourText->psModelName);
-    TXTRecordSetValue(&txtRecord, "md", (uint8)strlen(temp_md), temp_md);
+    sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
+    TXTRecordSetValue(&psBonjour->txtRecord, "md", (uint8)strlen(temp_md), temp_md);
 
     char temp_pv[MIBF] = {0};
-    sprintf(temp_pv, "%d.%d", psBonjourText->auProtocolVersion[0], psBonjourText->auProtocolVersion[1]);
-    TXTRecordSetValue(&txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
+    sprintf(temp_pv, "%d.%d", psBonjour->sBonjourText.auProtocolVersion[0], psBonjour->sBonjourText.auProtocolVersion[1]);
+    TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
 
     char temp_scharp[MIBF] = {0};
-    sprintf(temp_scharp, "%d", psBonjourText->u32iCurrentStaNumber);
-    TXTRecordSetValue(&txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
+    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32iCurrentStaNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
 
     char temp_sf[MIBF] = {0};
-    sprintf(temp_sf, "%d", psBonjourText->u8StatusFlag);
-    TXTRecordSetValue(&txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
+    sprintf(temp_sf, "%d", psBonjour->sBonjourText.u8StatusFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
 
     char temp_ci[MIBF] = {0};
-    sprintf(temp_ci, "%d", psBonjourText->eAccessoryCategoryID);
-    TXTRecordSetValue(&txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
+    sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
 
-    return txtRecord;
+    return E_BONJOUR_STATUS_OK;
 }
 
