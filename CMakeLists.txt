@@ -3,6 +3,7 @@ project(homekit)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 include_directories(include accessory profiles hap srp rfc6234-master)
+include_directories(/usr/include/sys)
 
 set(SOURCE_FILES  main.c
         accessory/accessory.c

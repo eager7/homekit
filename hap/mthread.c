@@ -216,9 +216,9 @@ teThreadStatus eLockDestroy(pthread_mutex_t *psLock)
 
 teThreadStatus eLockLock(pthread_mutex_t *psLock)
 {
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locking: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locking: %p\n", (unsigned long)pthread_self(), psLock);
     CHECK_STATUS(pthread_mutex_lock(psLock), 0, E_THREAD_ERROR_FAILED);
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
 }
@@ -232,22 +232,22 @@ teThreadStatus eLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout)
     sTimeout.tv_sec = sNow.tv_sec + u32WaitTimeout;
     sTimeout.tv_nsec = sNow.tv_usec * 1000;
     
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx time locking: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx time locking: %p\n", (unsigned long)mpthread_self(), psLock);
 
     switch (pthread_mutex_timedlock(psLock, &sTimeout))
     {
         case (0):
-            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: time locked: %p\n", pthread_self(), psLock);
+            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: time locked: %p\n", (unsigned long)pthread_self(), psLock);
             return E_THREAD_OK;
             break;
             
         case (ETIMEDOUT):
-            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: time out locking: %p\n", pthread_self(), psLock);
+            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: time out locking: %p\n", (unsigned long)pthread_self(), psLock);
             return E_THREAD_ERROR_TIMEOUT;
             break;
 
         default:
-            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: error locking: %p\n", pthread_self(), psLock);
+            DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx: error locking: %p\n", (unsigned long)pthread_self(), psLock);
             return E_THREAD_ERROR_FAILED;
             break;
     }
@@ -255,18 +255,18 @@ teThreadStatus eLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout)
 
 teThreadStatus eLockTryLock(pthread_mutex_t *psLock)
 {
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx try locking: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx try locking: %p\n", (unsigned long)pthread_self(), psLock);
     CHECK_STATUS(pthread_mutex_trylock(psLock), 0, E_THREAD_ERROR_FAILED);
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
 }
 
 teThreadStatus eLockunLock(pthread_mutex_t *psLock)
 {    
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocking: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocking: %p\n", (unsigned long)pthread_self(), psLock);
     CHECK_STATUS(pthread_mutex_unlock(psLock), 0, E_THREAD_ERROR_FAILED);
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocked: %p\n", pthread_self(), psLock);
+    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
 }
@@ -353,8 +353,8 @@ teThreadStatus eQueueDequeueTimed(tsQueue *psQueue, uint32 u32WaitTimeMil, void 
             sTimeout.tv_sec++;
             sTimeout.tv_nsec -= 1000000000;
         }
-        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: now    %lu s, %lu ns\n", sNow.tv_sec, sNow.tv_usec * 1000);
-        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: until  %lu s, %lu ns\n", sTimeout.tv_sec, sTimeout.tv_nsec);
+        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: now    %ld s, %d ns\n", sNow.tv_sec, sNow.tv_usec * 1000);
+        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: until  %ld s, %ld ns\n", sTimeout.tv_sec, sTimeout.tv_nsec);
 
         switch (pthread_cond_timedwait(&psQueue->cond_data_available, &psQueue->mutex, &sTimeout))
         {
