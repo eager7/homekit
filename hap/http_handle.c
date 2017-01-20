@@ -44,6 +44,7 @@
 /****************************************************************************/
 teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 {
+    INF_vPrintln(DBG_HTTP, "--------Http Parser Package--------");
     CHECK_POINTER(psHttpEntry, E_HTTP_PARSER_ERROR);
 
     char *psHeader = strtok(pBuf, "\r\n");
@@ -90,8 +91,15 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     return E_HTTP_PARSER_OK;
 }
 
-teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, char *pBuffer, uint16 u16Length)
+teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length)
 {
+    INF_vPrintln(DBG_HTTP, "--------Http Send Package--------");
+    if(DBG_HTTP){
+        for (int i = 0; i < u16Length; ++i) {
+            printf("0x%02x,", pBuffer[i]);
+        }printf("\nlen[%d]\n", u16Length);
+    }
+
     char temp[MABF] = {0};
     snprintf(temp, sizeof(temp), "HTTP/1.1 %d OK\r\nContent-Type:%s\r\nContent-Length: %d\r\n\r\n",
              psHttpEntry->iHttpStatus, psHttpEntry->acContentType, u16Length);

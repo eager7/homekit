@@ -55,18 +55,18 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
     sBonjour.u16Port = ACCESSORY_SERVER_PORT;
-    sBonjour.psInstanceName = "DimmerLight";//psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.pcSetupCode = pcSetupCode;
 
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
-    sBonjour.sBonjourText.psModelName = "DimmerLight";//psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32iCurrentStaNumber = 4;
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
-    sBonjour.sBonjourText.eAccessoryCategoryID = 5;//psProfile->sAccessory.eAccessoryType;
+    sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
     eTextRecordFormat(&sBonjour);
 
     if(eBonjourSocketInit() != E_BONJOUR_STATUS_OK){

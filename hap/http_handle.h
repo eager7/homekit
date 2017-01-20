@@ -67,7 +67,7 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
-teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, char *pBuffer, uint16 u16Length);
+teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

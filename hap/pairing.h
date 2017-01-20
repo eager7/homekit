@@ -81,6 +81,7 @@ typedef enum {
 typedef struct {
     uint8   u8Type;
     uint16  u16Len;
+    uint16  u16Offset;
     uint8   *psValue;
 } tsTlvType;
 /****************************************************************************/
