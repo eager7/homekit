@@ -231,8 +231,6 @@ teThreadStatus eLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout)
     gettimeofday(&sNow, NULL);
     sTimeout.tv_sec = sNow.tv_sec + u32WaitTimeout;
     sTimeout.tv_nsec = sNow.tv_usec * 1000;
-    
-    DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx time locking: %p\n", (unsigned long)mpthread_self(), psLock);
 
     switch (pthread_mutex_timedlock(psLock, &sTimeout))
     {
@@ -353,8 +351,6 @@ teThreadStatus eQueueDequeueTimed(tsQueue *psQueue, uint32 u32WaitTimeMil, void 
             sTimeout.tv_sec++;
             sTimeout.tv_nsec -= 1000000000;
         }
-        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: now    %ld s, %d ns\n", sNow.tv_sec, sNow.tv_usec * 1000);
-        DBG_vPrintln(DBG_QUEUE, "Dequeue timed: until  %ld s, %ld ns\n", sTimeout.tv_sec, sTimeout.tv_nsec);
 
         switch (pthread_cond_timedwait(&psQueue->cond_data_available, &psQueue->mutex, &sTimeout))
         {

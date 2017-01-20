@@ -18,8 +18,11 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
+//#include <chacha20_simple.h>
 #include "pairing.h"
 #include "http_handle.h"
+//#include "poly1305.h"
+#include "sodium.h"
 #include "hkdf.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -37,6 +40,8 @@ static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData);
 static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
+
+static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -46,7 +51,7 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
 /****************************************************************************/
 SRP *pSrp = NULL;
 uint8 auSessionKey[64] = {0};
-cstr *pSecretKey = NULL;
+cstr *pShareKey = NULL;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -164,7 +169,7 @@ static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
         WAR_vPrintln(DBG_PAIR, "Can't find TLV Data");
         return E_PAIRING_STATUS_ERROR;
     }
-    SRP_RESULT ret = SRP_compute_key(pSrp, &pSecretKey, sTlvPublicKey.psValue, sTlvPublicKey.u16Len);
+    SRP_RESULT ret = SRP_compute_key(pSrp, &pShareKey, sTlvPublicKey.psValue, sTlvPublicKey.u16Len);
     ret = SRP_verify(pSrp, sTlvProof.psValue, sTlvProof.u16Len);
     if(!SRP_OK(ret)){
         WAR_vPrintln(DBG_PAIR, "Invalid Setup Code");
@@ -178,9 +183,8 @@ static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
     int iOutputSize = 32;
-    uint8 auSessionKey[64];
-    int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pSecretKey->data, pSecretKey->length,
-                 (const unsigned char*)info, sizeof(info), auSessionKey, iOutputSize);
+    int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
+                 pShareKey->length, (const unsigned char*)info, sizeof(info), auSessionKey, iOutputSize);
 
 
     tsTlvType sTlvData;
@@ -188,6 +192,7 @@ static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_PROOF, (uint16)pCstrProof->length, (uint8*)pCstrProof->data);
     uint8 value_rep[1] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
     eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, 0x01, value_rep);
+
 
     psHttpEntry->iHttpStatus = 200;
     eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
@@ -198,6 +203,13 @@ static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 
 static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 {
+    tsTlvType sTlvData;
+    memset(&sTlvData, 0, sizeof(sTlvData));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvData);
+
+
+    char verify[16] = {0};
+    //Poly1305_GenKey(temp2, )
 
     return E_PAIRING_STATUS_OK;
 }
@@ -269,3 +281,51 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
 
     return E_PAIRING_STATUS_OK;
 }
+
+#if 0
+static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify)
+{
+    printf("Length: %d\n", buf[0]);
+    if (key == NULL || buf == NULL || len < 2 || verify == NULL)
+        return;
+
+    poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
+    poly1305_init(&verifyContext, key);
+
+    char waste[16];
+    bzero(waste, 16);
+
+    if (bWithLen) {
+        poly1305_update(&verifyContext, (const unsigned char *)&buf[0], 1);
+        poly1305_update(&verifyContext, (const unsigned char *)&buf[1], 1);
+        poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
+
+        poly1305_update(&verifyContext, (const unsigned char *)&buf[2], len);
+    }
+    else {
+        poly1305_update(&verifyContext, (const unsigned char *)buf, len);
+    }
+
+    if (len%16 > 0)
+        poly1305_update(&verifyContext, (const unsigned char *)waste, 16-(len%16));
+    unsigned char _len;
+    if (bWithLen) {
+        _len = 2;
+    }
+    else {
+        _len = 0;
+    }
+
+    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
+    poly1305_update(&verifyContext, (const unsigned char *)&waste, 7);
+    _len = len;
+
+    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
+    _len = len/256;
+    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
+
+    poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
+
+    poly1305_finish(&verifyContext, (unsigned char*)verify);
+}
+#endif
