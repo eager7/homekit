@@ -5,13 +5,14 @@ SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -m32")
 include_directories(include accessory profiles hap
         include/sodium
         rfc6234-master
-        #Chacha20 poly1305-opt-master
+        srp
         )
 include_directories(/usr/include/sys)
+link_directories(./lib)
 
 set(SOURCE_FILES  main.c
         accessory/accessory.c
@@ -22,11 +23,13 @@ set(SOURCE_FILES  main.c
         #poly1305-opt-master/poly1305.c
         )
 
+add_library(libsrp.a STATIC
+        srp/cstr.c  srp/srp6_server.c  srp/srp.c  srp/t_conf.c  srp/t_conv.c
+        srp/t_math.c  srp/t_misc.c  srp/t_pw.c  srp/t_read.c  srp/t_truerand.c
+        )
 
-link_directories(./lib)
-
-add_executable(light_bulb ${SOURCE_FILES})
+add_executable(light_bulb ${SOURCE_FILES} )
 target_link_libraries(light_bulb
-        -lpthread -ldns_sd -lsrp -lssl -lcrypto
-        -lsodium
+        -lpthread -ldns_sd -lssl -lcrypto
+        -lsodium libsrp.a
         )
