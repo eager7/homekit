@@ -18,12 +18,13 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
-//#include <chacha20_simple.h>
+#include <chacha20_simple.h>
 #include "pairing.h"
 #include "http_handle.h"
-//#include "poly1305.h"
+#include "poly1305.h"
 #include "sodium.h"
 #include "hkdf.h"
+#include "ed25519.h"
 #include "sodium/crypto_aead_chacha20poly1305.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -51,7 +52,7 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
 /***        Local Variables                                               ***/
 /****************************************************************************/
 SRP *pSrp = NULL;
-uint8 auSessionKey[64] = {0};
+char auSessionKey[64] = {0};
 cstr *pShareKey = NULL;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
@@ -196,10 +197,14 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
-    int iOutputSize = 32;
-    int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
-                 pShareKey->length, (const unsigned char*)info, sizeof(info), auSessionKey, iOutputSize);
-
+#define LEN_OUT 32
+    int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)pShareKey->data,
+                 pShareKey->length, (const unsigned char*)info, strlen(info), auSessionKey, LEN_OUT);
+    if(i != 0){
+        ERR_vPrintln(T_TRUE, "Generate SessionKey Failed");
+        FREE(sTlvData.psValue);
+        return E_PAIRING_STATUS_ERROR;
+    }
 send:
     psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
     eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
@@ -210,49 +215,113 @@ send:
 
 static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 {
-    tsTlvType sTlvData;
-    memset(&sTlvData, 0, sizeof(sTlvData));
-    eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvData);
+    tsTlvType sTlvEncryData;
+    memset(&sTlvEncryData, 0, sizeof(sTlvEncryData));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvEncryData);
 
-    uint8 auAuthTag[16] = {0};
-    memcpy(auAuthTag, &psHttpEntry->acContentData[psHttpEntry->u16ContentLen - sizeof(auAuthTag)], sizeof(auAuthTag));
+#define LEN_AUTH_TAG 16
+    uint8 auAuthTag[LEN_AUTH_TAG] = {0};
+    uint16 u16LenEncryData = sTlvEncryData.u16Len - LEN_AUTH_TAG;
+    printf("iLenEncryData[%d-%d]\n", sTlvEncryData.u16Len, u16LenEncryData);
+    uint8 *psEncryptedData = (uint8*)malloc(sTlvEncryData.u16Len);
+    CHECK_POINTER(psEncryptedData, E_PAIRING_STATUS_ERROR);
+    memset(psEncryptedData, 0, u16LenEncryData);
+    memcpy(psEncryptedData, sTlvEncryData.psValue, u16LenEncryData);
+    memcpy(auAuthTag, &sTlvEncryData.psValue[u16LenEncryData], LEN_AUTH_TAG);
+    for (int j = 0; j < LEN_AUTH_TAG; ++j) {
+        printf("0x%02x,", auAuthTag[j]);
+    }printf("\n");
+
     //TODO:verify authTag
-    unsigned long long iDecryptedDataLen = 0;
-    uint8 *psDecryptedData = (uint8*)malloc(psHttpEntry->u16ContentLen - sizeof(auAuthTag));
-    CHECK_POINTER(psDecryptedData, E_PAIRING_STATUS_ERROR);
-    int ret = crypto_aead_chacha20poly1305_decrypt(psDecryptedData, &iDecryptedDataLen, NULL, psHttpEntry->acContentData,
-                                         psHttpEntry->u16ContentLen - sizeof(auAuthTag), NULL, 0, (const unsigned char*)"PS-Msg05", auSessionKey);
-    if(ret != 0){
+    chacha20_ctx chacha20;
+    memset(&chacha20, 0, sizeof(chacha20));
+    chacha20_setup(&chacha20, auSessionKey, 32, (uint8 *)"PS-Msg05");
+
+    uint8 auPloyIn[64] = {0}; uint8 auPloyOut[64] = {0};
+    chacha20_encrypt(&chacha20, auPloyIn, auPloyOut, 64);
+
+    uint8 auVerify[16] = {0};
+    Poly1305_GenKey(auPloyOut, psEncryptedData, u16LenEncryData, T_FALSE, auVerify);
+    for (int j = 0; j < LEN_AUTH_TAG; ++j) {
+        printf("0x%02x,", auVerify[j]);
+    }printf("\n");
+    if(memcpy(auVerify, auAuthTag, LEN_AUTH_TAG)){
         ERR_vPrintln(T_TRUE, "Can't Decrypt Data");
-        return E_PAIRING_STATUS_ERROR;
+        //return E_PAIRING_STATUS_ERROR;
     }
+
+    uint8 *psDecryptedData = (uint8*)malloc(u16LenEncryData);
+    CHECK_POINTER(psDecryptedData, E_PAIRING_STATUS_ERROR);
+    memset(psDecryptedData, 0, u16LenEncryData);
+    chacha20_decrypt(&chacha20, psEncryptedData, psDecryptedData, u16LenEncryData);
+
+    //int ret = crypto_aead_chacha20poly1305_decrypt(psDecryptedData, &iDecryptedDataLen, NULL, psHttpEntry->acContentData,
+    //                                    psHttpEntry->u16ContentLen - sizeof(auAuthTag), NULL, 0, (const unsigned char*)"PS-Msg05", auSessionKey);
+
     DBG_vPrintln(DBG_PAIR, "Decrypt Data Success");
-    tsTlvType sTlvIOSDevicePairingID, sTlvIOSDeviceLTPK, sTlvSignature;
-    memset(&sTlvIOSDevicePairingID, 0, sizeof(sTlvIOSDevicePairingID));
-    memset(&sTlvIOSDeviceLTPK, 0, sizeof(sTlvIOSDeviceLTPK));
-    memset(&sTlvSignature, 0, sizeof(sTlvSignature));
-    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvIOSDevicePairingID), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
-    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvIOSDeviceLTPK), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
-    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvSignature), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
 
     uint8 auIOSDeviceX[32] = {0};
     const char salt[] = "Pair-Setup-Controller-Sign-Salt";
     const char info[] = "Pair-Setup-Controller-Sign-Info";
     int iOutputSize = 32;
-    int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
+    int ret = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
                  pShareKey->length, (const unsigned char*)info, sizeof(info), auIOSDeviceX, iOutputSize);
+    if(ret != 0){
+        ERR_vPrintln(T_TRUE, "HKDF Error");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    tsTlvType sTlvIOSDevicePairingID, sTlvIOSDeviceLTPK, sTlvSignature;
+    memset(&sTlvIOSDevicePairingID, 0, sizeof(sTlvIOSDevicePairingID));
+    memset(&sTlvIOSDeviceLTPK, 0, sizeof(sTlvIOSDeviceLTPK));
+    memset(&sTlvSignature, 0, sizeof(sTlvSignature));
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER, psDecryptedData, (uint16)u16LenEncryData, &sTlvIOSDevicePairingID), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psDecryptedData, (uint16)u16LenEncryData, &sTlvIOSDeviceLTPK), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE, psDecryptedData, (uint16)u16LenEncryData, &sTlvSignature), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+
     uint8 auIOSDeviceInfo[MIBF] = {0};
-    memcpy(auIOSDeviceInfo, auIOSDeviceX, sizeof(auIOSDeviceX));
-    memcpy(&auIOSDeviceInfo[sizeof(auIOSDeviceX)], sTlvIOSDevicePairingID.psValue, sTlvIOSDevicePairingID.u16Len);
-    memcpy(&auIOSDeviceInfo[sizeof(auIOSDeviceX) + sTlvIOSDevicePairingID.u16Len], sTlvIOSDeviceLTPK.psValue, sTlvIOSDeviceLTPK.u16Len);
-    ret = crypto_sign_open(NULL, NULL, auIOSDeviceInfo, sizeof(auIOSDeviceInfo), sTlvIOSDeviceLTPK.psValue);
+    memcpy(auIOSDeviceInfo, auIOSDeviceX, 32);
+    memcpy(&auIOSDeviceInfo[32], sTlvIOSDevicePairingID.psValue, 36);
+    memcpy(&auIOSDeviceInfo[32 + 36], sTlvIOSDeviceLTPK.psValue, 32);
+    ret = ed25519_sign_open(auIOSDeviceInfo, sizeof(auIOSDeviceInfo), sTlvIOSDeviceLTPK.psValue, sTlvSignature.psValue);
     if(ret != 0){
         ERR_vPrintln(T_TRUE, "Verify IOSDeviceInfo Failed");
-        return E_PAIRING_STATUS_ERROR;
+        //return E_PAIRING_STATUS_ERROR;
     }
     DBG_vPrintln(DBG_PAIR, "Verify IOSDeviceInfo Success");
 
+    const char salt2[] = "Pair-Setup-Accessory-Sign-Salt";
+    const char info2[] = "Pair-Setup-Accessory-Sign-Info";
+    uint8_t output[150];
+    ret = hkdf((const unsigned char*)salt2, strlen(salt2), (const unsigned char*)pShareKey->data,
+               pShareKey->length, (const unsigned char*)info2, strlen(info2), output, 32);
+    memcpy(&output[32], "12:10:34:23:51:12", strlen("12:10:34:23:51:12"));
 
+    const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
+    char signature[64] = {0};
+    ed25519_secret_key edSecret;
+    bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+    ed25519_public_key edPubKey;
+    ed25519_publickey(edSecret, edPubKey);
+    bcopy(edPubKey, &output[32+strlen("12:10:34:23:51:12")], 32);
+    ed25519_sign(output, 64+strlen("12:10:34:23:51:12"), (const unsigned char*)edSecret,
+                 (const unsigned char*)edPubKey, (unsigned char *)signature);
+    tsTlvType sTlvsub;memset(&sTlvsub, 0, sizeof(sTlvsub));
+    eTlvTypeFormatAdd(&sTlvsub, E_TLV_VALUE_TYPE_SIGNATURE, 64, signature);
+
+
+
+#if 0
+    chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
+    chacha20_setup(&ctx, (const uint8_t *)auSessionKey, 32, (uint8_t *)"PS-Msg06");
+    char buffer[64], key[64];   bzero(buffer, 64);
+    chacha20_encrypt(&ctx, (const uint8_t *)buffer, (uint8_t *)key, 64);
+    chacha20_encrypt(&ctx, (const uint8_t *)tlv8Data, (uint8_t *)tlv8Record.data, tlv8Len);
+
+    char verify[16];
+    memset(verify, 0, 16);
+    Poly1305_GenKey((const unsigned char *)key, (unsigned char*)tlv8Record.data, tlv8Len, Type_Data_Without_Length, verify);
+    memcpy((unsigned char *)&tlv8Record.data[tlv8Len], verify, 16);
+#endif
     return E_PAIRING_STATUS_OK;
 }
 
@@ -324,7 +393,7 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
     return E_PAIRING_STATUS_OK;
 }
 
-#if 0
+
 static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify)
 {
     printf("Length: %d\n", buf[0]);
@@ -370,4 +439,3 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
 
     poly1305_finish(&verifyContext, (unsigned char*)verify);
 }
-#endif

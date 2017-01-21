@@ -10,6 +10,7 @@ include_directories(include accessory profiles hap
         include/sodium
         rfc6234-master
         srp
+        Chacha20 poly1305-opt-master ed25519-donna
         )
 include_directories(/usr/include/sys)
 link_directories(./lib)
@@ -19,8 +20,9 @@ set(SOURCE_FILES  main.c
         profiles/light_bulb.c
         hap/bonjour.c hap/mthread.c hap/http_handle.c hap/http_handle.h hap/pairing.c hap/pairing.h
         rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha_m.c
-        #Chacha20/chacha20_simple.c
-        #poly1305-opt-master/poly1305.c
+        Chacha20/chacha20_simple.c
+        poly1305-opt-master/poly1305.c
+        ed25519-donna/ed25519.c
         )
 
 add_library(libsrp.a STATIC
