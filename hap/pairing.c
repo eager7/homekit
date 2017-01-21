@@ -135,7 +135,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEnt
     pSrp =  SRP_new(SRP6a_server_method());
     SRP_set_username(pSrp, "Pair-Setup");
     uint8 auSalt[16] = {0};
-    for(int j = 0; j < 16; j++){
+    for(int j = 0; j < sizeof(auSalt); j++){
         auSalt[j] = (uint8)rand();
     }
     SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, sizeof(generator), auSalt, sizeof(auSalt));
@@ -199,7 +199,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     int iOutputSize = 32;
     int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
                  pShareKey->length, (const unsigned char*)info, sizeof(info), auSessionKey, iOutputSize);
-    
+
 send:
     psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
     eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
