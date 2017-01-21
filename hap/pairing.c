@@ -24,6 +24,7 @@
 //#include "poly1305.h"
 #include "sodium.h"
 #include "hkdf.h"
+#include "sodium/crypto_aead_chacha20poly1305.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -35,8 +36,8 @@
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
-static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
-static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
+static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
+static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData);
 static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
@@ -68,14 +69,14 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
     ePair = (tePairSetupState)sTlvType.psValue[0];
     FREE(sTlvType.psValue);
 
-    DBG_vPrintln(DBG_PAIR, "PairSetup:%d", ePair);
+    DBG_vPrintln(DBG_PAIR, "IOS PairSetup:M%d", ePair);
     switch(ePair){
         case (E_PAIR_SETUP_M1_SRP_START_REQUEST):{
-            eSrpStartResponse(iSockFd, pSetupCode, psHttpEntry);
+            eM2SrpStartResponse(iSockFd, pSetupCode, psHttpEntry);
         }
             break;
         case (E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST):{
-            eSrpVerifyResponse(iSockFd, psHttpEntry);
+            eM4SrpVerifyResponse(iSockFd, psHttpEntry);
         }
             break;
         case (E_PAIR_SETUP_M5_EXCHANGE_REQUEST):{
@@ -91,7 +92,7 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 
-static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
+static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry)
 {
     const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2,
                                         0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1,
@@ -137,7 +138,7 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
     for(int j = 0; j < 16; j++){
         auSalt[j] = (uint8)rand();
     }
-    SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, 1, auSalt, sizeof(auSalt));
+    SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, sizeof(generator), auSalt, sizeof(auSalt));
     SRP_set_auth_password(pSrp, pSetupCode);
     cstr *psPublicKey = NULL;
     SRP_gen_pub(pSrp, &psPublicKey);
@@ -145,60 +146,66 @@ static tePairStatus eSrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry
     tsTlvType sTlvData;
     memset(&sTlvData, 0, sizeof(sTlvData));  //must init
     uint8 value_rep[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, 0x01, value_rep);
+    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
     eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_PUBLIC_KEY, (uint16) psPublicKey->length, (uint8 *) psPublicKey->data);
     eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_SALT, sizeof(auSalt), auSalt);
-    uint8 value_req[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, 0x01, value_req);
+    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
 
-    psHttpEntry->iHttpStatus = 200;
+    psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
     eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
     FREE(sTlvData.psValue);
     return E_PAIRING_STATUS_OK;
 }
 
-static tePairStatus eSrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
+static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 {
     CHECK_POINTER(psHttpEntry, E_PAIRING_STATUS_ERROR);
+    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    tsTlvType sTlvData;
+    memset(&sTlvData, 0, sizeof(sTlvData));
+    uint8 value_rep[] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
+    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
+
 
     tsTlvType sTlvPublicKey, sTlvProof;
     memset(&sTlvPublicKey, 0, sizeof(sTlvPublicKey));
     memset(&sTlvProof, 0, sizeof(sTlvProof));
     if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvPublicKey) ||
-            E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvProof)     ){
+            E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvProof)){
         WAR_vPrintln(DBG_PAIR, "Can't find TLV Data");
-        return E_PAIRING_STATUS_ERROR;
+        uint8 err[] = {E_TLV_ERROR_UNKNOW};
+        eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_ERROR, sizeof(err), err);
+        eStatus = E_PAIRING_STATUS_ERROR;
+        goto send;
     }
     SRP_RESULT ret = SRP_compute_key(pSrp, &pShareKey, sTlvPublicKey.psValue, sTlvPublicKey.u16Len);
     ret = SRP_verify(pSrp, sTlvProof.psValue, sTlvProof.u16Len);
+
     if(!SRP_OK(ret)){
-        WAR_vPrintln(DBG_PAIR, "Invalid Setup Code");
-        return E_PAIRING_STATUS_ERROR_KEY;
+        WAR_vPrintln(DBG_PAIR, "Verify IOS Proof Failed");
+        uint8 err[] = {E_TLV_ERROR_AUTHENTICATION};
+        eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_ERROR, sizeof(err), err);
+        eStatus = E_PAIRING_STATUS_ERROR_KEY;
+        goto send;
     }
-    DBG_vPrintln(DBG_PAIR, "Setup Code is Correct");
+    DBG_vPrintln(DBG_PAIR, "Verify IOS Proof Success");
 
     cstr *pCstrProof = NULL;
     SRP_respond(pSrp, &pCstrProof);
+    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_PROOF, (uint16)pCstrProof->length, (uint8*)pCstrProof->data);
 
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
     int iOutputSize = 32;
     int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
                  pShareKey->length, (const unsigned char*)info, sizeof(info), auSessionKey, iOutputSize);
-
-
-    tsTlvType sTlvData;
-    memset(&sTlvData, 0, sizeof(sTlvData));
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_PROOF, (uint16)pCstrProof->length, (uint8*)pCstrProof->data);
-    uint8 value_rep[1] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, 0x01, value_rep);
-
-
-    psHttpEntry->iHttpStatus = 200;
+    
+send:
+    psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
     eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
     FREE(sTlvData.psValue);
 
-    return E_PAIRING_STATUS_OK;
+    return eStatus;
 }
 
 static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
@@ -207,9 +214,44 @@ static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     memset(&sTlvData, 0, sizeof(sTlvData));
     eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvData);
 
+    uint8 auAuthTag[16] = {0};
+    memcpy(auAuthTag, &psHttpEntry->acContentData[psHttpEntry->u16ContentLen - sizeof(auAuthTag)], sizeof(auAuthTag));
+    //TODO:verify authTag
+    unsigned long long iDecryptedDataLen = 0;
+    uint8 *psDecryptedData = (uint8*)malloc(psHttpEntry->u16ContentLen - sizeof(auAuthTag));
+    CHECK_POINTER(psDecryptedData, E_PAIRING_STATUS_ERROR);
+    int ret = crypto_aead_chacha20poly1305_decrypt(psDecryptedData, &iDecryptedDataLen, NULL, psHttpEntry->acContentData,
+                                         psHttpEntry->u16ContentLen - sizeof(auAuthTag), NULL, 0, (const unsigned char*)"PS-Msg05", auSessionKey);
+    if(ret != 0){
+        ERR_vPrintln(T_TRUE, "Can't Decrypt Data");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    DBG_vPrintln(DBG_PAIR, "Decrypt Data Success");
+    tsTlvType sTlvIOSDevicePairingID, sTlvIOSDeviceLTPK, sTlvSignature;
+    memset(&sTlvIOSDevicePairingID, 0, sizeof(sTlvIOSDevicePairingID));
+    memset(&sTlvIOSDeviceLTPK, 0, sizeof(sTlvIOSDeviceLTPK));
+    memset(&sTlvSignature, 0, sizeof(sTlvSignature));
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvIOSDevicePairingID), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvIOSDeviceLTPK), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+    CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE, psDecryptedData, (uint16)iDecryptedDataLen, &sTlvSignature), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
 
-    char verify[16] = {0};
-    //Poly1305_GenKey(temp2, )
+    uint8 auIOSDeviceX[32] = {0};
+    const char salt[] = "Pair-Setup-Controller-Sign-Salt";
+    const char info[] = "Pair-Setup-Controller-Sign-Info";
+    int iOutputSize = 32;
+    int i = hkdf((const unsigned char*)salt, sizeof(salt), (const unsigned char*)pShareKey->data,
+                 pShareKey->length, (const unsigned char*)info, sizeof(info), auIOSDeviceX, iOutputSize);
+    uint8 auIOSDeviceInfo[MIBF] = {0};
+    memcpy(auIOSDeviceInfo, auIOSDeviceX, sizeof(auIOSDeviceX));
+    memcpy(&auIOSDeviceInfo[sizeof(auIOSDeviceX)], sTlvIOSDevicePairingID.psValue, sTlvIOSDevicePairingID.u16Len);
+    memcpy(&auIOSDeviceInfo[sizeof(auIOSDeviceX) + sTlvIOSDevicePairingID.u16Len], sTlvIOSDeviceLTPK.psValue, sTlvIOSDeviceLTPK.u16Len);
+    ret = crypto_sign_open(NULL, NULL, auIOSDeviceInfo, sizeof(auIOSDeviceInfo), sTlvIOSDeviceLTPK.psValue);
+    if(ret != 0){
+        ERR_vPrintln(T_TRUE, "Verify IOSDeviceInfo Failed");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    DBG_vPrintln(DBG_PAIR, "Verify IOSDeviceInfo Success");
+
 
     return E_PAIRING_STATUS_OK;
 }

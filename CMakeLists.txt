@@ -28,4 +28,5 @@ link_directories(./lib)
 add_executable(light_bulb ${SOURCE_FILES})
 target_link_libraries(light_bulb
         -lpthread -ldns_sd -lsrp -lssl -lcrypto
+        -lsodium
         )

@@ -78,6 +78,16 @@ typedef enum {
     E_PAIR_VERIFY_FINISHED_RESPONSE,
 } tePairVerify;
 
+typedef enum {
+    E_TLV_ERROR_UNKNOW          = 0x01,
+    E_TLV_ERROR_AUTHENTICATION  = 0x02,
+    E_TLV_ERROR_BACKOFF         = 0x03,
+    E_TLV_ERROR_MAXPEERS        = 0x04,
+    E_TLV_ERROR_MAXTRIES        = 0x05,
+    E_TLV_ERROR_UNAVAILABLE     = 0x06,
+    E_TLV_ERROR_BUSY            = 0x07,
+} teTlvError;
+
 typedef struct {
     uint8   u8Type;
     uint16  u16Len;
