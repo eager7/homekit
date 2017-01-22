@@ -9,7 +9,8 @@ int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
     eLightBulbProfileInit("DimmerLight", "12345678", "TopBand", "1234");
-    eBonjourInit(&sLightBulb, "523-12-643");
+    CHECK_STATUS(eBonjourInit(&sLightBulb, "523-12-643"), E_BONJOUR_STATUS_OK, -1);
+    
 
     while(1){
         sleep(1);
