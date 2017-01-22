@@ -73,8 +73,6 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
        return E_BONJOUR_STATUS_ERROR;
     }
 
-    sBonjour.sThread.pvThreadData = psProfile;
-    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
     DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
                                                   sBonjour.psInstanceName,
@@ -87,6 +85,8 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
     }
+    sBonjour.sThread.pvThreadData = psProfile;
+    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
 
     return E_BONJOUR_STATUS_OK;
 }
