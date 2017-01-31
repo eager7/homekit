@@ -11,6 +11,7 @@ include_directories(include accessory profiles hap
         rfc6234-master
         srp
         Chacha20 poly1305-opt-master ed25519-donna
+        /home/pct/IOTC/package/Homekit/open_source/mDNSResponder-98/mDNSShared
         )
 include_directories(/usr/include/sys)
 link_directories(./lib)

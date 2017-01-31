@@ -39,6 +39,8 @@
 static teBonjStatus eBonjourSocketInit(void);
 static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
+static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
+                                const char *name, const char *regtype, const char *domain, void *context);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -79,7 +81,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
                                                   sBonjour.psServiceName, "",
                                                   sBonjour.psHostName, sBonjour.u16Port,
                                                   TXTRecordGetLength(&sBonjour.txtRecord),
-                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), NULL,NULL);
+                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), reg_reply,NULL);
     TXTRecordDeallocate(&sBonjour.txtRecord);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
@@ -263,3 +265,19 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
     return E_BONJOUR_STATUS_OK;
 }
 
+static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
+                                const char *name, const char *regtype, const char *domain, void *context)
+{
+    (void)client;   // Unused
+    (void)flags;    // Unused
+    (void)context;  // Unused
+
+    printf("Got a reply for %s.%s%s: ", name, regtype, domain);
+    switch (errorCode)
+    {
+        case kDNSServiceErr_NoError:      printf("Name now registered and active\n"); break;
+        case kDNSServiceErr_NameConflict: printf("Name in use, please choose another\n"); exit(-1);
+        default:                          printf("Error %d\n", errorCode); return;
+    }
+
+}
