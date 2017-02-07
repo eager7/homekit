@@ -75,7 +75,7 @@ extern "C" {
 #define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintln(T_TRUE, "Pointer is NULL");return ret;}}while(0)
 #define FREE(p) do{ if(p){free(p); p=NULL;} }while(0)
 
-
+#define PrintArray(a, x, len) do{if(a){for (int j = 0; j < len; ++j) {printf("0x%02x,", x[j]);}printf("\n");}}while(0)
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/

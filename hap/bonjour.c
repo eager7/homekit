@@ -19,6 +19,7 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
+#include <time.h>
 #include <profile.h>
 #include <accessory.h>
 #include "bonjour.h"
@@ -53,6 +54,9 @@ static tsBonjour sBonjour;
 /****************************************************************************/
 teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
 {
+    SRP_initialize_library();
+    srand((unsigned int)time(NULL));
+
     memset(&sBonjour, 0, sizeof(sBonjour));
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;

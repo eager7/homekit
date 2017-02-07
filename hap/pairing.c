@@ -52,7 +52,7 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
 /***        Local Variables                                               ***/
 /****************************************************************************/
 SRP *pSrp = NULL;
-char auSessionKey[64] = {0};
+uint8 auSessionKey[64] = {0};
 cstr *pShareKey = NULL;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
@@ -130,7 +130,6 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEnt
     const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
     const unsigned char generator[] = {0x05};
 
     pSrp =  SRP_new(SRP6a_server_method());
@@ -172,7 +171,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     memset(&sTlvPublicKey, 0, sizeof(sTlvPublicKey));
     memset(&sTlvProof, 0, sizeof(sTlvProof));
     if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvPublicKey) ||
-            E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvProof)){
+       E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvProof)){
         WAR_vPrintln(DBG_PAIR, "Can't find TLV Data");
         uint8 err[] = {E_TLV_ERROR_UNKNOW};
         eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_ERROR, sizeof(err), err);
@@ -198,8 +197,8 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
 #define LEN_OUT 32
-    int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)pShareKey->data,
-                 pShareKey->length, (const unsigned char*)info, strlen(info), auSessionKey, LEN_OUT);
+    int i = hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)pShareKey->data,
+                 pShareKey->length, (const unsigned char*)info, (int)strlen(info), auSessionKey, LEN_OUT);
     if(i != 0){
         ERR_vPrintln(T_TRUE, "Generate SessionKey Failed");
         FREE(sTlvData.psValue);
@@ -221,7 +220,7 @@ static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 
 #define LEN_AUTH_TAG 16
     uint8 auAuthTag[LEN_AUTH_TAG] = {0};
-    uint16 u16LenEncryData = sTlvEncryData.u16Len - LEN_AUTH_TAG;
+    uint16 u16LenEncryData = sTlvEncryData.u16Len - (uint16)LEN_AUTH_TAG;
     printf("iLenEncryData[%d-%d]\n", sTlvEncryData.u16Len, u16LenEncryData);
     uint8 *psEncryptedData = (uint8*)malloc(sTlvEncryData.u16Len);
     CHECK_POINTER(psEncryptedData, E_PAIRING_STATUS_ERROR);
@@ -245,10 +244,11 @@ static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     for (int j = 0; j < LEN_AUTH_TAG; ++j) {
         printf("0x%02x,", auVerify[j]);
     }printf("\n");
-    if(memcpy(auVerify, auAuthTag, LEN_AUTH_TAG)){
-        ERR_vPrintln(T_TRUE, "Can't Decrypt Data");
-        //return E_PAIRING_STATUS_ERROR;
+    if(memcmp(auVerify, auAuthTag, LEN_AUTH_TAG)){
+        ERR_vPrintln(T_TRUE, "Verify authTag Failed!");
+        return E_PAIRING_STATUS_ERROR;
     }
+    DBG_vPrintln(DBG_PAIR, "Verify authTag Success");
 
     uint8 *psDecryptedData = (uint8*)malloc(u16LenEncryData);
     CHECK_POINTER(psDecryptedData, E_PAIRING_STATUS_ERROR);
@@ -277,15 +277,20 @@ static tePairStatus eExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER, psDecryptedData, (uint16)u16LenEncryData, &sTlvIOSDevicePairingID), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
     CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psDecryptedData, (uint16)u16LenEncryData, &sTlvIOSDeviceLTPK), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
     CHECK_STATUS(eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE, psDecryptedData, (uint16)u16LenEncryData, &sTlvSignature), E_PAIRING_STATUS_OK, E_PAIRING_STATUS_ERROR);
+    printf("sTlvSignature len:%d, sTlvIOSDeviceLTPK len:%d\n", sTlvSignature.u16Len, sTlvIOSDeviceLTPK.u16Len);
+    PrintArray(DBG_PAIR, auIOSDeviceX, 32);
+    PrintArray(DBG_PAIR, sTlvIOSDevicePairingID.psValue, 36);
+    PrintArray(DBG_PAIR, sTlvIOSDeviceLTPK.psValue, 32);
 
-    uint8 auIOSDeviceInfo[MIBF] = {0};
+    uint8 auIOSDeviceInfo[100] = {0};
     memcpy(auIOSDeviceInfo, auIOSDeviceX, 32);
     memcpy(&auIOSDeviceInfo[32], sTlvIOSDevicePairingID.psValue, 36);
     memcpy(&auIOSDeviceInfo[32 + 36], sTlvIOSDeviceLTPK.psValue, 32);
+    PrintArray(DBG_PAIR, auIOSDeviceInfo, 100);
     ret = ed25519_sign_open(auIOSDeviceInfo, sizeof(auIOSDeviceInfo), sTlvIOSDeviceLTPK.psValue, sTlvSignature.psValue);
-    if(ret != 0){
-        ERR_vPrintln(T_TRUE, "Verify IOSDeviceInfo Failed");
-        //return E_PAIRING_STATUS_ERROR;
+    if(ret){
+        ERR_vPrintln(T_TRUE, "ed25519_sign_open failed:%d", ret);
+        return E_PAIRING_STATUS_ERROR;
     }
     DBG_vPrintln(DBG_PAIR, "Verify IOSDeviceInfo Success");
 
@@ -384,11 +389,7 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
     }
 
     DBG_vPrintln(DBG_PAIR, "eTlvTypeGetObject[%d][%d]", psTlvType->u8Type, psTlvType->u16Len);
-    if(DBG_PAIR){
-        for (int i = 0; i < psTlvType->u16Len; ++i) {
-            printf("0x%02x ", psTlvType->psValue[i]);
-        }printf("\n");
-    }
+    PrintArray(DBG_PAIR, psTlvType->psValue, psTlvType->u16Len);
 
     return E_PAIRING_STATUS_OK;
 }
