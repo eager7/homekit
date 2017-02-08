@@ -346,7 +346,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
     FREE(sTlvResponse.psValue);FREE(sTlvSubTlv.psValue);FREE(pauEncryData);
     return E_PAIRING_STATUS_OK;
-    
+
 AuthenticationError:
     value_err[0] = E_TLV_ERROR_AUTHENTICATION;
     eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ERROR, sizeof(value_err), value_err);

@@ -65,7 +65,7 @@ typedef enum {
 } teHttpMethod;
 
 typedef struct {
-    int  iHttpStatus;
+    int   iHttpStatus;
     uint8 acHttpMethod[MIBF];
     uint8 acDirectory[MIBF];
     uint8 acHttpVersion[MIBF];

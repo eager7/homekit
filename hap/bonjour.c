@@ -75,9 +75,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
     eTextRecordFormat(&sBonjour);
 
-    if(eBonjourSocketInit() != E_BONJOUR_STATUS_OK){
-       return E_BONJOUR_STATUS_ERROR;
-    }
+    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
 
     DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
@@ -211,7 +209,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 
                             }
 
-                            //HandleHomeKitMsg(buf);
+                            //TODO:HandleHomeKitMsg(buf);
                         }
                     }
                 }
