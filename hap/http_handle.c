@@ -93,12 +93,8 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 
 teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length)
 {
-    INF_vPrintln(DBG_HTTP, "--------Http Send Package--------");
-    if(DBG_HTTP){
-        for (int i = 0; i < u16Length; ++i) {
-            printf("0x%02x,", pBuffer[i]);
-        }printf("\nlen[%d]\n", u16Length);
-    }
+    INF_vPrintln(DBG_HTTP, "--------Http Send Package[%d]--------", u16Length);
+    PrintArray(DBG_HTTP, pBuffer, u16Length);
 
     char temp[MABF] = {0};
     snprintf(temp, sizeof(temp), "HTTP/1.1 %d OK\r\nContent-Type:%s\r\nContent-Length: %d\r\n\r\n",
