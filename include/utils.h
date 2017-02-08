@@ -70,8 +70,7 @@ extern "C" {
 #define MABF    2048
 #define PACKED __attribute__((__packed__))
 
-#define CHECK_RESULT(fun,value,ret) do{ if(value!=fun)return ret;}while(0)
-#define CHECK_STATUS(fun,value,ret) do{ if(value!=fun){ERR_vPrintln(T_TRUE, "Error:%s", strerror(errno));return ret;}}while(0)
+#define CHECK_RESULT(fun,value,ret) do{ if(value!=fun){ERR_vPrintln(T_TRUE, "Error:%s", strerror(errno));return ret;}}while(0)
 #define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintln(T_TRUE, "Pointer is NULL");return ret;}}while(0)
 #define FREE(p) do{ if(p){free(p); p=NULL;} }while(0)
 

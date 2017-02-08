@@ -23,8 +23,7 @@ int main(void)
     signal(SIGTERM, vQuitSignalHandler);
 
     eLightBulbProfileInit("DimmerLight", "12345678", "TopBand", "1234");
-    CHECK_STATUS(eBonjourInit(&sLightBulb, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
-
+    CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);

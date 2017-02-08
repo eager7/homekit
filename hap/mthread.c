@@ -88,12 +88,12 @@ teThreadStatus eThreadStart(tprThreadFunction prThreadFunction, tsThread *psThre
         }
     }
 
-    CHECK_STATUS(pthread_create(&psThreadInfo->pThread_Id, NULL, prThreadFunction, psThreadInfo), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_create(&psThreadInfo->pThread_Id, NULL, prThreadFunction, psThreadInfo), 0, E_THREAD_ERROR_FAILED);
 
     if (eDetachState == E_THREAD_DETACHED)
     {
         DBG_vPrintln(DBG_THREADS, "Detach Thread %p - ", psThreadInfo);
-        CHECK_STATUS(pthread_detach(psThreadInfo->pThread_Id), 0, E_THREAD_ERROR_FAILED);
+        CHECK_RESULT(pthread_detach(psThreadInfo->pThread_Id), 0, E_THREAD_ERROR_FAILED);
     }
     DBG_vPrintln(DBG_THREADS, "Create Thread %p\n", psThreadInfo);
     
@@ -163,7 +163,7 @@ teThreadStatus eThreadStop(tsThread *psThreadInfo)
         if (psThreadInfo->eThreadDetachState == E_THREAD_JOINABLE)
         {
             /* Thread is joinable */
-            CHECK_STATUS(pthread_join(psThreadInfo->pThread_Id, NULL), 0, E_THREAD_ERROR_FAILED);
+            CHECK_RESULT(pthread_join(psThreadInfo->pThread_Id, NULL), 0, E_THREAD_ERROR_FAILED);
         }
         else
         {
@@ -189,7 +189,7 @@ void vThreadFinish(tsThread *psThreadInfo)
 
 teThreadStatus eThreadYield(void)
 {
-    CHECK_STATUS(sched_yield(), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(sched_yield(), 0, E_THREAD_ERROR_FAILED);
     return E_THREAD_OK;
 }
 
@@ -201,7 +201,7 @@ teThreadStatus eLockCreate(pthread_mutex_t *psLock)
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
 
-    CHECK_STATUS(pthread_mutex_init(psLock, &attr), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_mutex_init(psLock, &attr), 0, E_THREAD_ERROR_FAILED);
 
     DBG_vPrintln(DBG_LOCKS, "Lock Create: %p\n", psLock);
     return E_THREAD_OK;
@@ -217,7 +217,7 @@ teThreadStatus eLockDestroy(pthread_mutex_t *psLock)
 teThreadStatus eLockLock(pthread_mutex_t *psLock)
 {
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locking: %p\n", (unsigned long)pthread_self(), psLock);
-    CHECK_STATUS(pthread_mutex_lock(psLock), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_mutex_lock(psLock), 0, E_THREAD_ERROR_FAILED);
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
@@ -254,7 +254,7 @@ teThreadStatus eLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout)
 teThreadStatus eLockTryLock(pthread_mutex_t *psLock)
 {
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx try locking: %p\n", (unsigned long)pthread_self(), psLock);
-    CHECK_STATUS(pthread_mutex_trylock(psLock), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_mutex_trylock(psLock), 0, E_THREAD_ERROR_FAILED);
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx locked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
@@ -263,7 +263,7 @@ teThreadStatus eLockTryLock(pthread_mutex_t *psLock)
 teThreadStatus eLockunLock(pthread_mutex_t *psLock)
 {    
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocking: %p\n", (unsigned long)pthread_self(), psLock);
-    CHECK_STATUS(pthread_mutex_unlock(psLock), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_mutex_unlock(psLock), 0, E_THREAD_ERROR_FAILED);
     DBG_vPrintln(DBG_LOCKS, "Thread 0x%lx unlocked: %p\n", (unsigned long)pthread_self(), psLock);
     
     return E_THREAD_OK;
@@ -280,10 +280,10 @@ teThreadStatus eQueueCreate(tsQueue *psQueue, uint32 u32Length)
     psQueue->u32Length = u32Length;
     psQueue->u32Front = 0;
     psQueue->u32Rear = 0;
-    
-    CHECK_STATUS(pthread_mutex_init(&psQueue->mutex, NULL), 0, E_THREAD_ERROR_FAILED);
-    CHECK_STATUS(pthread_cond_init(&psQueue->cond_space_available, NULL), 0, E_THREAD_ERROR_FAILED);
-    CHECK_STATUS(pthread_cond_init(&psQueue->cond_data_available, NULL), 0, E_THREAD_ERROR_FAILED);
+
+    CHECK_RESULT(pthread_mutex_init(&psQueue->mutex, NULL), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_cond_init(&psQueue->cond_space_available, NULL), 0, E_THREAD_ERROR_FAILED);
+    CHECK_RESULT(pthread_cond_init(&psQueue->cond_data_available, NULL), 0, E_THREAD_ERROR_FAILED);
     
     return E_THREAD_OK;
 }
