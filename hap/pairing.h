@@ -34,6 +34,7 @@ extern "C" {
 #define TLV_HEADER (TLV_TYPE_LEN + TLV_LEN_LEN)
 #define TLV_FRAGMENTED 255
 
+#define LEN_SALT 16
 #define LEN_AUTH_TAG 16
 #define LEN_CHA20_KEY 32
 #define LEN_HKDF_LEN 32

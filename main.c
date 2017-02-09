@@ -64,7 +64,7 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    CHECK_RESULT(eLightBulbProfileInit("DimmerLight", "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
+    CHECK_RESULT(eLightBulbProfileInit("Douse Light", "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
     CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){

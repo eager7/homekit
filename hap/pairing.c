@@ -132,8 +132,8 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEnt
 
     pSrp =  SRP_new(SRP6a_server_method());
     SRP_set_username(pSrp, "Pair-Setup");
-    uint8 auSalt[16] = {0};
-    for(int j = 0; j < sizeof(auSalt); j++){
+    uint8 auSalt[LEN_SALT] = {0};
+    for(int j = 0; j < LEN_SALT; j++){
         auSalt[j] = (uint8)rand();
     }
     SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, sizeof(generator), auSalt, sizeof(auSalt));
@@ -158,12 +158,11 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEnt
 static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
 {
     CHECK_POINTER(psHttpEntry, E_PAIRING_STATUS_ERROR);
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
-    tsTlvType sTlvData;
-    memset(&sTlvData, 0, sizeof(sTlvData));
-    uint8 value_rep[] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
 
+    uint8 value_err[1] = {0};
+    tsTlvType sTlvResponse; memset(&sTlvResponse, 0, sizeof(sTlvResponse));
+    uint8 value_rep[] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
 
     tsTlvType sTlvPublicKey, sTlvProof;
     memset(&sTlvPublicKey, 0, sizeof(sTlvPublicKey));
@@ -171,43 +170,51 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvPublicKey) ||
        E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF, psHttpEntry->acContentData, psHttpEntry->u16ContentLen, &sTlvProof)){
         WAR_vPrintln(DBG_PAIR, "Can't find TLV Data");
-        uint8 err[] = {E_TLV_ERROR_UNKNOW};
-        eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_ERROR, sizeof(err), err);
-        eStatus = E_PAIRING_STATUS_ERROR;
-        goto send;
+        FREE(sTlvProof.psValue); FREE(sTlvPublicKey.psValue);
+        goto TlvErrorUnknow;
     }
     SRP_RESULT ret = SRP_compute_key(pSrp, &pShareKey, sTlvPublicKey.psValue, sTlvPublicKey.u16Len);
     ret = SRP_verify(pSrp, sTlvProof.psValue, sTlvProof.u16Len);
-
+    FREE(sTlvProof.psValue); FREE(sTlvPublicKey.psValue);
     if(!SRP_OK(ret)){
         WAR_vPrintln(DBG_PAIR, "Verify IOS Proof Failed");
-        uint8 err[] = {E_TLV_ERROR_AUTHENTICATION};
-        eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_ERROR, sizeof(err), err);
-        eStatus = E_PAIRING_STATUS_ERROR_KEY;
-        goto send;
+        goto TlvErrorAuthentication;
     }
     DBG_vPrintln(DBG_PAIR, "Verify IOS Proof Success");
 
     cstr *pCstrProof = NULL;
     SRP_respond(pSrp, &pCstrProof);
-    eTlvTypeFormatAdd(&sTlvData, E_TLV_VALUE_TYPE_PROOF, (uint16)pCstrProof->length, (uint8*)pCstrProof->data);
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_PROOF, (uint16)pCstrProof->length, (uint8*)pCstrProof->data);
 
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
-#define LEN_OUT 32
     int i = hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)pShareKey->data,
-                 pShareKey->length, (const unsigned char*)info, (int)strlen(info), auSessionKey, LEN_OUT);
+                 pShareKey->length, (const unsigned char*)info, (int)strlen(info), auSessionKey, LEN_HKDF_LEN);
     if(i != 0){
         ERR_vPrintln(T_TRUE, "Generate SessionKey Failed");
-        FREE(sTlvData.psValue);
+        FREE(sTlvResponse.psValue);
         return E_PAIRING_STATUS_ERROR;
     }
-send:
     psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-    eHttpResponse(iSockFd, psHttpEntry, sTlvData.psValue, sTlvData.u16Len);
-    FREE(sTlvData.psValue);
+    eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
+    FREE(sTlvResponse.psValue);
+    return E_PAIRING_STATUS_OK;
 
-    return eStatus;
+TlvErrorUnknow:
+    value_err[0] = E_TLV_ERROR_UNKNOW;
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ERROR, sizeof(value_err), value_err);
+    psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
+    FREE(sTlvResponse.psValue);
+    return E_PAIRING_STATUS_ERROR;
+
+TlvErrorAuthentication:
+    value_err[0] = E_TLV_ERROR_AUTHENTICATION;
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ERROR, sizeof(value_err), value_err);
+    psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
+    FREE(sTlvResponse.psValue);
+    return E_PAIRING_STATUS_ERROR_KEY;
 }
 
 static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
@@ -423,7 +430,7 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
     }
 
     DBG_vPrintln(DBG_PAIR, "eTlvTypeGetObject[%d][%d]", psTlvType->u8Type, psTlvType->u16Len);
-    PrintArray(DBG_PAIR, psTlvType->psValue, psTlvType->u16Len);
+    PrintArray(T_FALSE, psTlvType->psValue, psTlvType->u16Len);
 
     return E_PAIRING_STATUS_OK;
 }
@@ -439,37 +446,29 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
 
     char waste[16];
     bzero(waste, 16);
-
     if (bWithLen) {
         poly1305_update(&verifyContext, (const unsigned char *)&buf[0], 1);
         poly1305_update(&verifyContext, (const unsigned char *)&buf[1], 1);
         poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
-
         poly1305_update(&verifyContext, (const unsigned char *)&buf[2], len);
-    }
-    else {
+    } else {
         poly1305_update(&verifyContext, (const unsigned char *)buf, len);
     }
-
     if (len%16 > 0)
         poly1305_update(&verifyContext, (const unsigned char *)waste, 16-(len%16));
     unsigned char _len;
     if (bWithLen) {
         _len = 2;
-    }
-    else {
+    } else {
         _len = 0;
     }
 
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 7);
     _len = len;
-
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
     _len = len/256;
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
-
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
-
     poly1305_finish(&verifyContext, (unsigned char*)verify);
 }

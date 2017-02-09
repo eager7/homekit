@@ -73,6 +73,7 @@ extern "C" {
 #define CHECK_RESULT(fun,value,ret) do{ if(value!=fun){ERR_vPrintln(T_TRUE, "Error:%s", strerror(errno));return ret;}}while(0)
 #define CHECK_POINTER(value,ret) do{ if(value==NULL){ERR_vPrintln(T_TRUE, "Pointer is NULL");return ret;}}while(0)
 #define FREE(p) do{ if(p){free(p); p=NULL;} }while(0)
+#define Define(type, x) {type x; memset(&x, 0, sizeof(type)); }
 
 #define PrintArray(a, x, len) do{if(a){for (int j = 0; j < len; ++j) {printf("0x%02x,", x[j]);}printf("\n");}}while(0)
 /****************************************************************************/
