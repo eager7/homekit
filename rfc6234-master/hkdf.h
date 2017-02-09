@@ -9,11 +9,11 @@
 #ifndef Workbench_hkdf_h
 #define Workbench_hkdf_h
 
-#include "utils.h"
+#include "t_sha.h"
 
 int hkdf(const unsigned char *salt, int salt_len,
          const unsigned char *ikm, int ikm_len,
          const unsigned char *info, int info_len,
-         uint8 okm[ ], int okm_len);
+         uint8_t okm[ ], int okm_len);
 
 #endif

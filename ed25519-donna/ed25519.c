@@ -97,10 +97,8 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 	bignum256modm hram, S;
 	unsigned char checkR[32];
 
-	if ((RS[63] & 224) || !ge25519_unpack_negative_vartime(&A, pk)){
-		printf("ge25519_unpack_negative_vartime failed\n");
+	if ((RS[63] & 224) || !ge25519_unpack_negative_vartime(&A, pk))
 		return -1;
-	}
 
 	/* hram = H(R,A,m) */
 	ed25519_hram(hash, RS, pk, m, mlen);

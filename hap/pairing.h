@@ -114,7 +114,7 @@ extern tePairSetupState ePair;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePairSetup(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
+tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

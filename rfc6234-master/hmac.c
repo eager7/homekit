@@ -11,7 +11,7 @@
  *      the various SHA algorithms.
  */
 
-#include "sha_m.h"
+#include "sha.h"
 
 /*
  *  hmac
@@ -96,7 +96,7 @@ int hmacReset(HMACContext *context,
    * reset it to key = HASH(key).
    */
   if (key_len > blocksize) {
-    SHA512_CTX tcontext;
+    SHACTX tcontext;
     int err = SHA512Reset(&tcontext) ||
               SHA512Input(&tcontext, key, key_len) ||
               SHA512Result(&tcontext, tempkey);

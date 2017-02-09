@@ -204,9 +204,10 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             tsHttpEntry sHttpEntry;
                             eHttpParser(buf, (uint16)len, &sHttpEntry);
                             if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
-                                ePairSetup(iSockClient, sBonjour.pcSetupCode, &sHttpEntry);
+                                DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
+                                ePairSetup(iSockClient, sBonjour.pcSetupCode, buf, (uint16)len);
                             } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
-
+                                DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
                             }
 
                             //TODO:HandleHomeKitMsg(buf);

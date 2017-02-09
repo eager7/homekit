@@ -45,9 +45,12 @@
 teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Parser Package--------");
+    char auTemp[MABF] = {0};
+    memcpy(auTemp, pBuf, sizeof(auTemp));
+
     CHECK_POINTER(psHttpEntry, E_HTTP_PARSER_ERROR);
 
-    char *psHeader = strtok(pBuf, "\r\n");
+    char *psHeader = strtok(auTemp, "\r\n");
     CHECK_POINTER(psHeader, E_HTTP_PARSER_ERROR);
 
     char *psHost = strtok(NULL, "\r\n");
@@ -82,7 +85,7 @@ teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     memcpy(psHttpEntry->acContentType, psType, sizeof(psHttpEntry->acContentType));
     DBG_vPrintln(DBG_HTTP, "Type:%s", psHttpEntry->acContentType);
 
-    memcpy(psHttpEntry->acContentData, &pBuf[u16Len - psHttpEntry->u16ContentLen], psHttpEntry->u16ContentLen);
+    memcpy(psHttpEntry->acContentData, &auTemp[u16Len - psHttpEntry->u16ContentLen], psHttpEntry->u16ContentLen);
     PrintArray(DBG_HTTP, psHttpEntry->acContentData, psHttpEntry->u16ContentLen);
 
     return E_HTTP_PARSER_OK;

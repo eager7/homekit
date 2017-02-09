@@ -1,11 +1,6 @@
 //#include "../Configuration.h"
-
-
-#include "utils.h"
-
 #include <openssl/sha.h>
-#include <stdint.h>
-#include <unistd.h>
+#include "utils.h"
 typedef SHA512_CTX SHACTX;
 #define SHAInit SHA512_Init
 #define SHAUpdate SHA512_Update

@@ -13,7 +13,7 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include "sha_m.h"
+#include "sha.h"
 
 /*
  *  hkdf
