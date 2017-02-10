@@ -26,6 +26,7 @@ extern "C" {
 #include "utils.h"
 #include <srp.h>
 #include "http_handle.h"
+#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -115,7 +116,7 @@ extern tePairSetupState ePair;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
+tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

@@ -26,6 +26,7 @@
 #include "hkdf.h"
 #include "ed25519.h"
 #include "sodium/crypto_aead_chacha20poly1305.h"
+
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -39,7 +40,7 @@
 /****************************************************************************/
 static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEntry *psHttpEntry);
 static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry);
-static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry);
+static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEntry *psHttpEntry);
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData);
 static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
 static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
@@ -50,7 +51,7 @@ const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x
 const unsigned char generator[] = {0x05};
 #define devicePassword "523-12-643" //Password
 const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
-#define deviceIdentity "12:10:34:23:51:12"  //ID
+#define deviceIdentity "12:10:34:23:51:13"  //ID
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -60,7 +61,7 @@ char    auSessionKey[64];
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len)
+tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len)
 {
     tePairStatus Status = E_PAIRING_STATUS_ERROR;
     pSrp = SRP_new(SRP6a_server_method());
@@ -84,7 +85,7 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len
         uint8 value_rep[1] = { ePairSetupState + 1 };
         switch (ePairSetupState){
             case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
-                if(E_PAIRING_STATUS_OK != eM2SrpStartResponse(iSockFd, devicePassword, &sHttpEntry)){
+                if(E_PAIRING_STATUS_OK != eM2SrpStartResponse(iSockFd, psBonjour->pcSetupCode, &sHttpEntry)){
                     ERR_vPrintln(T_TRUE, "eM2SrpStartResponse Failed"); goto Failed;
                 }
             }break;
@@ -94,7 +95,7 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len
                 }
             }break;
             case E_PAIR_SETUP_M5_EXCHANGE_REQUEST:{
-                if(E_PAIRING_STATUS_OK != eM6ExchangeResponse(iSockFd, &sHttpEntry)){
+                if(E_PAIRING_STATUS_OK != eM6ExchangeResponse(iSockFd, psBonjour->sBonjourText.psDeviceID, &sHttpEntry)){
                     ERR_vPrintln(T_TRUE, "eM6ExchangeResponse Failed"); goto Failed;
                 }
                 return E_PAIRING_STATUS_OK;
@@ -417,7 +418,7 @@ TlvErrorAuthentication:
     return E_PAIRING_STATUS_ERROR_KEY;
 }
 
-static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
+static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEntry *psHttpEntry)
 {
     uint8 value_err[1] = {0};
     tsTlvType sTlvResponse; memset(&sTlvResponse, 0, sizeof(sTlvResponse));
@@ -517,7 +518,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     //TODO:(M5 Verification 6) Persistently save the IOSDevicePairingId and IOSDeviceLTPK as a pairing
 
     tsTlvType sTlvSubTlv;memset(&sTlvSubTlv, 0, sizeof(sTlvSubTlv));
-    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(deviceIdentity), deviceIdentity);
+    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psDeviceID), psDeviceID);
     const char salt2[] = "Pair-Setup-Accessory-Sign-Salt";
     const char info2[] = "Pair-Setup-Accessory-Sign-Info";
     uint8 auAccessoryInfo[150] = {0};
@@ -531,8 +532,8 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     printf("auAccessoryInfo:");
     PrintArray(T_TRUE, auAccessoryInfo, 32);
     printf("deviceIdentity:");
-    PrintArray(T_TRUE, deviceIdentity, (int)strlen(deviceIdentity));
-    memcpy(&auAccessoryInfo[32], deviceIdentity, strlen(deviceIdentity));
+    PrintArray(T_TRUE, psDeviceID, (int)strlen(psDeviceID));
+    memcpy(&auAccessoryInfo[32], psDeviceID, strlen(psDeviceID));
     uint8 auAccessorySignature[64] = {0};
     //TODO:(M6 Response 1) Generate its Ed25519 long-term public key,AccessoryLTPK and long-term secret key,AccessoryLTSK
     ed25519_secret_key auAccessoryLTSK;
@@ -547,7 +548,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     //memcpy(auAccessoryInfo, auAccessoryX, sizeof(auAccessoryX));
     printf("auAccessoryLTPK:");
     PrintArray(T_TRUE, auAccessoryLTPK, (int)sizeof(auAccessoryLTPK));
-    memcpy(&auAccessoryInfo[32+strlen(deviceIdentity)], auAccessoryLTPK, 32);
+    memcpy(&auAccessoryInfo[32+strlen(psDeviceID)], auAccessoryLTPK, 32);
     //TODO:(M6 Response 4) Use Ed25519 to generate AccessorySignature by siging AccessoryInfo with AccessoryLTSK
     printf("auAccessoryInfo:");
     PrintArray(T_TRUE, auAccessoryInfo, (int)sizeof(auAccessoryInfo));
