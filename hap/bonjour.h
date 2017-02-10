@@ -60,6 +60,7 @@ typedef struct {
     uint64  u64CurrentCfgNumber;    /* c#---Current configuration number */
     uint8   u8FeatureFlag;          /* ff---Required if non-zero */
     uint64  u64DeviceID;            /* id---The Device ID must be formatted as XX:XX:XX:XX:XX:XX */
+    char    *psDeviceID;
     char    *psModelName;           /* md---Model name of the accessory */
     char    auProtocolVersion[2];   /* pv---Protocol version string <major>.<minor> */
     uint32  u32iCurrentStaNumber;   /* s#---Current state number,This must have a value of "1" */

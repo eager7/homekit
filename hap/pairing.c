@@ -98,7 +98,7 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len
                     ERR_vPrintln(T_TRUE, "eM6ExchangeResponse Failed"); goto Failed;
                 }
                 return E_PAIRING_STATUS_OK;
-            }break;
+            }
             default:
                 break;
         }
@@ -108,6 +108,185 @@ tePairStatus ePairSetup(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len
 Failed:
     SRP_free(pSrp);
     return Status;
+}
+
+tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len)
+{
+    SRP *srp;
+    srp = SRP_new(SRP6a_server_method());
+    cstr *secretKey = NULL, *publicKey = NULL, *response = NULL;
+    char sessionKey[64];
+    char *responseBuffer = 0; int responseLen = 0;
+
+    char auBufferRecv[MABF] = {0};
+    uint16 u16LenRecv = u16Len;
+    memcpy(auBufferRecv, pBuf, sizeof(auBufferRecv));
+    do{
+        tsTlvType mResponse;memset(&mResponse,0,sizeof(tsTlvType));
+
+        tsHttpEntry sHttpEntry; memset(&sHttpEntry, 0 ,sizeof(sHttpEntry));
+        if(eHttpParser(auBufferRecv, u16LenRecv, &sHttpEntry) != E_HTTP_PARSER_OK){
+            ERR_vPrintln(T_TRUE, "eHttpParser Failed"); goto Failed;
+        }
+
+        tsTlvType stateRecord;memset(&stateRecord,0,sizeof(tsTlvType));
+        eTlvTypeGetObject(E_TLV_VALUE_TYPE_STATE,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&stateRecord);
+        uint8 value_rep[] ={(tePairSetupState)stateRecord.psValue[0]+1} ;
+        switch ((tePairSetupState)stateRecord.psValue[0]){
+            case E_PAIR_SETUP_M1_SRP_START_REQUEST:{
+                printf("%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
+                tsTlvType saltRec;memset(&saltRec,0,sizeof(tsTlvType));
+                tsTlvType publicKeyRec;memset(&publicKeyRec,0,sizeof(tsTlvType));
+                unsigned char saltChar[16];
+                for (int i = 0; i < 16; i++) {
+                    saltChar[i] = rand();
+                }
+                SRP_RESULT result = SRP_set_username(srp, "Pair-Setup");
+                int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
+                result = SRP_set_params(srp, (const unsigned char *)modulusStr, modulusSize, (const unsigned char *)generator, 1, saltChar, 16);
+                result = SRP_set_auth_password(srp, devicePassword);
+                result = SRP_gen_pub(srp, &publicKey);
+                eTlvTypeFormatAdd(&mResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
+                eTlvTypeFormatAdd(&mResponse, E_TLV_VALUE_TYPE_PUBLIC_KEY, publicKey->length, publicKey->data);
+                eTlvTypeFormatAdd(&mResponse, E_TLV_VALUE_TYPE_SALT, sizeof(saltChar),saltChar);
+            }
+                break;
+            case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST:{
+                printf("%s, %d: State_M3_SRPVerifyRequest\n", __func__, __LINE__);
+                tsTlvType keyStr;memset(&keyStr,0,sizeof(tsTlvType));
+                tsTlvType proofStr;memset(&proofStr,0,sizeof(tsTlvType));
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&keyStr);
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_PROOF,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&proofStr);
+                SRP_RESULT result = SRP_compute_key(srp, &secretKey, (const unsigned char*)keyStr.psValue, keyStr.u16Len);
+                result = SRP_verify(srp, (const unsigned char*)proofStr.psValue, proofStr.u16Len);
+                if (!SRP_OK(result)) {
+                    ERR_vPrintln(T_TRUE, "SRP_verify");
+                    return E_PAIRING_STATUS_ERROR;
+                }
+                SRP_respond(srp, &response);
+                tsTlvType responseRecord;memset(&responseRecord,0,sizeof(tsTlvType));
+                eTlvTypeFormatAdd(&mResponse,E_TLV_VALUE_TYPE_PROOF,response->length,response->data);
+                const char salt[] = "Pair-Setup-Encrypt-Salt";
+                const char info[] = "Pair-Setup-Encrypt-Info";
+                int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data,
+                             secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)sessionKey, 32);
+                if (i != 0) {
+                    ERR_vPrintln(T_TRUE, "hkdf");return E_PAIRING_STATUS_ERROR;
+                }
+            }
+                break;
+            case E_PAIR_SETUP_M5_EXCHANGE_REQUEST:{
+                printf("%s, %d: State_M5_ExchangeRequest\n", __func__, __LINE__);
+                tsTlvType encryptedPackage;memset(&encryptedPackage,0,sizeof(tsTlvType));
+
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&encryptedPackage);
+                int packageLen = encryptedPackage.u16Len;
+                char *encryptedData = malloc(packageLen);
+                bcopy(encryptedPackage.psValue, encryptedData, packageLen-16);
+                char mac[16];
+                bcopy(&encryptedPackage.psValue[packageLen-16], mac, 16);
+                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+                chacha20_setup(&chacha20, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg05");
+                //Ploy1305 key
+                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+                char verify[16];  bzero(verify, 16);
+                Poly1305_GenKey((const unsigned char*)temp2, (unsigned char *)encryptedData, packageLen - 16,
+                                T_FALSE, verify);
+                char *decryptedData =malloc(packageLen-16);
+                bzero(decryptedData, packageLen-16);
+                chacha20_decrypt(&chacha20, (const uint8_t *)encryptedData, (uint8_t *)decryptedData, packageLen-16);
+                if (bcmp(verify, mac, 16)) {
+                    ERR_vPrintln(T_TRUE, "chacha20_decrypt");return E_PAIRING_STATUS_ERROR;
+                }
+                printf("HAK Pair Setup M6\n");
+                tsTlvType controllerIdentifier;memset(&controllerIdentifier,0,sizeof(tsTlvType));
+                tsTlvType controllerPublicKey;memset(&controllerPublicKey,0,sizeof(tsTlvType));
+                tsTlvType controllerSignature;memset(&controllerSignature,0,sizeof(tsTlvType));
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER,decryptedData,packageLen-16,&controllerIdentifier);
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY,decryptedData,packageLen-16,&controllerPublicKey);
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE,decryptedData,packageLen-16,&controllerSignature);
+                char controllerHash[100];
+                const char salt[] = "Pair-Setup-Controller-Sign-Salt";
+                const char info[] = "Pair-Setup-Controller-Sign-Info";
+                int i = hkdf((const unsigned char*)salt, strlen(salt),
+                             (const unsigned char*)secretKey->data, secretKey->length,
+                             (const unsigned char*)info, strlen(info), (uint8_t*)controllerHash, 32);
+                if (i != 0){
+                    ERR_vPrintln(T_TRUE, "hkdf");return E_PAIRING_STATUS_ERROR;
+                }
+
+                bcopy(controllerIdentifier.psValue, &controllerHash[32], 36);
+                bcopy(controllerPublicKey.psValue, &controllerHash[68], 32);
+                int ed25519_err = ed25519_sign_open((const unsigned char*)controllerHash, 100,
+                                                    (const unsigned char*)controllerPublicKey.psValue, (const unsigned char*)controllerSignature.psValue);
+
+                if (ed25519_err) {
+                    ERR_vPrintln(T_TRUE, "ed25519_sign_open");return E_PAIRING_STATUS_ERROR;
+                }
+                INF_vPrintln(T_TRUE, "ed25519_sign_open Success");
+                tsTlvType returnTLV8;memset(&returnTLV8,0,sizeof(tsTlvType));
+                //tsTlvType usernameRecord;memset(&usernameRecord,0,sizeof(tsTlvType));
+                eTlvTypeFormatAdd(&returnTLV8,E_TLV_VALUE_TYPE_IDENTIFIER,strlen(deviceIdentity),deviceIdentity);
+                /*
+                 * Generate Signature
+                 */
+                const char salt2[] = "Pair-Setup-Accessory-Sign-Salt";
+                const char info2[] = "Pair-Setup-Accessory-Sign-Info";
+                uint8_t output[150];
+                hkdf((const unsigned char*)salt2, strlen(salt2), (const unsigned char*)secretKey->data,
+                     secretKey->length, (const unsigned char*)info2, strlen(info2), output, 32);
+
+                bcopy(deviceIdentity, &output[32], strlen(deviceIdentity));
+                char *signature = malloc(64);
+                ed25519_secret_key edSecret;
+                bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+                ed25519_public_key edPubKey;
+                ed25519_publickey(edSecret, edPubKey);
+                bcopy(edPubKey, &output[32+strlen(deviceIdentity)], 32);
+                ed25519_sign(output, 64+strlen(deviceIdentity), (const unsigned char*)edSecret,
+                             (const unsigned char*)edPubKey, (unsigned char *)signature);
+                eTlvTypeFormatAdd(&returnTLV8,E_TLV_VALUE_TYPE_SIGNATURE,64,signature);
+                eTlvTypeFormatAdd(&returnTLV8,E_TLV_VALUE_TYPE_PUBLIC_KEY,32,edPubKey);
+
+                unsigned short tlv8Len = returnTLV8.u16Len;
+                tsTlvType tlv8Record;memset(&tlv8Record,0,sizeof(tsTlvType));
+                tlv8Record.psValue = malloc(tlv8Len+16);tlv8Record.u16Len =tlv8Len +16;
+                bzero(tlv8Record.psValue, tlv8Record.u16Len);
+                chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
+                chacha20_setup(&ctx, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg06");
+                char buffer[64], key[64];   bzero(buffer, 64);
+                chacha20_encrypt(&ctx, (const uint8_t *)buffer, (uint8_t *)key, 64);
+                chacha20_encrypt(&ctx, (const uint8_t *)returnTLV8.psValue, (uint8_t *)tlv8Record.psValue, tlv8Len);
+                char verify2[16];
+                memset(verify2, 0, 16);
+                Poly1305_GenKey((const unsigned char *)key, (unsigned char*)tlv8Record.psValue, tlv8Len, T_FALSE, verify2);
+                memcpy((unsigned char *)&tlv8Record.psValue[tlv8Len], verify2, 16);
+                eTlvTypeFormatAdd(&mResponse,E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8Record.u16Len,tlv8Record.psValue);
+
+                eTlvTypeFormatAdd(&mResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
+
+                sHttpEntry.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+                eHttpResponse(iSockFd, &sHttpEntry, mResponse.psValue, mResponse.u16Len);
+                FREE(mResponse.psValue);
+                INF_vPrintln(T_TRUE,"SUCCESS--------");
+                return E_PAIRING_STATUS_OK;
+            }
+                break;
+            default:
+                break;
+        }
+        eTlvTypeFormatAdd(&mResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
+
+        sHttpEntry.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+        eHttpResponse(iSockFd, &sHttpEntry, mResponse.psValue, mResponse.u16Len);
+        FREE(mResponse.psValue);
+
+        memset(auBufferRecv, 0, sizeof(auBufferRecv));
+    }while(0< (u16LenRecv = (uint16)recv(iSockFd, (void *)auBufferRecv, sizeof(auBufferRecv), 0) ));
+    Failed:
+    SRP_free(pSrp);
+    return E_PAIRING_STATUS_ERROR;
 }
 /****************************************************************************/
 /***        Local    Functions                                            ***/
@@ -157,6 +336,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsHttpEnt
         auSalt[j] = (uint8)rand();
     }
     SRP_set_params(pSrp, modulusStr, sizeof(modulusStr)/sizeof(modulusStr[0]), generator, sizeof(generator), auSalt, sizeof(auSalt));
+    INF_vPrintln(DBG_PAIR, "SetupCode:%s", pSetupCode);
     SRP_set_auth_password(pSrp, pSetupCode);
     cstr *psPublicKey = NULL;
     SRP_gen_pub(pSrp, &psPublicKey);
@@ -348,6 +528,10 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
         ERR_vPrintln(T_TRUE, "HKDF Failed");
         return E_PAIRING_STATUS_ERROR;
     }
+    printf("auAccessoryInfo:");
+    PrintArray(T_TRUE, auAccessoryInfo, 32);
+    printf("deviceIdentity:");
+    PrintArray(T_TRUE, deviceIdentity, (int)strlen(deviceIdentity));
     memcpy(&auAccessoryInfo[32], deviceIdentity, strlen(deviceIdentity));
     uint8 auAccessorySignature[64] = {0};
     //TODO:(M6 Response 1) Generate its Ed25519 long-term public key,AccessoryLTPK and long-term secret key,AccessoryLTSK
@@ -355,21 +539,28 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     memcpy(auAccessoryLTSK, accessorySecretKey, sizeof(auAccessoryLTSK));
     ed25519_public_key auAccessoryLTPK;
     ed25519_publickey(auAccessoryLTSK, auAccessoryLTPK);
+
     //TODO:(M6 Response 2) Derive AccessoryX from the SRP shared secret by using HKDF-SHA-512
 
     //TODO:(M6 Response 3) Concatenate AccessoryX with AccessoryPairingID and AccessoryLTPK to AccessoryInfo
 
     //memcpy(auAccessoryInfo, auAccessoryX, sizeof(auAccessoryX));
-
+    printf("auAccessoryLTPK:");
+    PrintArray(T_TRUE, auAccessoryLTPK, (int)sizeof(auAccessoryLTPK));
     memcpy(&auAccessoryInfo[32+strlen(deviceIdentity)], auAccessoryLTPK, 32);
     //TODO:(M6 Response 4) Use Ed25519 to generate AccessorySignature by siging AccessoryInfo with AccessoryLTSK
-
-    ed25519_sign(auAccessoryInfo, 64+strlen(deviceIdentity), auAccessoryLTSK, auAccessoryLTPK, auAccessorySignature);
+    printf("auAccessoryInfo:");
+    PrintArray(T_TRUE, auAccessoryInfo, (int)sizeof(auAccessoryInfo));
+    ed25519_sign(auAccessoryInfo, 64+17, auAccessoryLTSK, auAccessoryLTPK, auAccessorySignature);
     //TODO:(M6 Response 5) Construct the sub-TLV with AccessoryPairingID,AccessoryLTPK,AccessorySignature
 
-    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_SIGNATURE, 64, auAccessorySignature);
-    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_PUBLIC_KEY,32, auAccessoryLTSK);
+    printf("auAccessorySignature:");
+    PrintArray(T_TRUE, auAccessorySignature, (int)sizeof(auAccessorySignature));
 
+    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_SIGNATURE, 64, auAccessorySignature);
+    eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_PUBLIC_KEY,32, auAccessoryLTPK);
+    printf("sTlvSubTlv:");
+    PrintArray(T_TRUE, sTlvSubTlv.psValue, sTlvSubTlv.u16Len);
     //TODO:(M6 Response 6) Encrypt the sub-TLV,encryptedData,and generate the 16 byte auth tag,authTag, uses the ChaCha20-Poly1305 AEAD algorithm
     uint8 *pauEncryptedData = (uint8*)malloc(sTlvSubTlv.u16Len + 16);
     CHECK_POINTER(pauEncryptedData, E_PAIRING_STATUS_ERROR);

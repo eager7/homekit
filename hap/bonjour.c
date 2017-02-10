@@ -67,6 +67,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
+    sBonjour.sBonjourText.psDeviceID = "12:10:34:23:51:12";
     sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
@@ -205,7 +206,18 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             eHttpParser(buf, (uint16)len, &sHttpEntry);
                             if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
                                 DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
-                                ePairSetup(iSockClient, sBonjour.pcSetupCode, buf, (uint16)len);
+                                ePairSetup2(iSockClient, sBonjour.pcSetupCode, buf, (uint16)len);
+
+                                eTextRecordFormat(&sBonjour);
+                                DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
+                                DNSServiceErrorType  ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, TXTRecordGetLength(&sBonjour.txtRecord),
+                                                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), 0);
+                                TXTRecordDeallocate(&sBonjour.txtRecord);
+                                if(ret){
+                                    ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
+                                }
+
+
                             } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
                                 DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
                             }
@@ -243,7 +255,8 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*2 & 0xff),
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*1 & 0xff),
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*0 & 0xff));
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    //TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", 17, "12:10:34:23:51:12");
 
     char temp_md[MIBF] = {0};
     sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
