@@ -257,7 +257,7 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*1 & 0xff),
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*0 & 0xff));
     //TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", 17, "12:10:34:23:51:12");
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", 17, psBonjour->sBonjourText.psDeviceID);
 
     char temp_md[MIBF] = {0};
     sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);

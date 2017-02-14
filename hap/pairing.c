@@ -45,6 +45,11 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEnt
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData);
 static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
 static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
+
+static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len);
+static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len);
+static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len);
+static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -218,7 +223,10 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
                     eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER,decryptData,packageLen-16,&rec);
                     eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE,decryptData,packageLen-16,&sig);
                     char recpublickey[32] = {0};
-                    memcpy(recpublickey, &rec.psValue[36], 32);
+                    if(E_PAIRING_STATUS_OK != eIOSDeviceLTPKRead(recpublickey,32)){
+                        ERR_vPrintln(T_TRUE,"Can't Read LTPK");
+                        return E_PAIRING_STATUS_ERROR;
+                    }
                     char tempMsg[100];
                     bcopy(controllerPublicKey, tempMsg, 32);
                     bcopy(rec.psValue, &tempMsg[32], 36);
@@ -233,8 +241,14 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Read-Encryption-Key", 27, accessoryToControllerKey, 32);
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Write-Encryption-Key", 28, controllerToAccessoryKey, 32);
                         printf("Verify success\n");
+                    } else{
+                        printf("Verify failed\n");
+                        uint8 err[] = {E_TLV_ERROR_AUTHENTICATION};
+                        eTlvTypeFormatAdd(&sTlvResponse,E_TLV_VALUE_TYPE_ERROR,1,err);
                     }
-                    printf("Verify failed\n");
+
+                } else{
+                    printf("tag verify failed\n");
                 }
 
 
@@ -661,6 +675,9 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEnt
     }
     DBG_vPrintln(DBG_PAIR, "Verify IOSDeviceInfo Success");
     //TODO:(M5 Verification 6) Persistently save the IOSDevicePairingId and IOSDeviceLTPK as a pairing
+    eIOSDevicePairingIDSave(sTlvIOSDevicePairingID.psValue, sTlvIOSDevicePairingID.u16Len);
+    eIOSDeviceLTPKSave(sTlvIOSDeviceLTPK.psValue, sTlvIOSDeviceLTPK.u16Len);
+    FREE(sTlvIOSDevicePairingID.psValue); FREE(sTlvIOSDeviceLTPK.psValue);
 
     tsTlvType sTlvSubTlv;memset(&sTlvSubTlv, 0, sizeof(sTlvSubTlv));
     eTlvTypeFormatAdd(&sTlvSubTlv, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psDeviceID), psDeviceID);
@@ -844,4 +861,37 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
     poly1305_finish(&verifyContext, (unsigned char*)verify);
+}
+
+static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
+{
+    FILE *fp = fopen("IOSDevicePairingID.txt", "w");
+    if(len != fwrite(buf,1,len,fp)){
+        return E_PAIRING_STATUS_ERROR;
+    }
+    return E_PAIRING_STATUS_OK;
+}
+static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
+{
+    FILE *fp = fopen("IOSDevicePairingID.txt", "r");
+    if(len != fread(buf,1,len,fp)){
+        return E_PAIRING_STATUS_ERROR;
+    }
+    return E_PAIRING_STATUS_OK;
+}
+static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
+{
+    FILE *fp = fopen("IOSDeviceLTPK.txt", "w");
+    if(len != fwrite(buf,1,len,fp)){
+        return E_PAIRING_STATUS_ERROR;
+    }
+    return E_PAIRING_STATUS_OK;
+}
+static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
+{
+    FILE *fp = fopen("IOSDeviceLTPK.txt", "r");
+    if(len != fread(buf,1,len,fp)){
+        return E_PAIRING_STATUS_ERROR;
+    }
+    return E_PAIRING_STATUS_OK;
 }
