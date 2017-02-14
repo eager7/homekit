@@ -127,6 +127,8 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
     curved25519_key controllerPublicKey;
     curved25519_key sharedKey;
     uint8_t enKey[32];
+
+
     char auBufferRecv[MABF] = {0};
     uint16 u16LenRecv = u16Len;
     memcpy(auBufferRecv, pBuf, sizeof(auBufferRecv));
@@ -144,9 +146,6 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
         }
         tePairVerify ePairVerifyState = (tePairVerify)sTlvState.psValue[0];
         FREE(sTlvState.psValue);
-        uint8 value_rep[1] = { ePairVerifyState + 1 };
-
-
 
         switch (ePairVerifyState){
             case E_PAIR_VERIFY_M1_START_REQUEST: {
@@ -763,6 +762,75 @@ MaxPeersError:
     FREE(sTlvResponse.psValue);
     return E_PAIRING_STATUS_ERROR;
 }
+
+static tePairStatus eM2VerifyStartResponse(int iSockFd, char *psDeviceID, tsHttpEntry *psHttpEntry)
+{
+    CHECK_POINTER(psHttpEntry, E_PAIRING_STATUS_ERROR);
+    uint8 value_err[1] = {0};
+    tsTlvType sTlvResponse; memset(&sTlvResponse, 0, sizeof(sTlvResponse));
+    uint8 value_rep[] = {E_PAIR_VERIFY_M2_START_RESPONSE};
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
+
+    //TODO:Generate new, random Curve25519 key pair
+    curved25519_key secretKey;
+    for (short i = 0; i < sizeof(secretKey); i++) {
+        secretKey[i] = (unsigned char)rand();
+    }
+    //TODO:Generate the shared secret, SharedSecret
+
+
+    tsTlvType sPubKeyTlv; memset(&sPubKeyTlv,0,sizeof(sPubKeyTlv));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY,psHttpEntry->acContentData,psHttpEntry->u16ContentLen,&sPubKeyTlv);
+    curved25519_key controllerPublicKey;
+    bcopy(sPubKeyTlv.psValue, controllerPublicKey, 32);
+    FREE(sPubKeyTlv.psValue);
+
+    curve25519_donna((u8*)publicKey, (const u8 *)secretKey, (const u8 *)curveBasePoint);
+
+    curve25519_donna(sharedKey, secretKey, controllerPublicKey);
+    char *temp = malloc(100);
+    bcopy(publicKey, temp, 32);
+    bcopy(psBonjour->sBonjourText.psDeviceID, &temp[32], strlen(psBonjour->sBonjourText.psDeviceID));
+    bcopy(controllerPublicKey, &temp[32+strlen(psBonjour->sBonjourText.psDeviceID)], 32);
+    char signRecord[64];
+    ed25519_secret_key edSecret;
+    bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+    ed25519_public_key edPubKey;
+    ed25519_publickey(edSecret, edPubKey);
+    ed25519_sign((const unsigned char *)temp, 64+strlen(psBonjour->sBonjourText.psDeviceID), edSecret, edPubKey, (unsigned char *)signRecord);
+    tsTlvType sTlvSub;memset(&sTlvSub, 0, sizeof(sTlvSub));
+    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_SIGNATURE, 64, signRecord);
+    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psBonjour->sBonjourText.psDeviceID), psBonjour->sBonjourText.psDeviceID);
+
+
+    unsigned char salt[] = "Pair-Verify-Encrypt-Salt";
+    unsigned char info[] = "Pair-Verify-Encrypt-Info";
+
+    int i = hkdf(salt, 24, sharedKey, 32, info, 24, enKey, 32);
+    const char *plainMsg = (char*)sTlvSub.psValue;   unsigned short msgLen = sTlvSub.u16Len;
+    char *encryptMsg = malloc(msgLen+16);
+    char *polyKey = malloc(64);   bzero(polyKey, 64);
+
+    char zero[64];  bzero(zero, 64);
+
+    chacha20_ctx chacha;
+    chacha20_setup(&chacha, enKey, 32, (uint8_t *)"PV-Msg02");
+    chacha20_encrypt(&chacha, (uint8_t *)zero, (uint8_t *)polyKey, 64);
+    chacha20_encrypt(&chacha, (uint8_t *)plainMsg, (uint8_t *)encryptMsg, msgLen);
+    char verify[16];
+    memset(verify, 0, 16);
+    Poly1305_GenKey((const unsigned char *)polyKey, (uint8_t *)encryptMsg, msgLen, T_FALSE, verify);
+    memcpy((unsigned char *)&encryptMsg[msgLen], verify, 16);
+
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_PUBLIC_KEY, 32, publicKey);
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ENCRYPTED_DATA, msgLen+16, encryptMsg);
+
+    psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
+    FREE(sTlvResponse.psValue);
+    return E_PAIRING_STATUS_OK;
+}
+
 
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData)
 {
