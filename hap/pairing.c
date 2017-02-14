@@ -27,6 +27,7 @@
 #include "ed25519.h"
 #include "sodium/crypto_aead_chacha20poly1305.h"
 #include "curve25519-donna.h"
+#include "bonjour.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -164,17 +165,17 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
                 curve25519_donna(sharedKey, secretKey, controllerPublicKey);
                 char *temp = malloc(100);
                 bcopy(publicKey, temp, 32);
-                bcopy(deviceIdentity, &temp[32], strlen(deviceIdentity));
-                bcopy(controllerPublicKey, &temp[32+strlen(deviceIdentity)], 32);
+                bcopy(psBonjour->sBonjourText.psDeviceID, &temp[32], strlen(psBonjour->sBonjourText.psDeviceID));
+                bcopy(controllerPublicKey, &temp[32+strlen(psBonjour->sBonjourText.psDeviceID)], 32);
                 char signRecord[64];
                 ed25519_secret_key edSecret;
                 bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
                 ed25519_public_key edPubKey;
                 ed25519_publickey(edSecret, edPubKey);
-                ed25519_sign((const unsigned char *)temp, 64+strlen(deviceIdentity), edSecret, edPubKey, (unsigned char *)signRecord);
+                ed25519_sign((const unsigned char *)temp, 64+strlen(psBonjour->sBonjourText.psDeviceID), edSecret, edPubKey, (unsigned char *)signRecord);
                 tsTlvType sTlvSub;memset(&sTlvSub, 0, sizeof(sTlvSub));
                 eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_SIGNATURE, 64, signRecord);
-                eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(deviceIdentity), deviceIdentity);
+                eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psBonjour->sBonjourText.psDeviceID), psBonjour->sBonjourText.psDeviceID);
 
 
                 unsigned char salt[] = "Pair-Verify-Encrypt-Salt";
@@ -241,10 +242,11 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Read-Encryption-Key", 27, accessoryToControllerKey, 32);
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Write-Encryption-Key", 28, controllerToAccessoryKey, 32);
                         printf("Verify success\n");
+                        return E_PAIRING_STATUS_OK;
                     } else{
                         printf("Verify failed\n");
-                        uint8 err[] = {E_TLV_ERROR_AUTHENTICATION};
-                        eTlvTypeFormatAdd(&sTlvResponse,E_TLV_VALUE_TYPE_ERROR,1,err);
+                        uint8 err2[] = {E_TLV_ERROR_AUTHENTICATION};
+                        eTlvTypeFormatAdd(&sTlvResponse,E_TLV_VALUE_TYPE_ERROR,1,err2);
                     }
 
                 } else{
@@ -866,32 +868,44 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
 static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDevicePairingID.txt", "w");
+    CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fwrite(buf,1,len,fp)){
+        fclose(fp);
         return E_PAIRING_STATUS_ERROR;
     }
+    fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
 static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDevicePairingID.txt", "r");
+    CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fread(buf,1,len,fp)){
+        fclose(fp);
         return E_PAIRING_STATUS_ERROR;
     }
+    fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
 static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDeviceLTPK.txt", "w");
+    CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fwrite(buf,1,len,fp)){
+        fclose(fp);
         return E_PAIRING_STATUS_ERROR;
     }
+    fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
 static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDeviceLTPK.txt", "r");
+    CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fread(buf,1,len,fp)){
+        fclose(fp);
         return E_PAIRING_STATUS_ERROR;
     }
+    fclose(fp);
     return E_PAIRING_STATUS_OK;
 }

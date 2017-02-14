@@ -52,7 +52,7 @@ static tsBonjour sBonjour;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psDeviceId)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
@@ -62,22 +62,21 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode)
     sBonjour.psHostName = NULL;
     sBonjour.u16Port = ACCESSORY_SERVER_PORT;
     sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
-    sBonjour.pcSetupCode = pcSetupCode;
+    sBonjour.pcSetupCode = psSetupCode;
 
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
-    sBonjour.sBonjourText.psDeviceID = "12:10:34:23:51:22";
+    sBonjour.sBonjourText.psDeviceID = psDeviceId;
     sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32iCurrentStaNumber = 4;
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
-    eTextRecordFormat(&sBonjour);
 
     CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
-
+    eTextRecordFormat(&sBonjour);
     DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
                                                   sBonjour.psInstanceName,
@@ -282,8 +281,8 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
     return E_BONJOUR_STATUS_OK;
 }
 
-static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
-                                const char *name, const char *regtype, const char *domain, void *context)
+static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags,
+                                DNSServiceErrorType errorCode, const char *name, const char *regtype, const char *domain, void *context)
 {
     (void)client;   // Unused
     (void)flags;    // Unused
