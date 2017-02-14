@@ -52,7 +52,7 @@ const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x
 const unsigned char generator[] = {0x05};
 #define devicePassword "523-12-643" //Password
 const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
-#define deviceIdentity "12:10:34:23:51:12"  //ID
+#define deviceIdentity "12:10:34:23:51:22"  //ID
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -116,7 +116,11 @@ const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len)
 {
     tePairStatus Status = E_PAIRING_STATUS_ERROR;
-
+    curved25519_key secretKey;
+    curved25519_key publicKey;
+    curved25519_key controllerPublicKey;
+    curved25519_key sharedKey;
+    uint8_t enKey[32];
     char auBufferRecv[MABF] = {0};
     uint16 u16LenRecv = u16Len;
     memcpy(auBufferRecv, pBuf, sizeof(auBufferRecv));
@@ -137,17 +141,16 @@ tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u
         uint8 value_rep[1] = { ePairVerifyState + 1 };
 
 
-        curved25519_key secretKey;
-        curved25519_key publicKey;
-        curved25519_key controllerPublicKey;
-        curved25519_key sharedKey;
-        uint8_t enKey[32];
+
         switch (ePairVerifyState){
             case E_PAIR_VERIFY_M1_START_REQUEST: {
                 //if(E_PAIRING_STATUS_OK != eM2VerifyStartResponse(iSockFd, psBonjour->pcSetupCode, &sHttpEntry)){
                 //    ERR_vPrintln(T_TRUE, "eM2SrpStartResponse Failed"); goto Failed;
                 //}
                 printf("Pair Verify M1\n");
+                tsTlvType pubkey;memset(&pubkey,0,sizeof(pubkey));
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&pubkey);
+                bcopy(pubkey.psValue, controllerPublicKey, 32);
                 for (short i = 0; i < sizeof(secretKey); i++) {
                     secretKey[i] = rand();
                 }
