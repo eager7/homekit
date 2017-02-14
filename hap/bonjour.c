@@ -201,7 +201,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             FD_CLR(iSockClient, &fdSelect);//delete this client from select set
                             iNumberClient --;
                         } else {
-                            //DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
+                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
                             tsHttpEntry sHttpEntry;
                             eHttpParser(buf, (uint16)len, &sHttpEntry);
                             if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
@@ -219,6 +219,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 
                             } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
                                 DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
+                                ePairVerify(iSockClient,&sBonjour,buf,len);
 
                             }
 

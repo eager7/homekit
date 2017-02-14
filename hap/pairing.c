@@ -26,6 +26,7 @@
 #include "hkdf.h"
 #include "ed25519.h"
 #include "sodium/crypto_aead_chacha20poly1305.h"
+#include "curve25519-donna.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -80,7 +81,7 @@ tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u1
         if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_STATE, sHttpEntry.acContentData, sHttpEntry.u16ContentLen, &sTlvState)){
             ERR_vPrintln(T_TRUE, "Can't Find E_TLV_VALUE_TYPE_STATE"); goto Failed;
         }
-        tePairSetupState ePairSetupState = (tePairSetupState)sTlvState.psValue[0];
+        tePairSetup ePairSetupState = (tePairSetup)sTlvState.psValue[0];
         FREE(sTlvState.psValue);
         uint8 value_rep[1] = { ePairSetupState + 1 };
         switch (ePairSetupState){
@@ -111,6 +112,147 @@ Failed:
     return Status;
 }
 
+const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len)
+{
+    tePairStatus Status = E_PAIRING_STATUS_ERROR;
+
+    char auBufferRecv[MABF] = {0};
+    uint16 u16LenRecv = u16Len;
+    memcpy(auBufferRecv, pBuf, sizeof(auBufferRecv));
+    do{
+        tsTlvType sTlvResponse;
+        memset(&sTlvResponse, 0, sizeof(sTlvResponse));
+
+        tsHttpEntry sHttpEntry; memset(&sHttpEntry, 0 ,sizeof(sHttpEntry));
+        if(eHttpParser(auBufferRecv, u16LenRecv, &sHttpEntry) != E_HTTP_PARSER_OK){
+            ERR_vPrintln(T_TRUE, "eHttpParser Failed"); goto Failed;
+        }
+        tsTlvType sTlvState; memset(&sTlvState, 0, sizeof(sTlvState));
+        if(E_PAIRING_STATUS_OK != eTlvTypeGetObject(E_TLV_VALUE_TYPE_STATE, sHttpEntry.acContentData, sHttpEntry.u16ContentLen, &sTlvState)){
+            ERR_vPrintln(T_TRUE, "Can't Find E_TLV_VALUE_TYPE_STATE"); goto Failed;
+        }
+        tePairVerify ePairVerifyState = (tePairVerify)sTlvState.psValue[0];
+        FREE(sTlvState.psValue);
+        uint8 value_rep[1] = { ePairVerifyState + 1 };
+
+
+        curved25519_key secretKey;
+        curved25519_key publicKey;
+        curved25519_key controllerPublicKey;
+        curved25519_key sharedKey;
+        uint8_t enKey[32];
+        switch (ePairVerifyState){
+            case E_PAIR_VERIFY_M1_START_REQUEST: {
+                //if(E_PAIRING_STATUS_OK != eM2VerifyStartResponse(iSockFd, psBonjour->pcSetupCode, &sHttpEntry)){
+                //    ERR_vPrintln(T_TRUE, "eM2SrpStartResponse Failed"); goto Failed;
+                //}
+                printf("Pair Verify M1\n");
+                for (short i = 0; i < sizeof(secretKey); i++) {
+                    secretKey[i] = rand();
+                }
+                curve25519_donna((u8*)publicKey, (const u8 *)secretKey, (const u8 *)curveBasePoint);
+
+                curve25519_donna(sharedKey, secretKey, controllerPublicKey);
+                char *temp = malloc(100);
+                bcopy(publicKey, temp, 32);
+                bcopy(deviceIdentity, &temp[32], strlen(deviceIdentity));
+                bcopy(controllerPublicKey, &temp[32+strlen(deviceIdentity)], 32);
+                char signRecord[64];
+                ed25519_secret_key edSecret;
+                bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+                ed25519_public_key edPubKey;
+                ed25519_publickey(edSecret, edPubKey);
+                ed25519_sign((const unsigned char *)temp, 64+strlen(deviceIdentity), edSecret, edPubKey, (unsigned char *)signRecord);
+                tsTlvType sTlvSub;memset(&sTlvSub, 0, sizeof(sTlvSub));
+                eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_SIGNATURE, 64, signRecord);
+                eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(deviceIdentity), deviceIdentity);
+
+
+                unsigned char salt[] = "Pair-Verify-Encrypt-Salt";
+                unsigned char info[] = "Pair-Verify-Encrypt-Info";
+
+                int i = hkdf(salt, 24, sharedKey, 32, info, 24, enKey, 32);
+                const char *plainMsg = (char*)sTlvSub.psValue;   unsigned short msgLen = sTlvSub.u16Len;
+                char *encryptMsg = malloc(msgLen+16);
+                char *polyKey = malloc(64);   bzero(polyKey, 64);
+
+                char zero[64];  bzero(zero, 64);
+
+                chacha20_ctx chacha;
+                chacha20_setup(&chacha, enKey, 32, (uint8_t *)"PV-Msg02");
+                chacha20_encrypt(&chacha, (uint8_t *)zero, (uint8_t *)polyKey, 64);
+                chacha20_encrypt(&chacha, (uint8_t *)plainMsg, (uint8_t *)encryptMsg, msgLen);
+                char verify[16];
+                memset(verify, 0, 16);
+                Poly1305_GenKey((const unsigned char *)polyKey, (uint8_t *)encryptMsg, msgLen, T_FALSE, verify);
+                memcpy((unsigned char *)&encryptMsg[msgLen], verify, 16);
+
+                eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_PUBLIC_KEY, 32, publicKey);
+                eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ENCRYPTED_DATA, msgLen+16, encryptMsg);
+
+            }break;
+            case E_PAIR_VERIFY_M3_FINISHED_REQUEST:{
+                //if(E_PAIRING_STATUS_OK != eM4VerifyFinishResponse(iSockFd, &sHttpEntry)){
+                //    ERR_vPrintln(T_TRUE, "eM4SrpVerifyResponse Failed"); goto Failed;
+                //}
+                printf("Pair Verify M3\n");
+                tsTlvType encryptedData;memset(&encryptedData, 0, sizeof(encryptedData));
+                eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,sHttpEntry.acContentData,sHttpEntry.u16ContentLen, &encryptedData);
+                short packageLen = encryptedData.u16Len;
+                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+                chacha20_setup(&chacha20, (const uint8_t *)enKey, 32, (uint8_t *)"PV-Msg03");
+                //Ploy1305 key
+                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+                char verify[16];    bzero(verify, 16);
+                Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)encryptedData.psValue, packageLen - 16, T_FALSE, verify);
+                if (!bcmp(verify, &encryptedData.psValue[packageLen-16], 16)) {
+                    char *decryptData = malloc(packageLen-16);
+                    chacha20_decrypt(&chacha20, (const uint8_t *)encryptedData.psValue, (uint8_t *)decryptData, packageLen-16);
+                    tsTlvType rec;memset(&rec,0,sizeof(rec));
+                    tsTlvType sig;memset(&sig,0,sizeof(sig));
+                    eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER,decryptData,packageLen-16,&rec);
+                    eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE,decryptData,packageLen-16,&sig);
+                    char recpublickey[32] = {0};
+                    memcpy(recpublickey, &rec.psValue[36], 32);
+                    char tempMsg[100];
+                    bcopy(controllerPublicKey, tempMsg, 32);
+                    bcopy(rec.psValue, &tempMsg[32], 36);
+                    bcopy(publicKey, &tempMsg[68], 32);
+                    int err = ed25519_sign_open((const unsigned char *)tempMsg, 100, (const unsigned char *)recpublickey,
+                                                (const unsigned char *)sig.psValue);
+
+                    char *repBuffer = 0;  int repLen = 0;
+                    if (err == 0) {
+                        uint8_t controllerToAccessoryKey[32];
+                        uint8_t accessoryToControllerKey[32];
+                        hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Read-Encryption-Key", 27, accessoryToControllerKey, 32);
+                        hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Write-Encryption-Key", 28, controllerToAccessoryKey, 32);
+                        printf("Verify success\n");
+                    }
+                    printf("Verify failed\n");
+                }
+
+
+            }break;
+            default:
+                break;
+        }
+        uint8 rep[1] = {ePairVerifyState+1};
+        eTlvTypeFormatAdd(&sTlvResponse,E_TLV_VALUE_TYPE_STATE,1,rep);
+        sHttpEntry.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+        eHttpResponse(iSockFd, &sHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
+        FREE(sTlvResponse.psValue);
+
+        memset(auBufferRecv, 0, sizeof(auBufferRecv));
+    } while(0< (u16LenRecv = (uint16)recv(iSockFd, (void *)auBufferRecv, sizeof(auBufferRecv), 0) ));
+    Status = E_PAIRING_STATUS_ERROR_SOCKET;
+    Failed:
+
+    return Status;
+}
+
 tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len)
 {
     SRP *srp;
@@ -132,8 +274,8 @@ tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Le
 
         tsTlvType stateRecord;memset(&stateRecord,0,sizeof(tsTlvType));
         eTlvTypeGetObject(E_TLV_VALUE_TYPE_STATE,sHttpEntry.acContentData,sHttpEntry.u16ContentLen,&stateRecord);
-        uint8 value_rep[] ={(tePairSetupState)stateRecord.psValue[0]+1} ;
-        switch ((tePairSetupState)stateRecord.psValue[0]){
+        uint8 value_rep[] ={(tePairSetup)stateRecord.psValue[0]+1} ;
+        switch ((tePairSetup)stateRecord.psValue[0]){
             case E_PAIR_SETUP_M1_SRP_START_REQUEST:{
                 printf("%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
                 tsTlvType saltRec;memset(&saltRec,0,sizeof(tsTlvType));

@@ -12,6 +12,7 @@ include_directories(include accessory profiles hap
         srp
         Chacha20 poly1305-opt-master ed25519-donna
         /home/pct/IOTC/package/Homekit/open_source/mDNSResponder-98/mDNSShared
+        curve25519
         )
 include_directories(/usr/include/sys)
 link_directories(./lib)
@@ -24,6 +25,7 @@ set(SOURCE_FILES  main.c
         Chacha20/chacha20_simple.c
         poly1305-opt-master/poly1305.c
         ed25519-donna/ed25519.c
+        curve25519/curve25519-donna.c
         )
 
 add_library(libsrp.a STATIC

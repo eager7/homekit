@@ -58,7 +58,14 @@ typedef enum {
     E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE    = 0x04,
     E_PAIR_SETUP_M5_EXCHANGE_REQUEST       = 0x05,
     E_PAIR_SETUP_M6_EXCHANGE_RESPONSE      = 0x06,
-} tePairSetupState;
+} tePairSetup;
+
+typedef enum {
+    E_PAIR_VERIFY_M1_START_REQUEST  = 0x01,
+    E_PAIR_VERIFY_M2_START_RESPONSE = 0x02,
+    E_PAIR_VERIFY_M3_FINISHED_REQUEST = 0x03,
+    E_PAIR_VERIFY_M4_FINISHED_RESPONSE = 0x04,
+} tePairVerify;
 
 typedef enum {
     E_TLV_VALUE_TYPE_METHOD         = 0x00,
@@ -77,13 +84,6 @@ typedef enum {
     E_TLV_VALUE_TYPE_FRAGMENT_LAST  = 0x0D,
     E_TLV_VALUE_TYPE_SEPARATOR      = 0x0F,
 } teTlvValue;
-
-typedef enum {
-    E_PAIR_VERIFY_START_REQUEST,
-    E_PAIR_VERIFY_START_RESPONSE,
-    E_PAIR_VERIFY_FINISHED_REQUEST,
-    E_PAIR_VERIFY_FINISHED_RESPONSE,
-} tePairVerify;
 
 typedef enum {
     E_TLV_ERROR_UNKNOW          = 0x01,
@@ -108,7 +108,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-extern tePairSetupState ePair;
+extern tePairSetup ePair;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -118,6 +118,7 @@ extern tePairSetupState ePair;
 /****************************************************************************/
 tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
+tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
