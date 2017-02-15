@@ -62,9 +62,15 @@ const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-SRP     *pSrp = NULL;
-cstr    *pShareKey = NULL;
-char    auSessionKey[64];
+//Pairing Setup
+static SRP     *pSrp = NULL;
+static cstr    *pShareKey = NULL;
+static char    auSessionKeySetup[64];
+//Pairing Verify
+static uint8_t auSessionKeyVerify[32];
+static curved25519_key auIOSDeviceLTPK;
+static curved25519_key auPublicKey;
+static curved25519_key auSharedSecret;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -550,7 +556,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsHttpEntry *psHttpEntry)
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
     int i = hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)pShareKey->data,
-                 pShareKey->length, (const unsigned char*)info, (int)strlen(info), auSessionKey, LEN_HKDF_LEN);
+                 pShareKey->length, (const unsigned char*)info, (int)strlen(info), auSessionKeySetup, LEN_HKDF_LEN);
     if(i != 0){
         ERR_vPrintln(T_TRUE, "Generate SessionKey Failed");
         FREE(sTlvResponse.psValue);
@@ -608,7 +614,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEnt
     FREE(sTlvEncryptData.psValue);
 
     chacha20_ctx context; memset(&context, 0, sizeof(context));
-    chacha20_setup(&context, (const uint8_t *)auSessionKey, LEN_CHA20_KEY, (uint8*)"PS-Msg05");
+    chacha20_setup(&context, (const uint8_t *)auSessionKeySetup, LEN_CHA20_KEY, (uint8*)"PS-Msg05");
 
     uint8 auIn[64] = {0}; uint8 auKey[64] = {0};
     chacha20_encrypt(&context, auIn, auKey, 64);
@@ -730,7 +736,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, char *psDeviceID, tsHttpEnt
     CHECK_POINTER(pauEncryptedData, E_PAIRING_STATUS_ERROR);
     memset(pauEncryptedData, 0, sTlvSubTlv.u16Len + 16);
     chacha20_ctx ctx; memset(&ctx, 0, sizeof(ctx));
-    chacha20_setup(&ctx, (const uint8 *)auSessionKey, 32, (uint8 *)"PS-Msg06");
+    chacha20_setup(&ctx, (const uint8 *)auSessionKeySetup, 32, (uint8 *)"PS-Msg06");
     uint8 buffer[64] = {0}, key[64] = {0};
     chacha20_encrypt(&ctx, buffer, key, 64);
     chacha20_encrypt(&ctx, sTlvSubTlv.psValue, pauEncryptedData, sTlvSubTlv.u16Len);PrintArray(T_TRUE, pauEncryptedData, sTlvSubTlv.u16Len);
@@ -772,65 +778,119 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, char *psDeviceID, tsHttp
     eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_STATE, sizeof(value_rep), value_rep);
 
     //TODO:Generate new, random Curve25519 key pair
-    curved25519_key secretKey;
-    for (short i = 0; i < sizeof(secretKey); i++) {
-        secretKey[i] = (unsigned char)rand();
+    curved25519_key auSecretKey;
+    for (short i = 0; i < sizeof(auSecretKey); i++) {
+        auSecretKey[i] = (unsigned char)rand();
     }
     //TODO:Generate the shared secret, SharedSecret
-
-
     tsTlvType sPubKeyTlv; memset(&sPubKeyTlv,0,sizeof(sPubKeyTlv));
     eTlvTypeGetObject(E_TLV_VALUE_TYPE_PUBLIC_KEY,psHttpEntry->acContentData,psHttpEntry->u16ContentLen,&sPubKeyTlv);
-    curved25519_key controllerPublicKey;
-    bcopy(sPubKeyTlv.psValue, controllerPublicKey, 32);
+
+    bcopy(sPubKeyTlv.psValue, auIOSDeviceLTPK, sizeof(curved25519_key));
     FREE(sPubKeyTlv.psValue);
 
-    curve25519_donna((u8*)publicKey, (const u8 *)secretKey, (const u8 *)curveBasePoint);
+    curve25519_donna(auSharedSecret, auSecretKey, auIOSDeviceLTPK);
+    //TODO:Construct AccessoryInfo
+    uint8 auAccessoryInfo[100] = {0};
 
-    curve25519_donna(sharedKey, secretKey, controllerPublicKey);
-    char *temp = malloc(100);
-    bcopy(publicKey, temp, 32);
-    bcopy(psBonjour->sBonjourText.psDeviceID, &temp[32], strlen(psBonjour->sBonjourText.psDeviceID));
-    bcopy(controllerPublicKey, &temp[32+strlen(psBonjour->sBonjourText.psDeviceID)], 32);
-    char signRecord[64];
-    ed25519_secret_key edSecret;
-    bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
-    ed25519_public_key edPubKey;
-    ed25519_publickey(edSecret, edPubKey);
-    ed25519_sign((const unsigned char *)temp, 64+strlen(psBonjour->sBonjourText.psDeviceID), edSecret, edPubKey, (unsigned char *)signRecord);
+    curve25519_donna(auPublicKey, auSecretKey, curveBasePoint);
+    bcopy(auPublicKey, auAccessoryInfo, sizeof(auPublicKey));
+    bcopy(psDeviceID, &auAccessoryInfo[32], strlen(psDeviceID));
+    bcopy(auIOSDeviceLTPK, &auAccessoryInfo[32+strlen(psDeviceID)], sizeof(auIOSDeviceLTPK));
+    //TODO:Use Ed25519 to generate AccessorySignature
+    uint8 auAccessorySignature[64] = {0};
+    ed25519_secret_key auAccessoryLTSK;
+    bcopy(accessorySecretKey, auAccessoryLTSK, sizeof(auAccessoryLTSK));
+    ed25519_public_key auAccessoryLTPK;
+    ed25519_publickey(auAccessoryLTSK, auAccessoryLTPK);
+    ed25519_sign(auAccessoryInfo, 64 + strlen(psDeviceID), auAccessoryLTSK, auAccessoryLTPK, auAccessorySignature);
+    //TODO:Construct a sub-TLV
     tsTlvType sTlvSub;memset(&sTlvSub, 0, sizeof(sTlvSub));
-    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_SIGNATURE, 64, signRecord);
-    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psBonjour->sBonjourText.psDeviceID), psBonjour->sBonjourText.psDeviceID);
-
-
+    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_SIGNATURE, 64, auAccessorySignature);
+    eTlvTypeFormatAdd(&sTlvSub, E_TLV_VALUE_TYPE_IDENTIFIER, strlen(psDeviceID), psDeviceID);
+    //TODO:Derive the symmetric session encryption key, SessionKey
     unsigned char salt[] = "Pair-Verify-Encrypt-Salt";
     unsigned char info[] = "Pair-Verify-Encrypt-Info";
 
-    int i = hkdf(salt, 24, sharedKey, 32, info, 24, enKey, 32);
-    const char *plainMsg = (char*)sTlvSub.psValue;   unsigned short msgLen = sTlvSub.u16Len;
-    char *encryptMsg = malloc(msgLen+16);
-    char *polyKey = malloc(64);   bzero(polyKey, 64);
-
-    char zero[64];  bzero(zero, 64);
-
+    int i = hkdf(salt, strlen(salt), auSharedSecret, sizeof(auSharedSecret), info, strlen(info), auSessionKeyVerify, 32);
+    //TODO:Encrypt the sub-TLV, encryptedData, and generate the 16-byte auth tag, authTag
+    unsigned short msgLen = sTlvSub.u16Len;
+    uint8 *auEncryptedData = (uint8*)malloc(msgLen+16);
+    char polyKey[64] = {0};
+    char zero[64] = {0};
     chacha20_ctx chacha;
-    chacha20_setup(&chacha, enKey, 32, (uint8_t *)"PV-Msg02");
+    chacha20_setup(&chacha, auSessionKeyVerify, 32, (uint8_t *)"PV-Msg02");
     chacha20_encrypt(&chacha, (uint8_t *)zero, (uint8_t *)polyKey, 64);
-    chacha20_encrypt(&chacha, (uint8_t *)plainMsg, (uint8_t *)encryptMsg, msgLen);
-    char verify[16];
-    memset(verify, 0, 16);
-    Poly1305_GenKey((const unsigned char *)polyKey, (uint8_t *)encryptMsg, msgLen, T_FALSE, verify);
-    memcpy((unsigned char *)&encryptMsg[msgLen], verify, 16);
-
-    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_PUBLIC_KEY, 32, publicKey);
-    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ENCRYPTED_DATA, msgLen+16, encryptMsg);
-
+    chacha20_encrypt(&chacha, sTlvSub.psValue, auEncryptedData, msgLen);
+    uint8 authTag[16] = {0};
+    Poly1305_GenKey((const unsigned char *)polyKey, auEncryptedData, msgLen, T_FALSE, (char*)authTag);
+    memcpy(&auEncryptedData[msgLen], authTag, 16);
+    //TODO:Construct the response with the following TLV items
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_PUBLIC_KEY, 32, auPublicKey);
+    eTlvTypeFormatAdd(&sTlvResponse, E_TLV_VALUE_TYPE_ENCRYPTED_DATA, msgLen + 16, auEncryptedData);
+    //TODO:Send the response to the iOS device
     psHttpEntry->iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
     eHttpResponse(iSockFd, psHttpEntry, sTlvResponse.psValue, sTlvResponse.u16Len);
     FREE(sTlvResponse.psValue);
     return E_PAIRING_STATUS_OK;
 }
 
+static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsHttpEntry *psHttpEntry)
+{
+    DBG_vPrintln(DBG_PAIR, "eM4VerifyFinishResponse\n");
+    //TODO:Verify the iOS device's authTag
+    tsTlvType sEncryptedDataTlv; memset(&sEncryptedDataTlv, 0, sizeof(sEncryptedDataTlv));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psHttpEntry->acContentData,psHttpEntry->u16ContentLen, &sEncryptedDataTlv);
+    short EncryptedDataLen = sEncryptedDataTlv.u16Len;
+    chacha20_ctx chacha20; memset(&chacha20, 0, sizeof(chacha20));
+    chacha20_setup(&chacha20, auSessionKeyVerify, sizeof(auSessionKeyVerify), (uint8_t *)"PV-Msg03");
+    char temp[64] = {0};
+    char temp2[64] = {0};
+    chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+    char verify[16] = {0};
+    Poly1305_GenKey((const unsigned char *)temp2, sEncryptedDataTlv.psValue, EncryptedDataLen - 16, T_FALSE, verify);
+    if (bcmp(verify, &sEncryptedDataTlv.psValue[EncryptedDataLen-16], 16)) {
+        ERR_vPrintln(T_TRUE, "tag verify failed\n");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    //TODO:Decrypt the sub-TLV in encryptedData
+    uint8 *auEncryptData = (uint8*)malloc(EncryptedDataLen - 16);
+    chacha20_decrypt(&chacha20, (const uint8_t *)sEncryptedDataTlv.psValue, auEncryptData, EncryptedDataLen-16);
+    //TODO:Use the iOS device's Pairing Identifier, iOSDevicePairingID, to look up the iOS device's long-term publickey,
+    // iOSDeviceLTPK, in its list of paired controllers.
+    tsTlvType sIOSDevicePairingIDTlv;memset(&sIOSDevicePairingIDTlv,0,sizeof(sIOSDevicePairingIDTlv));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_IDENTIFIER,auEncryptData,EncryptedDataLen-16,&sIOSDevicePairingIDTlv);
+    uint8 auIOSDeviceLTPK[32] = {0};
+    if(E_PAIRING_STATUS_OK != eIOSDeviceLTPKRead(auIOSDeviceLTPK,32)){
+        ERR_vPrintln(T_TRUE,"Can't Read LTPK");
+        return E_PAIRING_STATUS_ERROR;
+    }
+    //TODO:Use Ed25519 to verify iOSDeviceSignature using iOSDeviceLTPK against iOSDeviceInfo contained in the decrypted sub-TLV
+    tsTlvType siOSDeviceSignatureTlv;memset(&siOSDeviceSignatureTlv,0,sizeof(siOSDeviceSignatureTlv));
+    eTlvTypeGetObject(E_TLV_VALUE_TYPE_SIGNATURE,auEncryptData,EncryptedDataLen-16,&siOSDeviceSignatureTlv);
+    uint8 auIOSDeviceInfo[100];
+    bcopy(auIOSDeviceLTPK, auIOSDeviceInfo, 32);
+    bcopy(sIOSDevicePairingIDTlv.psValue, &auIOSDeviceInfo[32], 36);
+    bcopy(auPublicKey, &auIOSDeviceInfo[68], 32);
+    int err = ed25519_sign_open(auIOSDeviceInfo, 100, (const unsigned char *)auIOSDeviceLTPK, siOSDeviceSignatureTlv.psValue);
+
+
+    if (err != 0) {
+        printf("Verify failed\n");
+        uint8 err2[] = {E_TLV_ERROR_AUTHENTICATION};
+        //eTlvTypeFormatAdd(&sTlvResponse,E_TLV_VALUE_TYPE_ERROR,1,err2);
+    }
+
+    //TODO:Send the response to the iOS device with the following TLV items
+    char *repBuffer = 0;  int repLen = 0;
+    uint8_t controllerToAccessoryKey[32];
+    uint8_t accessoryToControllerKey[32];
+    hkdf((uint8_t *)"Control-Salt", 12, auSharedSecret, 32, (uint8_t *)"Control-Read-Encryption-Key", 27, accessoryToControllerKey, 32);
+    hkdf((uint8_t *)"Control-Salt", 12, auSharedSecret, 32, (uint8_t *)"Control-Write-Encryption-Key", 28, controllerToAccessoryKey, 32);
+    printf("Verify success\n");
+
+    return E_PAIRING_STATUS_OK;
+}
 
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData)
 {
