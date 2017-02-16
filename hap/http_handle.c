@@ -23,7 +23,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_HTTP 0
+#define DBG_HTTP 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -44,7 +44,7 @@
 /****************************************************************************/
 teHttpStatus eHttpParser(char *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 {
-    INF_vPrintln(DBG_HTTP, "--------Http Parser Package--------");
+    INF_vPrintln(DBG_HTTP, "--------Http Parser Package[%d]--------", u16Len);
     char auTemp[MABF] = {0};
     memcpy(auTemp, pBuf, sizeof(auTemp));
 

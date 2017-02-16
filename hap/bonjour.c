@@ -26,6 +26,7 @@
 #include "mthread.h"
 #include "pairing.h"
 #include "http_handle.h"
+#include "ip.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -201,26 +202,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             iNumberClient --;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
-                            tsHttpEntry sHttpEntry;
-                            eHttpParser(buf, (uint16)len, &sHttpEntry);
-                            if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
-                                DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
-                                ePairSetup(iSockClient, &sBonjour, buf, (uint16)len);
-                                //eTextRecordFormat(&sBonjour);
-                                //DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
-                                //DNSServiceErrorType  ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, TXTRecordGetLength(&sBonjour.txtRecord),
-                                //                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), 0);
-                                //TXTRecordDeallocate(&sBonjour.txtRecord);
-                                //if(ret){
-                                //    ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
-                                //}
-                            } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
-                                DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
-                                ePairVerify(iSockClient, &sBonjour, buf, (uint16)len);
-
-                            }
-
-                            //TODO:HandleHomeKitMsg(buf);
+                            eHapHandlePackage(buf, (int)len, iSockClient, &sBonjour);
                         }
                     }
                 }

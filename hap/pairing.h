@@ -119,6 +119,8 @@ extern tePairSetup ePair;
 tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
 tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
+
+tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

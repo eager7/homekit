@@ -19,7 +19,7 @@ link_directories(./lib)
 set(SOURCE_FILES  main.c
         accessory/accessory.c
         profiles/light_bulb.c
-        hap/bonjour.c hap/mthread.c hap/http_handle.c hap/http_handle.h hap/pairing.c hap/pairing.h
+        hap/bonjour.c hap/mthread.c hap/http_handle.c hap/ip.c hap/pairing.c hap/pairing.h
         rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha_m.c
         Chacha20/chacha20_simple.c
         poly1305-opt-master/poly1305.c
