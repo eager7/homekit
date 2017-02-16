@@ -51,7 +51,7 @@ extern tsProfile sLightBulb;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teProfileStatus eLightBulbProfileInit(char *psName, char *psSerialNumber, char *psManufacturer, char *psModel);
+teProfileStatus eLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel);
 teProfileStatus eLightBulbProfileFinished(void);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

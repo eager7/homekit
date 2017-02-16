@@ -45,10 +45,11 @@ tsAccessoryInformation sAccessoryInformation;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType)
+teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType)
 {
     DBG_vPrintln(DBG_ACC, "Init accessory type:%d", eType);
     CHECK_POINTER(psAccessory, E_HAP_MEMORY_ERROR);
+    psAccessory->u64AIDs = u64DeviceID;
     psAccessory->eAccessoryType = eType;
     eAccessoryInformationInit(psAccessory, psName, psSerialNumber, psManufacturer, psModel);
     eAccessoryCategoriesInit(psAccessory, eType);

@@ -216,7 +216,7 @@ typedef struct{
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
+teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
 teHapStatus eAccessoryFinished(tsAccessory *psAccessory);
 
 /****************************************************************************/

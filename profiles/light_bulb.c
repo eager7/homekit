@@ -55,10 +55,10 @@ tsProfileHandle sLightBulbHandle[] = {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teProfileStatus eLightBulbProfileInit(char *psName, char *psSerialNumber, char *psManufacturer, char *psModel)
+teProfileStatus eLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     memset(&sLightBulb, 0, sizeof(sLightBulb));
-    eAccessoryInit(&sLightBulb.sAccessory, psName, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
+    eAccessoryInit(&sLightBulb.sAccessory, psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
     sLightBulb.peCallbackFunc = eLightBulbHandle;
 
     return E_PROFILE_OK;

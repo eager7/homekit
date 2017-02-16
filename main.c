@@ -64,8 +64,8 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    CHECK_RESULT(eLightBulbProfileInit("Pouse Light", "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
-    CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391", "12:10:34:23:51:33"), E_BONJOUR_STATUS_OK, -1);
+    CHECK_RESULT(eLightBulbProfileInit("Pouse Light", 0x121034235133, "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
+    CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);

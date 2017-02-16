@@ -52,7 +52,7 @@ static tsBonjour sBonjour;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psDeviceId)
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
@@ -66,8 +66,8 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psDevic
 
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
-    sBonjour.sBonjourText.u64DeviceID = 0x03d224a1bd75;
-    sBonjour.sBonjourText.psDeviceID = psDeviceId;
+    sBonjour.sBonjourText.u64DeviceID = psProfile->sAccessory.u64AIDs;
+    //sBonjour.sBonjourText.psDeviceID = psDeviceId;
     sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
@@ -217,6 +217,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
                                 DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
                                 ePairVerify(iSockClient, &sBonjour, buf, (uint16)len);
+
                             }
 
                             //TODO:HandleHomeKitMsg(buf);
@@ -246,14 +247,15 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
 
     char temp_id[MIBF] = {0};
     sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*5 & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*4 & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*3 & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*2 & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*1 & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>8*0 & 0xff));
-    //TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", 17, psBonjour->sBonjourText.psDeviceID);
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*5) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*4) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*3) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
+    INF_vPrintln(DBG_BONJOUR, "Device ID:%s", psBonjour->sBonjourText.psDeviceID);
 
     char temp_md[MIBF] = {0};
     sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
