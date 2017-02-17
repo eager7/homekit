@@ -22,6 +22,7 @@
 
 #include "ip.h"
 #include "http_handle.h"
+#include "tlv.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -89,3 +90,31 @@ teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour 
     return E_IP_STATUS_OK;
 }
 
+tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
+{
+    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
+    CHECK_POINTER(psIpMsg, NULL);
+    memset(psIpMsg, 0, sizeof(tsIpMessage));
+    eHttpParser(psBuffer, u16Len, &psIpMsg->sHttp);
+    CHECK_RESULT(eTlvMessageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen, &psIpMsg->sTlvMsg), NULL, NULL);
+    return psIpMsg;
+}
+
+teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
+{
+    for (int i = 0; i < TLV_NUM; ++i) {
+        FREE(psIpMsg->sTlvMsg.sTlvRecord[i].psValue);
+    }
+    FREE(psIpMsg);
+    return E_IP_STATUS_OK;
+}
+
+tsIpMessage *psIpResponseNew()
+{
+    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
+    CHECK_POINTER(psIpMsg, NULL);
+    memset(psIpMsg, 0, sizeof(tsIpMessage));
+    psIpMsg->sTlvMsg.efTlvMsgAddRecord = eTlvMessageAddRecord;
+    psIpMsg->sTlvMsg.eTlvMsgGetBinaryData = eTlvMsgGetBinaryData;
+    return psIpMsg;
+}

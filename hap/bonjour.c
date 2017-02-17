@@ -27,6 +27,18 @@
 #include "pairing.h"
 #include "http_handle.h"
 #include "ip.h"
+
+
+#include <chacha20_simple.h>
+#include "pairing.h"
+#include "http_handle.h"
+#include "poly1305.h"
+#include "sodium.h"
+#include "hkdf.h"
+#include "ed25519.h"
+#include "sodium/crypto_aead_chacha20poly1305.h"
+#include "curve25519-donna.h"
+#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -43,28 +55,41 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
 static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
                                 const char *name, const char *regtype, const char *domain, void *context);
+
+void *connectionLoop(void *threadInfo);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+const unsigned char generator[] = {0x05};
+const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74, 0x02, 0x0B, 0xBE, 0xA6, 0x3B, 0x13, 0x9B, 0x22, 0x51, 0x4A, 0x08, 0x79, 0x8E, 0x34, 0x04, 0xDD, 0xEF, 0x95, 0x19, 0xB3, 0xCD, 0x3A, 0x43, 0x1B, 0x30, 0x2B, 0x0A, 0x6D, 0xF2, 0x5F, 0x14, 0x37, 0x4F, 0xE1, 0x35, 0x6D, 0x6D, 0x51, 0xC2, 0x45, 0xE4, 0x85, 0xB5, 0x76, 0x62, 0x5E, 0x7E, 0xC6, 0xF4, 0x4C, 0x42, 0xE9, 0xA6, 0x37, 0xED, 0x6B, 0x0B, 0xFF, 0x5C, 0xB6, 0xF4, 0x06, 0xB7, 0xED, 0xEE, 0x38, 0x6B, 0xFB, 0x5A, 0x89, 0x9F, 0xA5, 0xAE, 0x9F, 0x24, 0x11, 0x7C, 0x4B, 0x1F, 0xE6, 0x49, 0x28, 0x66, 0x51, 0xEC, 0xE4, 0x5B, 0x3D, 0xC2, 0x00, 0x7C, 0xB8, 0xA1, 0x63, 0xBF, 0x05, 0x98, 0xDA, 0x48, 0x36, 0x1C, 0x55, 0xD3, 0x9A, 0x69, 0x16, 0x3F, 0xA8, 0xFD, 0x24, 0xCF, 0x5F, 0x83, 0x65, 0x5D, 0x23, 0xDC, 0xA3, 0xAD, 0x96, 0x1C, 0x62, 0xF3, 0x56, 0x20, 0x85, 0x52, 0xBB, 0x9E, 0xD5, 0x29, 0x07, 0x70, 0x96, 0x96, 0x6D, 0x67, 0x0C, 0x35, 0x4E, 0x4A, 0xBC, 0x98, 0x04, 0xF1, 0x74, 0x6C, 0x08, 0xCA, 0x18, 0x21, 0x7C, 0x32, 0x90, 0x5E, 0x46, 0x2E, 0x36, 0xCE, 0x3B, 0xE3, 0x9E, 0x77, 0x2C, 0x18, 0x0E, 0x86, 0x03, 0x9B, 0x27, 0x83, 0xA2, 0xEC, 0x07, 0xA2, 0x8F, 0xB5, 0xC5, 0x5D, 0xF0, 0x6F, 0x4C, 0x52, 0xC9, 0xDE, 0x2B, 0xCB, 0xF6, 0x95, 0x58, 0x17, 0x18, 0x39, 0x95, 0x49, 0x7C, 0xEA, 0x95, 0x6A, 0xE5, 0x15, 0xD2, 0x26, 0x18, 0x98, 0xFA, 0x05, 0x10, 0x15, 0x72, 0x8E, 0x5A, 0x8A, 0xAA, 0xC4, 0x2D, 0xAD, 0x33, 0x17, 0x0D, 0x04, 0x50, 0x7A, 0x33, 0xA8, 0x55, 0x21, 0xAB, 0xDF, 0x1C, 0xBA, 0x64, 0xEC, 0xFB, 0x85, 0x04, 0x58, 0xDB, 0xEF, 0x0A, 0x8A, 0xEA, 0x71, 0x57, 0x5D, 0x06, 0x0C, 0x7D, 0xB3, 0x97, 0x0F, 0x85, 0xA6, 0xE1, 0xE4, 0xC7, 0xAB, 0xF5, 0xAE, 0x8C, 0xDB, 0x09, 0x33, 0xD7, 0x1E, 0x8C, 0x94, 0xE0, 0x4A, 0x25, 0x61, 0x9D, 0xCE, 0xE3, 0xD2, 0x26, 0x1A, 0xD2, 0xEE, 0x6B, 0xF1, 0x2F, 0xFA, 0x06, 0xD9, 0x8A, 0x08, 0x64, 0xD8, 0x76, 0x02, 0x73, 0x3E, 0xC8, 0x6A, 0x64, 0x52, 0x1F, 0x2B, 0x18, 0x17, 0x7B, 0x20, 0x0C, 0xBB, 0xE1, 0x17, 0x57, 0x7A, 0x61, 0x5D, 0x6C, 0x77, 0x09, 0x88, 0xC0, 0xBA, 0xD9, 0x46, 0xE2, 0x08, 0xE2, 0x4F, 0xA0, 0x74, 0xE5, 0xAB, 0x31, 0x43, 0xDB, 0x5B, 0xFC, 0xE0, 0xFD, 0x10, 0x8E, 0x4B, 0x82, 0xD1, 0x20, 0xA9, 0x3A, 0xD2, 0xCA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+#define devicePassword "523-12-643" //Password
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
 static tsBonjour sBonjour;
+tsController sController;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+unsigned short getSocketPortNumberV4(int _socket) {
+    struct sockaddr_in addr; socklen_t len = sizeof(addr);
+    getsockname(_socket, (struct sockaddr *)&addr, &len);
+    return ntohs(addr.sin_port);
+}
 teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
 
     memset(&sBonjour, 0, sizeof(sBonjour));
+    memset(&sController, 0, sizeof(tsController));
+    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
+
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
-    sBonjour.u16Port = ACCESSORY_SERVER_PORT;
+    sBonjour.u16Port = htons(getSocketPortNumberV4(sBonjour.iSocketFd));
     sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.pcSetupCode = psSetupCode;
-
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = psProfile->sAccessory.u64AIDs;
@@ -76,7 +101,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
 
-    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
+
     eTextRecordFormat(&sBonjour);
     DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
@@ -90,8 +115,26 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
     }
-    sBonjour.sThread.pvThreadData = psProfile;
-    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
+    while(1){
+        int subSocket = accept(sBonjour.iSocketFd, 0, NULL);
+        int index = -1;
+        {
+            if (sController.subSocket == -1) {
+
+                sController.subSocket = subSocket;
+
+                pthread_create(&sController.thread, NULL, connectionLoop, &sController);
+
+            }
+        }
+
+        if (index < 0) close(subSocket);
+    }
+
+
+
+    //sBonjour.sThread.pvThreadData = psProfile;
+    //CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
 
     return E_BONJOUR_STATUS_OK;
 }
@@ -277,4 +320,141 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags,
         default:                          printf("Error %d\n", errorCode); return;
     }
 
+}
+
+
+
+void handlePairSeup()
+{
+    tsTlv stateRecord;memset(&stateRecord,0,sizeof(tsTlv));
+    uint8 value_rep[1] = {0};
+    tePairSetup state = E_PAIR_SETUP_M1_SRP_START_REQUEST;
+    SRP *srp;
+    srp = SRP_new(SRP6a_server_method());
+    cstr *secretKey = NULL, *publicKey = NULL, *response = NULL;
+    char sessionKey[64];
+    char *responseBuffer = 0; int responseLen = 0;
+    uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
+    int len = 0;
+    do{
+        printf("Msg:%s", sController.buffer);
+        tsIpMessage *psIpMsg = psIpMessageFormat(sController.buffer, sController.len);
+        tsIpMessage *psResponse = psIpResponseNew();
+        memcpy(&psResponse->sHttp, &psIpMsg->sHttp, sizeof(tsHttpEntry));
+        //tsTlvType
+        state = (tePairSetup)psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_STATE);
+        value_rep[0] = state+1;
+        switch (state) {
+            case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
+                printf("%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
+                unsigned char saltChar[16];
+                for (int i = 0; i < 16; i++) {
+                    saltChar[i] = rand();
+                }
+                SRP_RESULT result = SRP_set_username(srp, "Pair-Setup");
+                int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
+                result = SRP_set_params(srp, (const unsigned char *)modulusStr, modulusSize, (const unsigned char *)generator, 1, saltChar, 16);
+                result = SRP_set_auth_password(srp, devicePassword);
+                result = SRP_gen_pub(srp, &publicKey);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_SALT,saltChar,16,&psResponse->sTlvMsg);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,publicKey->data,publicKey->length,&psResponse->sTlvMsg);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
+            }
+                break;
+            case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
+                printf("%s, %d: State_M3_SRPVerifyRequest\n", __func__, __LINE__);
+                const char *keyStr = 0;
+                int keyLen = 0;
+                const char *proofStr;
+                int proofLen;
+                keyStr = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+                keyLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+                char *temp = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
+                if (temp != NULL) {
+                    proofStr = temp;
+                    proofLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
+                }
+                SRP_RESULT result = SRP_compute_key(srp, &secretKey, (const unsigned char*)keyStr, keyLen);
+                result = SRP_verify(srp, (const unsigned char*)proofStr, proofLen);
+                if (!SRP_OK(result)) {
+
+                    psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),&psResponse->sTlvMsg);
+                    printf("Oops at M3\n");
+                } else {
+                    SRP_respond(srp, &response);
+                    psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PROOF,response->data,response->length,&psResponse->sTlvMsg);
+                    printf("Password Correct\n");
+                }
+                const char salt[] = "Pair-Setup-Encrypt-Salt";
+                const char info[] = "Pair-Setup-Encrypt-Info";
+                int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data,
+                             secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)sessionKey, 32);
+                if (i != 0) return;
+            }
+                break;
+            case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
+
+            }
+                break;
+            default:
+                break;
+        }
+        psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
+        psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
+
+        if (responseBuffer) {
+            printf("%s, %d, responseBuffer = %s, responseLen = %d\n", __func__, __LINE__, responseBuffer, responseLen);
+            PrintArray(1, responseBuffer, responseLen);
+            psResponse->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+            eHttpResponse(sController.subSocket, &psResponse->sHttp, responseBuffer, responseLen);
+            eIpMessageRelease(psResponse);
+            eIpMessageRelease(psIpMsg);
+            FREE(responseBuffer);
+            printf("Pair Setup Transfered length %d\n", len);
+        } else {
+            printf("Why empty response\n");
+        }
+    }while(0 < (len = read(sController.subSocket, sController.buffer, 4096)));
+}
+void *connectionLoop(void *threadInfo)
+{
+    tsController *info = (tsController *)threadInfo;
+    int subSocket = info->subSocket;    ssize_t len;
+    if (subSocket >= 0) {
+        printf("Start Connect: %d\n", subSocket);
+        do {
+            len = read(subSocket, info->buffer, 4096);
+
+            printf("Return len %d for socket %d\n", len, subSocket);
+            printf("Message: %s\n", info->buffer);
+
+            tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
+            eHttpParser(info->buffer, len, &sHttp);
+
+            if (len > 0) {
+                sController.len = len;
+                if (!strcmp(sHttp.acContentData, "pair-setup")){
+                    /*
+                     * The process of pair-setup
+                     */
+                    handlePairSeup();
+                    //updateConfiguration();
+                }
+                else if (!strcmp(sHttp.acContentData, "pair-verify")){
+                    DBG_vPrintln(1, "//////////pair-verify");
+                    //handlePairVerify();
+                    //When pair-verify done, we handle Accessory Request
+                    //handleAccessoryRequest();
+                }
+                else if (!strcmp(sHttp.acContentData, "identify")){
+                    close(subSocket);
+                }
+            }
+
+        } while (len > 0);
+        close(subSocket);
+        printf("Stop Connect: %d\n", subSocket);
+        info->subSocket = -1;
+    }
+    return NULL;
 }

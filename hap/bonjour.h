@@ -81,6 +81,19 @@ typedef struct {
     TXTRecordRef  txtRecord;        /* txt record */
     tsBonjourText sBonjourText;     /* txt record struct */
 } tsBonjour;
+
+typedef struct {
+    pthread_t thread;
+    pthread_mutex_t mutex;
+
+    uint8_t controllerToAccessoryKey[32];
+    uint8_t accessoryToControllerKey[32];
+    unsigned long long numberOfMsgRec ;
+    unsigned long long numberOfMsgSend ;
+    int subSocket;
+    ssize_t len;
+    char buffer[4096];
+} tsController;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/

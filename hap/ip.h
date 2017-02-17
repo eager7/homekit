@@ -27,6 +27,7 @@ extern "C" {
 #include "pairing.h"
 #include "http_handle.h"
 #include "bonjour.h"
+#include "tlv.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -39,6 +40,18 @@ typedef enum {
     E_IP_STATUS_ERROR = 0,
 } teIpStatus;
 
+typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
+typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
+typedef struct {
+    tsHttpEntry sHttp;
+    tsTlvMessage sTlvMsg;
+    tpfIpGetBinaryData pfIpGetBinaryData;
+}tsIpMessage;
+
+typedef struct {
+    tsHttpEntry sHttp;
+    tsTlvMessage sTlvMsg;
+} tsIpResponse;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -55,6 +68,10 @@ typedef enum {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
+tsIpMessage *psIpResponseNew();
+teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg);
+
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

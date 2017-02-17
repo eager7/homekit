@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             http parse.h
+ * MODULE:             tlv.h
  *
  * COMPONENT:          home kit interface
  *
@@ -15,8 +15,8 @@
  * Copyright panchangtao@gmail.com 2017. All rights reserved
  *
  ***************************************************************************/
-#ifndef HOMEKIT_HTTP_PARSER_H
-#define HOMEKIT_HTTP_PARSER_H
+#ifndef HOMEKIT_TLV_H
+#define HOMEKIT_TLV_H
 #if defined __cplusplus
 extern "C" {
 #endif
@@ -24,55 +24,73 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-
+#include <srp.h>
+#include "http_handle.h"
+#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
+#define TLV_TYPE_LEN 1
+#define TLV_LEN_LEN 1
+#define TLV_HEADER (TLV_TYPE_LEN + TLV_LEN_LEN)
+#define TLV_FRAGMENTED 255
 
+#define TLV_NUM 10
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_HTTP_PARSER_OK = 0x00,
-    E_HTTP_PARSER_ERROR,
-} teHttpStatus;
+    E_TLV_STATUS_OK = 0x00,
+    E_TLV_STATUS_ERROR,
+} teTlvStatus;
 
 typedef enum {
-    E_HTTP_STATUS_CODE_SUCCESS                  = 0,
-    E_HTTP_STATUS_CODE_REQUEST_DENIED           = -70401,
-    E_HTTP_STATUS_CODE_UNABLE_COMMUNICATION     = -70402,
-    E_HTTP_STATUS_CODE_RESOURCE_BUSY            = -70403,
-    E_HTTP_STATUS_CODE_READ_ONLY                = -70404,
-    E_HTTP_STATUS_CODE_WRITE_ONLY               = -70405,
-    E_HTTP_STATUS_CODE_NOT_NOTIFICATION         = -70406,
-    E_HTTP_STATUS_CODE_OUT_OF_RESOURCE          = -70407,
-    E_HTTP_STATUS_CODE_TIMED_OUT                = -70408,
-    E_HTTP_STATUS_CODE_NOT_EXIST                = -70409,
-    E_HTTP_STATUS_CODE_INVALID_VALUE_TO_WRITE   = -70410,
-    E_HTTP_STATUS_CODE_INSUFFICIENT_AUTHORIZATION = -70411,
-} teHttpStatusCode;
+    E_TLV_VALUE_TYPE_METHOD         = 0x00,
+    E_TLV_VALUE_TYPE_IDENTIFIER     = 0x01,
+    E_TLV_VALUE_TYPE_SALT           = 0x02,
+    E_TLV_VALUE_TYPE_PUBLIC_KEY     = 0x03,
+    E_TLV_VALUE_TYPE_PROOF          = 0x04,
+    E_TLV_VALUE_TYPE_ENCRYPTED_DATA = 0x05,
+    E_TLV_VALUE_TYPE_STATE          = 0x06,
+    E_TLV_VALUE_TYPE_ERROR          = 0x07,
+    E_TLV_VALUE_TYPE_RETRY_DELAY    = 0x08,
+    E_TLV_VALUE_TYPE_CERTIFICATE    = 0x09,
+    E_TLV_VALUE_TYPE_SIGNATURE      = 0x0A,
+    E_TLV_VALUE_TYPE_PERMISSIONS    = 0x0B,
+    E_TLV_VALUE_TYPE_FRAGMENT_DATA  = 0x0C,
+    E_TLV_VALUE_TYPE_FRAGMENT_LAST  = 0x0D,
+    E_TLV_VALUE_TYPE_SEPARATOR      = 0x0F,
+} teTlvValue;
 
 typedef enum {
-    E_HTTP_STATUS_SUCCESS_OK = 200,
-    E_HTTP_STATUS_SUCCESS_NO_CONTENT = 204,
-    E_HTTP_STATUS_SUCCESS_MULTI_STATUS = 207,
-} teHttpSuccessCode;
-
-typedef enum {
-    E_HTTP_METHOD_POST,
-    E_HTTP_METHOD_PUT,
-    E_HTTP_METHOD_GET,
-} teHttpMethod;
+    E_TLV_ERROR_UNKNOW          = 0x01,
+    E_TLV_ERROR_AUTHENTICATION  = 0x02,
+    E_TLV_ERROR_BACKOFF         = 0x03,
+    E_TLV_ERROR_MAXPEERS        = 0x04,
+    E_TLV_ERROR_MAXTRIES        = 0x05,
+    E_TLV_ERROR_UNAVAILABLE     = 0x06,
+    E_TLV_ERROR_BUSY            = 0x07,
+} teTlvError;
 
 typedef struct {
-    int   iHttpStatus;
-    uint8 acHttpMethod[MIBF];
-    uint8 acDirectory[MIBF];
-    uint8 acHttpVersion[MIBF];
-    uint16 u16ContentLen;
-    uint8 acContentType[MIBF];
-    uint8 acContentData[MABF];
-} tsHttpEntry;
+    uint8   u8Type;
+    uint16  u16Len;
+    uint16  u16Offset;
+    uint8   *psValue;
+} tsTlv;
+
+typedef teTlvStatus  (*tpeTlvMsgGetBinaryData)(struct _tsTlvMessage *psTlvMessage, uint8 **psBuffer, uint16 *pu16Len);
+typedef uint8* (*tpfTlvMsgGetRecordData)(struct _tsTlvMessage *psTlvMessage, teTlvValue eType);
+typedef uint16 (*tpu16TlvMsgGetRecordLength)(struct _tsTlvMessage *psTlvMessage, teTlvValue eType);
+typedef teTlvStatus (*tefTlvMsgAddRecord)(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, struct _tsTlvMessage *psTlvMessage);
+typedef struct _tsTlvMessage{
+    tsTlv sTlvRecord[TLV_NUM];
+    uint8 u8RecordNum;
+    tpeTlvMsgGetBinaryData eTlvMsgGetBinaryData;
+    tpfTlvMsgGetRecordData psTlvMsgGetRecordData;
+    tpu16TlvMsgGetRecordLength pu16TlvMsgGetRecordLength;
+    tefTlvMsgAddRecord efTlvMsgAddRecord;
+} tsTlvMessage;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -80,6 +98,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -87,12 +106,13 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHttpStatus eHttpParser(uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
-teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
+teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
+teTlvStatus eTlvMessageAddRecord(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
+teTlvStatus eTlvMsgGetBinaryData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, uint16 *pu16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 #if defined __cplusplus
 }
 #endif
-#endif //HOMEKIT_HTTP_PARSER_H
+#endif //HOMEKIT_TLV_H
