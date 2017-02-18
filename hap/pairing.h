@@ -90,6 +90,12 @@ tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Le
 tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 
 tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen);
+void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
+
+tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len);
+tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len);
+tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len);
+tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

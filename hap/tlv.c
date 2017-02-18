@@ -95,7 +95,16 @@ static teTlvStatus eTlvRecordFormat(teTlvValue eType, uint8 *puValueData, uint16
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-
+tsTlvMessage *psTlvMessageNew()
+{
+    tsTlvMessage *psTlvMsg = NULL;
+    psTlvMsg = (tsTlvMessage*)malloc(sizeof(tsTlvMessage));
+    CHECK_POINTER(psTlvMsg,NULL);
+    memset(psTlvMsg, 0, sizeof(tsTlvMessage));
+    psTlvMsg->efTlvMsgAddRecord = eTlvMessageAddRecord;
+    psTlvMsg->eTlvMsgGetBinaryData = eTlvMsgGetBinaryData;
+    return psTlvMsg;
+}
 
 teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg)
 {
@@ -137,6 +146,14 @@ teTlvStatus eTlvMessageAddRecord(teTlvValue eType, uint8 *psBuffer, uint16 u16Le
             eTlvRecordFormat(eType, psBuffer, u16Len, &psTlvMsg->sTlvRecord[i]);
             psTlvMsg->u8RecordNum ++;
         }
+    }
+    return E_TLV_STATUS_OK;
+}
+
+teTlvStatus eTlvMessageRelease(tsTlvMessage *psTlvMsg)
+{
+    for (int i = 0; i < TLV_NUM; ++i) {
+        FREE(psTlvMsg->sTlvRecord[i].psValue);
     }
     return E_TLV_STATUS_OK;
 }

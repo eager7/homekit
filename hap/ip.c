@@ -102,9 +102,7 @@ tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
 
 teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
 {
-    for (int i = 0; i < TLV_NUM; ++i) {
-        FREE(psIpMsg->sTlvMsg.sTlvRecord[i].psValue);
-    }
+    eTlvMessageRelease(&psIpMsg->sTlvMsg);
     FREE(psIpMsg);
     return E_IP_STATUS_OK;
 }

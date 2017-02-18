@@ -106,8 +106,10 @@ typedef struct _tsTlvMessage{
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+tsTlvMessage *psTlvMessageNew();
 teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
 teTlvStatus eTlvMessageAddRecord(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
+teTlvStatus eTlvMessageRelease(tsTlvMessage *psTlvMsg);
 teTlvStatus eTlvMsgGetBinaryData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, uint16 *pu16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

@@ -62,7 +62,9 @@ void *connectionLoop(void *threadInfo);
 /****************************************************************************/
 const unsigned char generator[] = {0x05};
 const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74, 0x02, 0x0B, 0xBE, 0xA6, 0x3B, 0x13, 0x9B, 0x22, 0x51, 0x4A, 0x08, 0x79, 0x8E, 0x34, 0x04, 0xDD, 0xEF, 0x95, 0x19, 0xB3, 0xCD, 0x3A, 0x43, 0x1B, 0x30, 0x2B, 0x0A, 0x6D, 0xF2, 0x5F, 0x14, 0x37, 0x4F, 0xE1, 0x35, 0x6D, 0x6D, 0x51, 0xC2, 0x45, 0xE4, 0x85, 0xB5, 0x76, 0x62, 0x5E, 0x7E, 0xC6, 0xF4, 0x4C, 0x42, 0xE9, 0xA6, 0x37, 0xED, 0x6B, 0x0B, 0xFF, 0x5C, 0xB6, 0xF4, 0x06, 0xB7, 0xED, 0xEE, 0x38, 0x6B, 0xFB, 0x5A, 0x89, 0x9F, 0xA5, 0xAE, 0x9F, 0x24, 0x11, 0x7C, 0x4B, 0x1F, 0xE6, 0x49, 0x28, 0x66, 0x51, 0xEC, 0xE4, 0x5B, 0x3D, 0xC2, 0x00, 0x7C, 0xB8, 0xA1, 0x63, 0xBF, 0x05, 0x98, 0xDA, 0x48, 0x36, 0x1C, 0x55, 0xD3, 0x9A, 0x69, 0x16, 0x3F, 0xA8, 0xFD, 0x24, 0xCF, 0x5F, 0x83, 0x65, 0x5D, 0x23, 0xDC, 0xA3, 0xAD, 0x96, 0x1C, 0x62, 0xF3, 0x56, 0x20, 0x85, 0x52, 0xBB, 0x9E, 0xD5, 0x29, 0x07, 0x70, 0x96, 0x96, 0x6D, 0x67, 0x0C, 0x35, 0x4E, 0x4A, 0xBC, 0x98, 0x04, 0xF1, 0x74, 0x6C, 0x08, 0xCA, 0x18, 0x21, 0x7C, 0x32, 0x90, 0x5E, 0x46, 0x2E, 0x36, 0xCE, 0x3B, 0xE3, 0x9E, 0x77, 0x2C, 0x18, 0x0E, 0x86, 0x03, 0x9B, 0x27, 0x83, 0xA2, 0xEC, 0x07, 0xA2, 0x8F, 0xB5, 0xC5, 0x5D, 0xF0, 0x6F, 0x4C, 0x52, 0xC9, 0xDE, 0x2B, 0xCB, 0xF6, 0x95, 0x58, 0x17, 0x18, 0x39, 0x95, 0x49, 0x7C, 0xEA, 0x95, 0x6A, 0xE5, 0x15, 0xD2, 0x26, 0x18, 0x98, 0xFA, 0x05, 0x10, 0x15, 0x72, 0x8E, 0x5A, 0x8A, 0xAA, 0xC4, 0x2D, 0xAD, 0x33, 0x17, 0x0D, 0x04, 0x50, 0x7A, 0x33, 0xA8, 0x55, 0x21, 0xAB, 0xDF, 0x1C, 0xBA, 0x64, 0xEC, 0xFB, 0x85, 0x04, 0x58, 0xDB, 0xEF, 0x0A, 0x8A, 0xEA, 0x71, 0x57, 0x5D, 0x06, 0x0C, 0x7D, 0xB3, 0x97, 0x0F, 0x85, 0xA6, 0xE1, 0xE4, 0xC7, 0xAB, 0xF5, 0xAE, 0x8C, 0xDB, 0x09, 0x33, 0xD7, 0x1E, 0x8C, 0x94, 0xE0, 0x4A, 0x25, 0x61, 0x9D, 0xCE, 0xE3, 0xD2, 0x26, 0x1A, 0xD2, 0xEE, 0x6B, 0xF1, 0x2F, 0xFA, 0x06, 0xD9, 0x8A, 0x08, 0x64, 0xD8, 0x76, 0x02, 0x73, 0x3E, 0xC8, 0x6A, 0x64, 0x52, 0x1F, 0x2B, 0x18, 0x17, 0x7B, 0x20, 0x0C, 0xBB, 0xE1, 0x17, 0x57, 0x7A, 0x61, 0x5D, 0x6C, 0x77, 0x09, 0x88, 0xC0, 0xBA, 0xD9, 0x46, 0xE2, 0x08, 0xE2, 0x4F, 0xA0, 0x74, 0xE5, 0xAB, 0x31, 0x43, 0xDB, 0x5B, 0xFC, 0xE0, 0xFD, 0x10, 0x8E, 0x4B, 0x82, 0xD1, 0x20, 0xA9, 0x3A, 0xD2, 0xCA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
 #define devicePassword "523-12-643" //Password
+#define deviceIdentity "12:10:34:23:51:12"  //ID
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -115,7 +117,9 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
         return E_BONJOUR_STATUS_ERROR;
     }
-    while(1){
+    DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
+    //while(1)
+    {
         int subSocket = accept(sBonjour.iSocketFd, 0, NULL);
         int index = -1;
         {
@@ -124,6 +128,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
                 sController.subSocket = subSocket;
 
                 pthread_create(&sController.thread, NULL, connectionLoop, &sController);
+                //CHECK_RESULT(eThreadStart(connectionLoop, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
 
             }
         }
@@ -389,11 +394,139 @@ void handlePairSeup()
                 const char info[] = "Pair-Setup-Encrypt-Info";
                 int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data,
                              secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)sessionKey, 32);
-                if (i != 0) return;
+                if (i != 0) {
+                    ERR_vPrintln(T_TRUE, "hkdf error");
+                    return;
+                }
             }
                 break;
             case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
+                printf("%s, %d: State_M5_ExchangeRequest\n", __func__, __LINE__);
+                const char *encryptedPackage = NULL;int packageLen = 0;
+                encryptedPackage = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 5);
+                packageLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, 5);
+                char *encryptedData = malloc(packageLen);
+                bcopy(encryptedPackage, encryptedData, packageLen-16);
+                char mac[16];
+                bcopy(&encryptedPackage[packageLen-16], mac, 16);
 
+                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+                chacha20_setup(&chacha20, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg05");
+
+                //Ploy1305 key
+                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+
+                char verify[16];  bzero(verify, 16);
+                Poly1305_GenKey((const unsigned char*)temp2, (unsigned char *)encryptedData, packageLen - 16, T_FALSE, verify);
+
+                char *decryptedData = malloc(packageLen-16);
+                bzero(decryptedData, packageLen-16);
+                chacha20_decrypt(&chacha20, (const uint8_t *)encryptedData, (uint8_t *)decryptedData, packageLen-16);
+
+                if (bcmp(verify, mac, 16)) {
+                    psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),&psResponse->sTlvMsg);
+                }else {
+                    /*
+                    * HAK Pair Setup M6
+                    */
+                    tsTlvMessage subTLV8; memset(&subTLV8, 0, sizeof(subTLV8));
+                    eTlvMessageFormat(decryptedData, packageLen-16, &subTLV8);
+                    char *controllerIdentifier = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 5);
+                    char *controllerPublicKey = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 3);
+                    char *controllerSignature = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 10);
+                    char controllerHash[100];
+
+                    eIOSDevicePairingIDSave(controllerIdentifier, 36);
+                    eIOSDeviceLTPKSave(controllerPublicKey, 32);
+
+                    const char salt[] = "Pair-Setup-Controller-Sign-Salt";
+                    const char info[] = "Pair-Setup-Controller-Sign-Info";
+                    int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data, secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)controllerHash, 32);
+                    if (i != 0) {
+                        ERR_vPrintln(T_TRUE, "hkdf error");
+                        return;
+                    }
+
+                    bcopy(controllerIdentifier, &controllerHash[32], 36);
+                    bcopy(controllerPublicKey, &controllerHash[68], 32);
+
+                    int ed25519_err = ed25519_sign_open((const unsigned char*)controllerHash, 100, (const unsigned char*)controllerPublicKey, (const unsigned char*)controllerSignature);
+                    eTlvMessageRelease(&subTLV8);
+                    if (ed25519_err) {
+                        ERR_vPrintln(T_TRUE, "ed25519_sign_open error");
+                        return;
+                    }
+                    else {
+                        tsTlvMessage *returnTLV8 =  psTlvMessageNew();
+
+                        {
+                            returnTLV8->efTlvMsgAddRecord(1,deviceIdentity,strlen(deviceIdentity),returnTLV8);
+                        }
+                        {
+                            /*
+                             * Generate Signature
+                             */
+                            const char salt[] = "Pair-Setup-Accessory-Sign-Salt";
+                            const char info[] = "Pair-Setup-Accessory-Sign-Info";
+                            uint8_t output[150];
+                            hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data, secretKey->length, (const unsigned char*)info, strlen(info), output, 32);
+
+                            bcopy(deviceIdentity, &output[32], strlen(deviceIdentity));
+
+                            char *signature = malloc(64);
+                            ed25519_secret_key edSecret;
+                            bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+                            ed25519_public_key edPubKey;
+                            ed25519_publickey(edSecret, edPubKey);
+
+                            bcopy(edPubKey, &output[32+strlen(deviceIdentity)], 32);
+                            ed25519_sign(output, 64+strlen(deviceIdentity), (const unsigned char*)edSecret, (const unsigned char*)edPubKey, (unsigned char *)signature);
+
+                            returnTLV8->efTlvMsgAddRecord(10,signature,64,returnTLV8);
+                            returnTLV8->efTlvMsgAddRecord(3,edPubKey,32,returnTLV8);
+                        }
+                        const char *tlv8Data;unsigned short tlv8Len;
+                        eTlvMsgGetBinaryData(returnTLV8,&tlv8Data, &tlv8Len);
+
+                        char *tlv8Recorddata = malloc(tlv8Len+16);
+                        int tlv8Recordlength = tlv8Len+16;
+                        bzero(tlv8Recorddata, tlv8Recordlength);
+
+                        {
+
+                            chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
+
+                            chacha20_setup(&ctx, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg06");
+                            char buffer[64], key[64];   bzero(buffer, 64);
+                            chacha20_encrypt(&ctx, (const uint8_t *)buffer, (uint8_t *)key, 64);
+                            chacha20_encrypt(&ctx, (const uint8_t *)tlv8Data, (uint8_t *)tlv8Recorddata, tlv8Len);
+
+                            char verify[16];
+                            memset(verify, 0, 16);
+                            Poly1305_GenKey((const unsigned char *)key, (unsigned char*)tlv8Recorddata, tlv8Len, T_FALSE, verify);
+                            memcpy((unsigned char *)&tlv8Recorddata[tlv8Len], verify, 16);
+                        }
+
+                        psResponse->sTlvMsg.efTlvMsgAddRecord(5,tlv8Recorddata,tlv8Recordlength,&psResponse->sTlvMsg);
+
+                        eTlvMessageRelease(returnTLV8);
+
+                    }
+
+                }
+
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
+                psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
+                if (responseBuffer) {
+                    psResponse->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+                    eHttpResponse(sController.subSocket, &psResponse->sHttp, responseBuffer, responseLen);
+                    eIpMessageRelease(psResponse);
+                }
+
+                FREE(encryptedData);
+
+                return;
             }
                 break;
             default:
@@ -414,7 +547,28 @@ void handlePairSeup()
         } else {
             printf("Why empty response\n");
         }
-    }while(0 < (len = read(sController.subSocket, sController.buffer, 4096)));
+    }while(0 < (sController.len = read(sController.subSocket, sController.buffer, 4096)));
+}
+
+void handlePairVerify() {
+    bool_t end = T_FALSE;
+    char state = E_PAIR_VERIFY_M1_START_REQUEST;
+
+    curved25519_key secretKey;
+    curved25519_key publicKey;
+    curved25519_key controllerPublicKey;
+    curved25519_key sharedKey;
+
+    uint8_t enKey[32];
+
+    printf("Start Pair Verify\n");
+    do {
+        PHKNetworkMessage msg(buffer);
+        tsIpMessage *psIpmsg = psIpMessageFormat(sController.buffer, sController.len);
+        PHKNetworkResponse response = PHKNetworkResponse(200);
+        bcopy(msg.data.dataPtrForIndex(6), &state, 1);
+    }while (!end && (0 < (sController.len = read(sController.subSocket, sController.buffer, 4096))));
+
 }
 void *connectionLoop(void *threadInfo)
 {

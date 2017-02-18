@@ -47,12 +47,9 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, char *psDeviceID, tsHttp
 static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsHttpEntry *psHttpEntry);
 static tePairStatus eTlvTypeFormatAdd(tsTlvType *psTlvData, teTlvValue eTlvValue, uint16 u16ValueLen, uint8 *puValueData);
 static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint16 u16Len, tsTlvType *psTlvType);
-static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
 
-static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len);
-static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len);
-static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len);
-static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len);
+
+
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -1056,7 +1053,7 @@ static tePairStatus eTlvTypeGetObject(teTlvValue eTlvValue, uint8 *pBuffer, uint
     return E_PAIRING_STATUS_OK;
 }
 
-static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify)
+void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
         return;
@@ -1093,7 +1090,7 @@ static void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t l
     poly1305_finish(&verifyContext, (unsigned char*)verify);
 }
 
-static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
+tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDevicePairingID.txt", "w");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
@@ -1104,7 +1101,7 @@ static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
     fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
-static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
+tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDevicePairingID.txt", "r");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
@@ -1115,7 +1112,7 @@ static tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
     fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
-static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
+tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDeviceLTPK.txt", "w");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
@@ -1126,7 +1123,7 @@ static tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
     fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
-static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
+tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
 {
     FILE *fp = fopen("IOSDeviceLTPK.txt", "r");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
