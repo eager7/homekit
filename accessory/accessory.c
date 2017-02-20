@@ -191,3 +191,50 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 
     return E_HAP_OK;
 }
+
+json_object* psGetAccessoryAttData(tsAccessory *psAccessory)
+{
+    CHECK_POINTER(psAccessory, NULL);
+    json_object *psJsonRet = json_object_new_object();
+    json_object *psJsonAccessory = json_object_new_object();
+    json_object *psJsonService = json_object_new_object();
+    json_object *psJsonCharacter = json_object_new_object();
+
+    json_object *psArrayPerms = json_object_new_array();
+    json_object *psArrayAccessories = json_object_new_array();
+    json_object *psArrayServices = json_object_new_array();
+    json_object *psArrayCharacteristics = json_object_new_array();
+    if((NULL == psJsonRet) || (NULL == psArrayPerms) || (NULL == psArrayAccessories) || (NULL == psArrayServices) || (NULL == psArrayCharacteristics))
+    {
+        if(psJsonRet)json_object_put(psJsonRet);
+        if(psArrayPerms)json_object_put(psArrayPerms);
+        if(psArrayAccessories)json_object_put(psArrayAccessories);
+        if(psArrayServices)json_object_put(psArrayServices);
+        if(psArrayCharacteristics)json_object_put(psArrayCharacteristics);
+    }
+    json_object_object_add(psJsonAccessory, "aid", json_object_new_int64((int64_t)psAccessory->u64AIDs));
+    json_object_object_add(psJsonAccessory, "services", psArrayServices);
+
+    json_object_object_add(psJsonService, "type", json_object_new_int(psAccessory->eAccessoryType));
+    json_object_object_add(psJsonService, "iid", json_object_new_int(psAccessory->eInformation.eIID));
+    json_object_object_add(psJsonService, "characteristics", psArrayAccessories);
+
+    json_object_object_add(psJsonCharacter, "type", json_object_new_string(psAccessory->eInformation.sCharacteristics[0].psType));
+    json_object_object_add(psJsonCharacter, "value", json_object_new_string(psAccessory->eInformation.sCharacteristics[0].uValue.psData));
+    switch (psAccessory->eInformation.sCharacteristics[0].eFormat){
+        case E_TYPE_BOOL: json_object_object_add(psJsonCharacter, "format", json_object_new_string("bool")); break;
+        case E_TYPE_INT: json_object_object_add(psJsonCharacter, "format", json_object_new_string("int")); break;
+        case E_TYPE_FLOAT: json_object_object_add(psJsonCharacter, "format", json_object_new_string("float")); break;
+        case E_TYPE_STRING: json_object_object_add(psJsonCharacter, "format", json_object_new_string("string")); break;
+        default: break;
+    }
+    json_object_object_add(psJsonCharacter, "iid", json_object_new_int(psAccessory->eInformation.sCharacteristics[0].eIID));
+    json_object_object_add(psJsonCharacter, "perms", psArrayPerms);
+
+
+    for (int i = 0; i < 5; ++i) {
+
+    }
+    json_object_object_add(psJsonRet, "accessories", psArrayAccessories);
+
+}
