@@ -96,7 +96,8 @@ tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
     CHECK_POINTER(psIpMsg, NULL);
     memset(psIpMsg, 0, sizeof(tsIpMessage));
     eHttpParser(psBuffer, u16Len, &psIpMsg->sHttp);
-    CHECK_RESULT(eTlvMessageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen, &psIpMsg->sTlvMsg), NULL, NULL);
+    CHECK_RESULT(eTlvMessageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen, &psIpMsg->sTlvMsg), E_TLV_STATUS_OK, NULL);
+    INF_vPrintln(1,"fun:%p", psIpMsg->sTlvMsg.psTlvMsgGetRecordData);
     return psIpMsg;
 }
 

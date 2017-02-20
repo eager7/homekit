@@ -24,7 +24,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
+#define DBG_TLV 1
 
 /****************************************************************************/
 /***        Type Definitions                                              ***/
@@ -47,22 +47,27 @@
 static uint8 *pu8TlvGetRecordData(struct _tsTlvMessage *psTlvMessage, teTlvValue eType)
 {
     CHECK_POINTER(psTlvMessage, NULL);
-    for (int i = 0; i < psTlvMessage->u8RecordNum; ++i) {
+    DBG_vPrintln(DBG_TLV, "pu8TlvGetRecordData:%p,%d", psTlvMessage, eType);
+    for (int i = 0; i < TLV_NUM; ++i) {
         if(psTlvMessage->sTlvRecord[i].u8Type == eType){
+            DBG_vPrintln(DBG_TLV, "Get Record:[%d]", i);
             return psTlvMessage->sTlvRecord[i].psValue;
         }
     }
+    ERR_vPrintln(T_TRUE, "Can't Find Tlv Record");
     return NULL;
 }
 
 static uint16 u16TlvMsgGetRecordLength(struct _tsTlvMessage *psTlvMessage, teTlvValue eType)
 {
+    DBG_vPrintln(DBG_TLV, "u16TlvMsgGetRecordLength:%d", eType);
     CHECK_POINTER(psTlvMessage, 0);
-    for (int i = 0; i < psTlvMessage->u8RecordNum; ++i) {
+    for (int i = 0; i < TLV_NUM; ++i) {
         if(psTlvMessage->sTlvRecord[i].u8Type == eType){
             return psTlvMessage->sTlvRecord[i].u16Len;
         }
     }
+    ERR_vPrintln(T_TRUE, "Can't Find Tlv Record");
     return 0;
 }
 static teTlvStatus eTlvRecordFormat(teTlvValue eType, uint8 *puValueData, uint16 u16ValueLen, tsTlv *psTlvRecord)
@@ -110,11 +115,13 @@ teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTl
 {
     CHECK_POINTER(psBuffer, E_TLV_STATUS_ERROR);
     CHECK_POINTER(psTlvMsg, E_TLV_STATUS_ERROR);
+    DBG_vPrintln(DBG_TLV, "eTlvMessageFormat:%p", psTlvMsg);
     uint16 u16OffSet = 0;
     for(int i = 0; (i < TLV_NUM)&&(u16Len > u16OffSet); i++){
-        psTlvMsg->psTlvMsgGetRecordData = pu8TlvGetRecordData;
+        psTlvMsg->psTlvMsgGetRecordData     = pu8TlvGetRecordData;
         psTlvMsg->pu16TlvMsgGetRecordLength = u16TlvMsgGetRecordLength;
-        psTlvMsg->sTlvRecord[i].u8Type = psBuffer[u16OffSet];
+        psTlvMsg->sTlvRecord[i].u8Type      = psBuffer[u16OffSet];
+        INF_vPrintln(1,"f:%p,i:%d,t:%d",pu8TlvGetRecordData, i, psTlvMsg->sTlvRecord[i].u8Type);
         u16OffSet += TLV_TYPE_LEN;
         while(psBuffer[u16OffSet] == TLV_FRAGMENTED){
             psTlvMsg->sTlvRecord[i].u16Len += TLV_FRAGMENTED;
@@ -135,16 +142,25 @@ teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTl
         u16OffSet += TLV_LEN_LEN;
         psTlvMsg->u8RecordNum ++;
     }
+    INF_vPrintln(DBG_TLV, "Num:%d", psTlvMsg->u8RecordNum);
+    for (int k = 0; k < psTlvMsg->u8RecordNum; ++k) {
+        PrintArray(DBG_TLV, psTlvMsg->sTlvRecord[k].psValue, psTlvMsg->sTlvRecord[k].u16Len);
+    }
+
+    return E_TLV_STATUS_OK;
 }
 
 teTlvStatus eTlvMessageAddRecord(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg)
 {
+    DBG_vPrintln(DBG_TLV, "eTlvMessageAddRecord:%d-%d", eType, u16Len);
     CHECK_POINTER(psBuffer, E_TLV_STATUS_ERROR);
     CHECK_POINTER(psTlvMsg, E_TLV_STATUS_ERROR);
     for (int i = 0; i < TLV_NUM; ++i) {
         if(psTlvMsg->sTlvRecord[i].u16Len == 0){
+            DBG_vPrintln(DBG_TLV, "Add Record:%d", i);
             eTlvRecordFormat(eType, psBuffer, u16Len, &psTlvMsg->sTlvRecord[i]);
             psTlvMsg->u8RecordNum ++;
+            break;
         }
     }
     return E_TLV_STATUS_OK;
@@ -160,17 +176,23 @@ teTlvStatus eTlvMessageRelease(tsTlvMessage *psTlvMsg)
 
 teTlvStatus eTlvMsgGetBinaryData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, uint16 *pu16Len)
 {
+    DBG_vPrintln(DBG_TLV, "eTlvMsgGetBinaryData");
+    CHECK_POINTER(psTlvMsg, E_TLV_STATUS_ERROR);
+    CHECK_POINTER(pu16Len, E_TLV_STATUS_ERROR);
+    CHECK_POINTER(psBuffer, E_TLV_STATUS_ERROR);
     uint8 *psRet = NULL;
     uint16 u16Len = 0;
     uint16 offset = 0;
-    for (int i = 0; i < psTlvMsg->u8RecordNum; ++i) {
-        u16Len += psTlvMsg->sTlvRecord[i].u16Len;
-        printf("Len:%d\n", u16Len);
-        uint8 *psTemp = (uint8*)realloc(psRet, u16Len);
-        CHECK_POINTER(psTemp, E_TLV_STATUS_ERROR);
-        psRet = psTemp;
-        memcpy(&psRet[offset], psTlvMsg->sTlvRecord[i].psValue, psTlvMsg->sTlvRecord[i].u16Len);
-        offset += psTlvMsg->sTlvRecord[i].u16Len;
+    for (int i = 0; i < TLV_NUM; ++i) {
+        if(psTlvMsg->sTlvRecord[i].u16Len != 0){
+            u16Len += psTlvMsg->sTlvRecord[i].u16Len;
+            printf("Len:%d\n", u16Len);
+            uint8 *psTemp = (uint8*)realloc(psRet, u16Len);
+            CHECK_POINTER(psTemp, E_TLV_STATUS_ERROR);
+            psRet = psTemp;
+            memcpy(&psRet[offset], psTlvMsg->sTlvRecord[i].psValue, psTlvMsg->sTlvRecord[i].u16Len);
+            offset += psTlvMsg->sTlvRecord[i].u16Len;
+        }
     }
     *pu16Len = u16Len;
     *psBuffer = psRet;

@@ -128,7 +128,7 @@ Failed:
     return Status;
 }
 
-const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const unsigned char curveBasePoint2[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len)
 {
     tePairStatus Status = E_PAIRING_STATUS_ERROR;
@@ -803,7 +803,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, char *psDeviceID, tsHttp
     curve25519_donna(auSharedSecret, auSecretKey, auIOSDeviceLTPK);
     //TODO:Construct AccessoryInfo
     uint8 auAccessoryInfo[100] = {0};
-    curve25519_donna(auPublicKey, auSecretKey, curveBasePoint);
+    curve25519_donna(auPublicKey, auSecretKey, curveBasePoint2);
     memcpy(auAccessoryInfo, auPublicKey, sizeof(auPublicKey));
     memcpy(&auAccessoryInfo[sizeof(auPublicKey)], psDeviceID, strlen(psDeviceID));
     memcpy(&auAccessoryInfo[sizeof(auPublicKey)+strlen(psDeviceID)], auIOSDeviceLTPK, sizeof(auIOSDeviceLTPK));
@@ -940,7 +940,7 @@ static inline unsigned long long bswap_64(unsigned long long x) {
     return x;//(((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
 //    (bswap_32(x>>32));
 }
-int is_big_endian(void)
+static int is_big_endian(void)
 {
     union {
         uint32_t i;
@@ -949,8 +949,7 @@ int is_big_endian(void)
 
     return e.c[0];
 }
-unsigned long long numberOfMsgRec = 0;
-unsigned long long numberOfMsgSend = 0;
+unsigned long long numberOfMsgRec2 = 0;
 tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen)
 {
     CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
@@ -960,13 +959,13 @@ tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen)
 
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
-    printf("send: %llx\n", numberOfMsgRec);
-    if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
-    printf("send: %llx\n", numberOfMsgRec);
-    chacha20_setup(&ctx, controllerToAccessoryKey, 32, (uint8_t *)&numberOfMsgRec);
-    if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
-    numberOfMsgRec++;
-    printf("send: %llx\n", numberOfMsgRec);
+    printf("send: %llx\n", numberOfMsgRec2);
+    if (!is_big_endian()) numberOfMsgRec2 = bswap_64(numberOfMsgRec2);
+    printf("send: %llx\n", numberOfMsgRec2);
+    chacha20_setup(&ctx, controllerToAccessoryKey, 32, (uint8_t *)&numberOfMsgRec2);
+    if (!is_big_endian()) numberOfMsgRec2 = bswap_64(numberOfMsgRec2);
+    numberOfMsgRec2++;
+    printf("send: %llx\n", numberOfMsgRec2);
 
     char temp[64] = {0};
     char temp2[64] = {0};
@@ -1092,6 +1091,7 @@ void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, boo
 
 tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 {
+    CHECK_POINTER(buf, E_PAIRING_STATUS_ERROR);
     FILE *fp = fopen("IOSDevicePairingID.txt", "w");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fwrite(buf,1,len,fp)){
@@ -1103,6 +1103,7 @@ tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 }
 tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
 {
+    CHECK_POINTER(buf, E_PAIRING_STATUS_ERROR);
     FILE *fp = fopen("IOSDevicePairingID.txt", "r");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fread(buf,1,len,fp)){
@@ -1114,6 +1115,7 @@ tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
 }
 tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
 {
+    CHECK_POINTER(buf, E_PAIRING_STATUS_ERROR);
     FILE *fp = fopen("IOSDeviceLTPK.txt", "w");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fwrite(buf,1,len,fp)){
@@ -1125,6 +1127,7 @@ tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
 }
 tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
 {
+    CHECK_POINTER(buf, E_PAIRING_STATUS_ERROR);
     FILE *fp = fopen("IOSDeviceLTPK.txt", "r");
     CHECK_POINTER(fp, E_PAIRING_STATUS_ERROR);
     if(len != fread(buf,1,len,fp)){

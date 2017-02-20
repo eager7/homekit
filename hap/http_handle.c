@@ -123,6 +123,7 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     index += strlen(auHttpLen);
     memcpy(&temp[index], "\r\n\r\n", sizeof("\r\n\r\n") - 1);
     index += sizeof("\r\n\r\n") - 1;
+    INF_vPrintln(DBG_HTTP, "%s", temp);
     memcpy(&temp[index], pBuffer, u16Length);
     index += u16Length;
 

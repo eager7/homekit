@@ -65,7 +65,12 @@ const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x
 const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
 const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #define devicePassword "523-12-643" //Password
-#define deviceIdentity "12:10:34:23:51:12"  //ID
+#define deviceIdentity "33:10:34:23:51:12"  //ID
+uint8_t controllerToAccessoryKey[32];
+uint8_t accessoryToControllerKey[32];
+unsigned long long numberOfMsgRec = 0;
+unsigned long long numberOfMsgSend = 0;
+int currentConfigurationNum = 1;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -86,11 +91,11 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
 
     memset(&sBonjour, 0, sizeof(sBonjour));
     memset(&sController, 0, sizeof(tsController));
-    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
+    sController.subSocket = -1;
 
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
-    sBonjour.u16Port = htons(getSocketPortNumberV4(sBonjour.iSocketFd));
+    sBonjour.u16Port = 0;
     sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
     sBonjour.pcSetupCode = psSetupCode;
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
@@ -104,7 +109,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
 
-
+    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
     eTextRecordFormat(&sBonjour);
     DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
     DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0,
@@ -119,29 +124,19 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
         return E_BONJOUR_STATUS_ERROR;
     }
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
-    //while(1)
-    {
+#if 1
+    do{
+        DBG_vPrintln(DBG_BONJOUR, "Waiting Controller Connect");
         int subSocket = accept(sBonjour.iSocketFd, 0, NULL);
-        int index = -1;
-        {
-            if (sController.subSocket == -1) {
-
-                sController.subSocket = subSocket;
-
-                pthread_create(&sController.thread, NULL, connectionLoop, &sController);
-                //CHECK_RESULT(eThreadStart(connectionLoop, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
-
-            }
-        }
-
-        if (index < 0) close(subSocket);
-    }
-
-
-
-    //sBonjour.sThread.pvThreadData = psProfile;
-    //CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
-
+        DBG_vPrintln(DBG_BONJOUR, "Controller:%d Connected", subSocket);
+        sController.subSocket = subSocket;
+        pthread_create(&sController.thread, NULL, connectionLoop, &sController);
+    }while(1);
+#else
+    sBonjour.sThread.pvThreadData = psProfile;
+    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
+    while(1){sleep(1);}
+#endif
     return E_BONJOUR_STATUS_OK;
 }
 
@@ -186,84 +181,6 @@ static teBonjStatus eBonjourSocketInit(void)
     return E_BONJOUR_STATUS_OK;
 }
 
-static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
-{
-    tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
-    //tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
-    psThreadInfo->eState = E_THREAD_RUNNING;
-
-    fd_set fdSelect, fdTemp;
-    FD_ZERO(&fdSelect);//Init fd
-    FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket fd into select fd
-    int iListenFD = 0;
-    if(sBonjour.iSocketFd > iListenFD) {
-        iListenFD = sBonjour.iSocketFd;
-    }
-
-    int iSockClient;
-    static int iNumberClient = 0;
-    while(psThreadInfo->eState == E_THREAD_RUNNING){
-        fdTemp = fdSelect;  /* use temp value, because this value will be clear */
-        DBG_vPrintln(DBG_BONJOUR, "select \n");
-        int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
-        switch(iResult) {
-            case 0:
-                DBG_vPrintln(DBG_BONJOUR, "receive message time out \n");
-                break;
-
-            case -1:
-                WAR_vPrintln(T_TRUE, "receive message error:%s \n", strerror(errno));
-                break;
-
-            default: {
-                if( FD_ISSET(sBonjour.iSocketFd, &fdTemp) ){//there is client accept
-                    DBG_vPrintln(DBG_BONJOUR, "A client connecting... \n");
-                    if(iNumberClient >= MAX_NUMBER_CLIENT){
-                        DBG_vPrintln(DBG_BONJOUR, "Client already connected full, don't allow to connected\n");
-                        FD_CLR(sBonjour.iSocketFd, &fdSelect);//delete this Server from select set
-                        break;
-                    } else {
-                        struct sockaddr_in client_addr;
-                        memset(&client_addr, 0, sizeof(client_addr));
-                        socklen_t client_len = sizeof(client_addr);
-                        iSockClient = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
-                        if(-1 == iSockClient){
-                            ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
-                            break;
-                        } else {
-                            DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
-                            FD_SET(iSockClient, &fdSelect);
-                            if(iSockClient > iListenFD){
-                                iListenFD = iSockClient;
-                            }
-                            iNumberClient ++;
-                        }
-                    }
-                } else {    /* Client Communication */
-                    if(FD_ISSET(iSockClient, &fdTemp)){
-                        char buf[MABF] = {0};
-                        ssize_t len = recv(iSockClient, buf, sizeof(buf), 0);
-                        if(0 == len){
-                            ERR_vPrintln(T_TRUE, "Close Client\n");
-                            close(iSockClient);
-                            FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
-                            FD_CLR(iSockClient, &fdSelect);//delete this client from select set
-                            iNumberClient --;
-                        } else {
-                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
-                            eHapHandlePackage(buf, (int)len, iSockClient, &sBonjour);
-                        }
-                    }
-                }
-            }   break;
-        }
-    }
-    DBG_vPrintln(DBG_BONJOUR, "pvBonjourThreadHandle Exit");
-    vThreadFinish(psThreadInfo);
-
-    return NULL;
-}
-
 static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
 {
     TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
@@ -284,8 +201,10 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
             (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
-    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
+    //TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    //memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(deviceIdentity), deviceIdentity);
+    memcpy(psBonjour->sBonjourText.psDeviceID, deviceIdentity, strlen(deviceIdentity));
     INF_vPrintln(DBG_BONJOUR, "Device ID:%s", psBonjour->sBonjourText.psDeviceID);
 
     char temp_md[MIBF] = {0};
@@ -329,7 +248,6 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags,
 }
 
 
-
 void handlePairSeup()
 {
     tsTlv stateRecord;memset(&stateRecord,0,sizeof(tsTlv));
@@ -346,14 +264,16 @@ void handlePairSeup()
         printf("Msg:%s", sController.buffer);
         tsIpMessage *psIpMsg = psIpMessageFormat(sController.buffer, sController.len);
         tsIpMessage *psResponse = psIpResponseNew();
-        memcpy(&psResponse->sHttp, &psIpMsg->sHttp, sizeof(tsHttpEntry));
         //tsTlvType
-        bcopy(psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 6), &state, 1);
+        if(psIpMsg->sTlvMsg.psTlvMsgGetRecordData == NULL){ERR_vPrintln(1,"Null");return;}
+        uint8 *pstate = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 6);
+        if(pstate == NULL){ERR_vPrintln(1,"Null");return;}
+        bcopy(pstate, &state, 1);
         //state = (tePairSetup)psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_STATE);
         value_rep[0] = state+1;
         switch (state) {
             case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
-                printf("%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
+                INF_vPrintln(DBG_BONJOUR, "%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
                 unsigned char saltChar[16];
                 for (int i = 0; i < 16; i++) {
                     saltChar[i] = rand();
@@ -369,7 +289,7 @@ void handlePairSeup()
             }
                 break;
             case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
-                printf("%s, %d: State_M3_SRPVerifyRequest\n", __func__, __LINE__);
+                INF_vPrintln(DBG_BONJOUR, "%s, %d: State_M3_SRPVerifyRequest\n", __func__, __LINE__);
                 const char *keyStr = 0;
                 int keyLen = 0;
                 const char *proofStr;
@@ -403,7 +323,7 @@ void handlePairSeup()
             }
                 break;
             case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
-                printf("%s, %d: State_M5_ExchangeRequest\n", __func__, __LINE__);
+                INF_vPrintln(DBG_BONJOUR, "%s, %d: State_M5_ExchangeRequest\n", __func__, __LINE__);
                 const char *encryptedPackage = NULL;int packageLen = 0;
                 encryptedPackage = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 5);
                 packageLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, 5);
@@ -434,11 +354,12 @@ void handlePairSeup()
                     */
                     tsTlvMessage subTLV8; memset(&subTLV8, 0, sizeof(subTLV8));
                     eTlvMessageFormat(decryptedData, packageLen-16, &subTLV8);
-                    char *controllerIdentifier = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 5);
-                    char *controllerPublicKey = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 3);
-                    char *controllerSignature = subTLV8.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 10);
+                    char *controllerIdentifier = subTLV8.psTlvMsgGetRecordData(&subTLV8, 1);
+                    char *controllerPublicKey = subTLV8.psTlvMsgGetRecordData(&subTLV8, 3);
+                    char *controllerSignature = subTLV8.psTlvMsgGetRecordData(&subTLV8, 10);
                     char controllerHash[100];
 
+                    DBG_vPrintln(DBG_BONJOUR,"save key");
                     eIOSDevicePairingIDSave(controllerIdentifier, 36);
                     eIOSDeviceLTPKSave(controllerPublicKey, 32);
 
@@ -453,6 +374,7 @@ void handlePairSeup()
                     bcopy(controllerIdentifier, &controllerHash[32], 36);
                     bcopy(controllerPublicKey, &controllerHash[68], 32);
 
+                    DBG_vPrintln(DBG_BONJOUR,"ed25519_sign_open");
                     int ed25519_err = ed25519_sign_open((const unsigned char*)controllerHash, 100, (const unsigned char*)controllerPublicKey, (const unsigned char*)controllerSignature);
                     eTlvMessageRelease(&subTLV8);
                     if (ed25519_err) {
@@ -460,6 +382,7 @@ void handlePairSeup()
                         return;
                     }
                     else {
+                        DBG_vPrintln(DBG_BONJOUR, "ed25519_sign_open success");
                         tsTlvMessage *returnTLV8 =  psTlvMessageNew();
 
                         {
@@ -521,8 +444,8 @@ void handlePairSeup()
                 psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
                 psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
                 if (responseBuffer) {
-                    psResponse->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-                    eHttpResponse(sController.subSocket, &psResponse->sHttp, responseBuffer, responseLen);
+                    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+                    eHttpResponse(sController.subSocket, &psIpMsg->sHttp, responseBuffer, responseLen);
                     eIpMessageRelease(psResponse);
                 }
 
@@ -539,9 +462,9 @@ void handlePairSeup()
 
         if (responseBuffer) {
             printf("%s, %d, responseBuffer = %s, responseLen = %d\n", __func__, __LINE__, responseBuffer, responseLen);
-            PrintArray(1, responseBuffer, responseLen);
-            psResponse->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-            eHttpResponse(sController.subSocket, &psResponse->sHttp, responseBuffer, responseLen);
+            //PrintArray(1, responseBuffer, responseLen);
+            psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+            eHttpResponse(sController.subSocket, &psIpMsg->sHttp, responseBuffer, responseLen);
             eIpMessageRelease(psResponse);
             eIpMessageRelease(psIpMsg);
             FREE(responseBuffer);
@@ -563,18 +486,16 @@ void handlePairVerify() {
 
     uint8_t enKey[32];
     uint8 value_rep[1] = {0};
-
+    uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     printf("Start Pair Verify\n");
     do {
         tsIpMessage *psIpMsg = psIpMessageFormat(sController.buffer, sController.len);
-
         tsIpMessage *psResponse = psIpResponseNew();
-        memcpy(&psResponse->sHttp, &psIpMsg->sHttp, sizeof(tsHttpEntry));
         bcopy(psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 6), &state, 1);
         value_rep[0] = state+1;
         switch (state) {
             case E_PAIR_VERIFY_M1_START_REQUEST:{
-                printf("Pair Verify M1\n");
+                NOT_vPrintln(DBG_BONJOUR, "Pair Verify M1\n");
                 bcopy(psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 3), controllerPublicKey, 32);
                 for (short i = 0; i < sizeof(secretKey); i++) {
                     secretKey[i] = rand();
@@ -639,7 +560,7 @@ void handlePairVerify() {
                 FREE(polyKey);
             }break;
             case E_PAIR_VERIFY_M3_FINISHED_REQUEST:{
-                printf("Pair Verify M3\n");
+                NOT_vPrintln(DBG_BONJOUR, "Pair Verify M3\n");
 
                 char *encryptedData = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg,5);
                 short packageLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg,5);
@@ -660,29 +581,39 @@ void handlePairVerify() {
                     tsTlvMessage data;memset(&data,0,sizeof(data));
                     eTlvMessageFormat(decryptData, packageLen-16,&data);
 
-                    PHKKeyRecord rec = getControllerKey(data.dataPtrForIndex(1));
+                    uint8 *controllerID = data.psTlvMsgGetRecordData(&data,1);
+                    uint8 key[36] = {0}; uint8 recpublicKey[32] = {0};
+                    eIOSDevicePairingIDRead(key, 36);
+                    if(bcmp(key, controllerID, 36) == 0){
+                        eIOSDeviceLTPKRead(recpublicKey, 32);
+                    } else{
+                        ERR_vPrintln(T_TRUE, "controllerID verify failed");
+                        return;
+                    }
 
                     char tempMsg[100];
                     bcopy(controllerPublicKey, tempMsg, 32);
-                    bcopy(data.dataPtrForIndex(1), &tempMsg[32], 36);
+                    bcopy(controllerID, &tempMsg[32], 36);
                     bcopy(publicKey, &tempMsg[68], 32);
 
-                    int err = ed25519_sign_open((const unsigned char *)tempMsg, 100, (const unsigned char *)rec.publicKey, (const unsigned char *)data.dataPtrForIndex(10));
+                    int err = ed25519_sign_open((const unsigned char *)tempMsg, 100, (const unsigned char *)recpublicKey, (const unsigned char *)data.psTlvMsgGetRecordData(&data,10));
 
                     char *repBuffer = 0;  int repLen = 0;
                     if (err == 0) {
-                        end = true;
+                        end = T_TRUE;
 
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Read-Encryption-Key", 27, accessoryToControllerKey, 32);
                         hkdf((uint8_t *)"Control-Salt", 12, sharedKey, 32, (uint8_t *)"Control-Write-Encryption-Key", 28, controllerToAccessoryKey, 32);
-
-#if HomeKitLog == 1
                         printf("Verify success\n");
-#endif
-
                     } else {
+                        psResponse->sTlvMsg.efTlvMsgAddRecord(7,value_err,sizeof(value_err),&psResponse->sTlvMsg);
+                        printf("Verify failed\n");
 
                     }
+                    FREE(decryptData);
+                } else{
+                    ERR_vPrintln(T_TRUE, "Error verify");
+                }
             }break;
         }
 
@@ -691,8 +622,8 @@ void handlePairVerify() {
         psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&repBuffer,&repLen);
 
         if (repBuffer) {
-            psResponse->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-            eHttpResponse(sController.subSocket, &psResponse->sHttp, repBuffer, repLen);
+            psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+            eHttpResponse(sController.subSocket, &psIpMsg->sHttp, repBuffer, repLen);
             eIpMessageRelease(psResponse);
             eIpMessageRelease(psIpMsg);
             FREE(repBuffer);
@@ -700,37 +631,139 @@ void handlePairVerify() {
     }while (!end && (0 < (sController.len = read(sController.subSocket, sController.buffer, 4096))));
 
 }
+
+void updateConfiguration() {
+    sBonjour.sBonjourText.u64CurrentCfgNumber++;
+    eTextRecordFormat(&sBonjour);
+    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
+    DNSServiceErrorType  ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, TXTRecordGetLength(&sBonjour.txtRecord), TXTRecordGetBytesPtr(&sBonjour.txtRecord), 0);
+    TXTRecordDeallocate(&sBonjour.txtRecord);
+    if(ret){
+        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
+        return ;
+    }
+}
+int is_big_endian(void)
+{
+    union {
+        uint32_t i;
+        char c[4];
+    } e = { 0x01000000 };
+
+    return e.c[0];
+}
+static inline unsigned short bswap_16(unsigned short x) {
+    return (x>>8) | (x<<8);
+}
+
+static inline unsigned int bswap_32(unsigned int x) {
+    return (bswap_16(x&0xffff)<<16) | (bswap_16(x>>16));
+}
+static inline unsigned long long bswap_64(unsigned long long x) {
+    return x;//(((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
+//    (bswap_32(x>>32));
+}
+void handleAccessoryRequest() {
+    char *decryptData = malloc(2048);
+    int len;
+    printf("Successfully Connect\n");
+    numberOfMsgRec = 0;
+    numberOfMsgSend = 0;
+    do {
+        bzero(sController.buffer, 4096);
+        len = read(sController.subSocket, sController.buffer, 4096);
+        if (len < 0)break;
+        //FIXME make sure buffer len > (2 + msgLen + 16)??
+        uint16_t msgLen = (uint8_t)sController.buffer[1]*256+(uint8_t)*sController.buffer;
+
+        chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+
+        printf("send: %llx\n", numberOfMsgRec);
+        if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
+        printf("send: %llx\n", numberOfMsgRec);
+        chacha20_setup(&chacha20, (const uint8_t *)controllerToAccessoryKey, 32, (uint8_t *)&numberOfMsgRec);
+        if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
+        numberOfMsgRec++;
+        printf("send: %llx\n", numberOfMsgRec);
+
+        char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+        chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+
+        //Ploy1305 key
+        char verify[16];    bzero(verify, 16);
+        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)sController.buffer, msgLen, T_FALSE, verify);
+
+        bzero(decryptData, 2048);
+        chacha20_encrypt(&chacha20, (const uint8_t *)&sController.buffer[2], (uint8_t *)decryptData, msgLen);
+
+        printf("Request: %s\nPacketLen: %d\n, MessageLen: %d\n", decryptData, len, strlen(decryptData));
+
+        if(len >= (2 + msgLen + 16)
+           && memcmp((void *)verify, (void *)&sController.buffer[2 + msgLen], 16) == 0) {
+            printf("Verify successfully!\n");
+        }
+        else {
+            continue;
+        }
+        //Output return
+        char *resultData = 0; unsigned int resultLen = 0;
+        //handleAccessory(decryptData, msgLen, &resultData, &resultLen, this);
+
+        //18 = 2(resultLen) + 16(poly1305 verify key)
+        char *reply = malloc(resultLen+18);
+        reply[0] = resultLen%256;
+        reply[1] = (resultLen-(uint8_t)reply[0])/256;
+
+        if (!is_big_endian()) numberOfMsgSend = bswap_64(numberOfMsgSend);
+        chacha20_setup(&chacha20, (const uint8_t *)accessoryToControllerKey, 32, (uint8_t *)&numberOfMsgSend);
+        if (!is_big_endian()) numberOfMsgSend = bswap_64(numberOfMsgSend);
+        numberOfMsgSend++;
+
+        chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+        chacha20_encrypt(&chacha20, (const uint8_t*)resultData, (uint8_t*)&reply[2], resultLen);
+
+        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)reply, resultLen, T_FALSE, verify);
+        memcpy((unsigned char*)&reply[resultLen+2], verify, 16);
+        write(sController.subSocket, reply, resultLen+18);
+        FREE(reply);
+        FREE(resultData);
+    }while (len > 0);
+    FREE(decryptData);
+}
+
 void *connectionLoop(void *threadInfo)
 {
     tsController *info = (tsController *)threadInfo;
-    int subSocket = info->subSocket;    ssize_t len;
+    int subSocket = info->subSocket;
+    ssize_t len = 0;
     if (subSocket >= 0) {
         printf("Start Connect: %d\n", subSocket);
         do {
+            memset(info->buffer, 0, 4096);
             len = read(subSocket, info->buffer, 4096);
 
             printf("Return len %d for socket %d\n", len, subSocket);
-            printf("Message: %s\n", info->buffer);
-
-            tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
-            eHttpParser(info->buffer, len, &sHttp);
+            //printf("Message: %s\n", info->buffer);
 
             if (len > 0) {
+                tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
+                eHttpParser(info->buffer, len, &sHttp);
                 sController.len = len;
-                if (!strcmp(sHttp.acContentData, "pair-setup")){
+                if (strstr(sHttp.acDirectory, "pair-setup")){
                     /*
                      * The process of pair-setup
                      */
+                    DBG_vPrintln(DBG_BONJOUR, "Pair Setup");
                     handlePairSeup();
-                    //updateConfiguration();
+                    updateConfiguration();
                 }
-                else if (!strcmp(sHttp.acContentData, "pair-verify")){
+                else if (strstr(sHttp.acDirectory, "pair-verify")){
                     DBG_vPrintln(1, "//////////pair-verify");
-                    //handlePairVerify();
+                    handlePairVerify();
                     //When pair-verify done, we handle Accessory Request
-                    //handleAccessoryRequest();
+                    handleAccessoryRequest();
                 }
-                else if (!strcmp(sHttp.acContentData, "identify")){
+                else if (strstr(sHttp.acDirectory, "identify")){
                     close(subSocket);
                 }
             }
@@ -738,7 +771,108 @@ void *connectionLoop(void *threadInfo)
         } while (len > 0);
         close(subSocket);
         printf("Stop Connect: %d\n", subSocket);
-        info->subSocket = -1;
+        //info->subSocket = -1;
     }
+    return NULL;
+}
+
+
+static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
+{
+    tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
+    //tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
+    psThreadInfo->eState = E_THREAD_RUNNING;
+
+    fd_set fdSelect, fdTemp;
+    FD_ZERO(&fdSelect);//Init fd
+    FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket fd into select fd
+    int iListenFD = 0;
+    if(sBonjour.iSocketFd > iListenFD) {
+        iListenFD = sBonjour.iSocketFd;
+    }
+
+    //int iSockClient;
+    static int iNumberClient = 0;
+    while(psThreadInfo->eState == E_THREAD_RUNNING){
+        fdTemp = fdSelect;  /* use temp value, because this value will be clear */
+        DBG_vPrintln(DBG_BONJOUR, "select \n");
+        int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
+        switch(iResult) {
+            case 0:
+                DBG_vPrintln(DBG_BONJOUR, "receive message time out \n");
+                break;
+
+            case -1:
+                WAR_vPrintln(T_TRUE, "receive message error:%s \n", strerror(errno));
+                break;
+
+            default: {
+                if( FD_ISSET(sBonjour.iSocketFd, &fdTemp) ){//there is client accept
+                    DBG_vPrintln(DBG_BONJOUR, "A client connecting... \n");
+                    if(iNumberClient >= MAX_NUMBER_CLIENT){
+                        DBG_vPrintln(DBG_BONJOUR, "Client already connected full, don't allow to connected\n");
+                        FD_CLR(sBonjour.iSocketFd, &fdSelect);//delete this Server from select set
+                        break;
+                    } else {
+                        struct sockaddr_in client_addr;
+                        memset(&client_addr, 0, sizeof(client_addr));
+                        socklen_t client_len = sizeof(client_addr);
+                        sController.subSocket = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+                        if(-1 == sController.subSocket){
+                            ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
+                            break;
+                        } else {
+                            DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
+                            FD_SET(sController.subSocket, &fdSelect);
+                            if(sController.subSocket > iListenFD){
+                                iListenFD = sController.subSocket;
+                            }
+                            iNumberClient ++;
+                        }
+                    }
+                } else {    /* Client Communication */
+                    if(FD_ISSET(sController.subSocket, &fdTemp)){
+                        char buf[MABF] = {0};
+                        ssize_t len = recv(sController.subSocket, sController.buffer, sizeof(buf), 0);
+                        if(0 == len){
+                            ERR_vPrintln(T_TRUE, "Close Client:%d\n", sController.subSocket);
+                            close(sController.subSocket);
+                            FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                            FD_CLR(sController.subSocket, &fdSelect);//delete this client from select set
+                            iNumberClient --;
+                        } else {
+                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
+                            //eHapHandlePackage(buf, (int)len, iSockClient, &sBonjour);
+                            {
+                                tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
+                                eHttpParser(sController.buffer, len, &sHttp);
+                                sController.len = len;
+                                if (strstr(sHttp.acDirectory, "pair-setup")){
+                                    /*
+                                     * The process of pair-setup
+                                     */
+                                    DBG_vPrintln(DBG_BONJOUR, "Pair Setup");
+                                    handlePairSeup();
+                                    updateConfiguration();
+                                }
+                                else if (strstr(sHttp.acDirectory, "pair-verify")){
+                                    DBG_vPrintln(1, "//////////pair-verify");
+                                    handlePairVerify();
+                                    //When pair-verify done, we handle Accessory Request
+                                    //handleAccessoryRequest();
+                                }
+                                else if (strstr(sHttp.acDirectory, "identify")){
+                                    //close(sC);
+                                }
+                            }
+                        }
+                    }
+                }
+            }   break;
+        }
+    }
+    DBG_vPrintln(DBG_BONJOUR, "pvBonjourThreadHandle Exit");
+    vThreadFinish(psThreadInfo);
+
     return NULL;
 }
