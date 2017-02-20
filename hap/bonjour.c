@@ -71,6 +71,9 @@ uint8_t accessoryToControllerKey[32];
 unsigned long long numberOfMsgRec = 0;
 unsigned long long numberOfMsgSend = 0;
 int currentConfigurationNum = 1;
+
+const char hapJsonType[] = "application/hap+json";
+const char pairingTlv8Type[] = "application/pairing+tlv8";
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -663,6 +666,143 @@ static inline unsigned long long bswap_64(unsigned long long x) {
     return x;//(((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
 //    (bswap_32(x>>32));
 }
+
+void handleAccessory(const char *request, unsigned int requestLen, char **reply, unsigned int *replyLen, tsController *sender) {
+    printf("Receive request: %s\n", request);
+    int index = 5;
+    char method[5];
+    {
+        //Read method
+        method[4] = 0;
+        bcopy(request, method, 4);
+        if (method[3] == ' ') {
+            method[3] = 0;
+            index = 4;
+        }
+    }
+
+    char path[1024];
+    int i;
+    for (i = 0; i < 1024 && request[index] != ' '; i++, index++) {
+        path[i] = request[index];
+    }
+    path[i] = 0;
+
+    printf("Path: %s\n", path);
+
+
+    const char *dataPtr = request;
+    while (1) {
+        dataPtr = &dataPtr[1];
+        if (dataPtr[0] == '\r' && dataPtr[1] == '\n' && dataPtr[2] == '\r' && dataPtr[3] == '\n') break;
+    }
+
+    dataPtr += 4;
+
+    char *replyData = NULL;  unsigned short replyDataLen = 0;
+
+    int statusCode;
+
+    const char *protocol = "HTTP/1.1";
+    const char *returnType = hapJsonType;
+
+    if (strcmp(path, "/accessories") == 0) {
+        //Publish the characterists of the accessories
+
+        printf("Ask for accessories info\n");
+
+        //statusCode = 200;
+        //string desc = AccessorySet::getInstance().describe();
+        //replyDataLen = desc.length();
+       // replyData = malloc(replyDataLen+1);
+       // bcopy(desc.c_str(), replyData, replyDataLen);
+       // replyData[replyDataLen] = 0;
+    }
+    else if (strncmp(path, "/characteristics", 16) == 0){
+        printf("Characteristics\n");
+        if (strncmp(method, "GET", 3) == 0) {
+
+        } else if (strncmp(method, "PUT", 3) == 0){
+            //Read characteristics
+            int aid = 0;    int iid = 0;
+
+            char indexBuffer[1000];
+            sscanf(path, "/characteristics?id=%[^\n]", indexBuffer);
+            printf("Get characteristics %s with len %d\n", indexBuffer, strlen(indexBuffer));
+
+            statusCode = 404;
+#if 0
+            string result = "[";
+            while (strlen(indexBuffer) > 0) {
+
+                printf("Get characteristics %s with len %d\n", indexBuffer, strlen(indexBuffer));
+
+                char temp[1000];
+                //Initial the temp
+                temp[0] = 0;
+                sscanf(indexBuffer, "%d.%d%[^\n]", &aid, &iid, temp);
+                printf("Get temp %s with len %d\n", temp, strlen(temp));
+                strncpy(indexBuffer, temp, 1000);
+                printf("Get characteristics %s with len %d\n", indexBuffer, strlen(indexBuffer));
+                //Trim comma
+                if (indexBuffer[0] == ',') {
+                    indexBuffer[0] = '0';
+                }
+
+                Accessory *a = AccessorySet::getInstance().accessoryAtIndex(aid);
+                if (a != NULL) {
+                    characteristics *c = a->characteristicsAtIndex(iid);
+                    if (c != NULL) {
+#if HomeKitLog == 1
+                        printf("Ask for one characteristics: %d . %d\n", aid, iid);
+#endif
+                        char c1[3], c2[3];
+                        sprintf(c1, "%d", aid);
+                        sprintf(c2, "%d", iid);
+                        string s[3] = {string(c1), string(c2), c->value()};
+                        string k[3] = {"aid", "iid", "value"};
+                        if (result.length() != 1) {
+                            result += ",";
+                        }
+
+                        string _result = dictionaryWrap(k, s, 3);
+                        result += _result;
+
+                    }
+
+                }
+            }
+#endif
+        }else {
+            return;
+        }
+    }else {
+        //Error
+        printf("Ask for something I don't know\n");
+        printf("%s\n", request);
+        printf("%s", path);
+        statusCode = 404;
+    }
+    //Calculate the length of header
+    char * tmp = (char*)malloc(256);
+    bzero(tmp, 256);
+    int len = snprintf(tmp, 256, "%s %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", protocol, statusCode, returnType, replyDataLen);
+    FREE(tmp);
+
+    //replyLen should omit the '\0'.
+    (*replyLen) = len+replyDataLen;
+    //reply should add '\0', or the printf is incorrect
+    *reply = (char*)malloc(*replyLen + 1);
+    bzero(*reply, *replyLen + 1);
+    snprintf(*reply, len + 1, "%s %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", protocol, statusCode, returnType, replyDataLen);
+
+    if (replyData) {
+        bcopy(replyData, &(*reply)[len], replyDataLen);
+        FREE(replyData);
+    }
+
+    printf("Reply: %s\n", *reply);
+}
 void handleAccessoryRequest() {
     char *decryptData = malloc(2048);
     int len;
@@ -707,7 +847,7 @@ void handleAccessoryRequest() {
         }
         //Output return
         char *resultData = 0; unsigned int resultLen = 0;
-        //handleAccessory(decryptData, msgLen, &resultData, &resultLen, this);
+        handleAccessory(decryptData, msgLen, &resultData, &resultLen, &sController);
 
         //18 = 2(resultLen) + 16(poly1305 verify key)
         char *reply = malloc(resultLen+18);
@@ -775,7 +915,6 @@ void *connectionLoop(void *threadInfo)
     }
     return NULL;
 }
-
 
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
