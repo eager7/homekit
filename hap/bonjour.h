@@ -85,12 +85,12 @@ typedef struct {
 typedef struct {
     char *psServiceName;            /* homekit bonjour server name, _hap._tcp. */
     char *psHostName;               /* accessory host name, can be NULL */
-    char *psInstanceName;           /* same as accessory name */
+    //char *psInstanceName;           /* same as accessory name */
     char *pcSetupCode;              /* Setup Code */
 
     int  iSocketFd;                 /* Accessory server socket */
     uint16 u16Port;                 /* Accessory server socket port */
-    tsThread sThread;               /* server socket's thread */
+    tsThread sBonjourThread;               /* server socket's thread */
     DNSServiceRef psDnsRef;         /* mDNS pointer */
     TXTRecordRef  txtRecord;        /* txt record */
     tsBonjourText sBonjourText;     /* txt record struct */
@@ -111,7 +111,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psName, char *psModel);
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psModel);
 teBonjStatus eBonjourFinished(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

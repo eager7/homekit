@@ -214,6 +214,7 @@ typedef struct _tsService{
 
 typedef struct{
     uint64                  u64AIDs;        //Accessory Instance Id, json-aid
+    uint64                  u64DeviceID;    //The unique id of the accessory
     teAccessoryType         eAccessoryType;
     //tsAccessoryInformation  eInformation;
     uint8                   u8NumServices;
