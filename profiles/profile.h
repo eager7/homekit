@@ -45,7 +45,7 @@ typedef enum {
 
 typedef teProfileStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
 typedef teProfileStatus (*fpeCallbackFunc)(teProfileCmd eProfileCmd);
-typedef uint8* (*fpsGetAccessoryAttData)(tsAccessory *psAccessory);
+typedef json_object* (*fpsGetAccessoryJsonInfo)(tsAccessory *psAccessory);
 
 typedef struct {
     teProfileCmd eProfileCmd;
@@ -55,7 +55,7 @@ typedef struct {
 typedef struct {
     tsAccessory     sAccessory;
     fpeCallbackFunc peCallbackFunc;
-    fpsGetAccessoryAttData psGetAccessoryAttData;
+    fpsGetAccessoryJsonInfo psGetAccessoryJsonInfo;
 } tsProfile;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/

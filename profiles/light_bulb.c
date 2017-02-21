@@ -60,6 +60,7 @@ teProfileStatus eLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *ps
     memset(&sLightBulb, 0, sizeof(sLightBulb));
     eAccessoryInit(&sLightBulb.sAccessory, psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
     sLightBulb.peCallbackFunc = eLightBulbHandle;
+    sLightBulb.psGetAccessoryJsonInfo = psGetAccessoryInfoJson;
 
     return E_PROFILE_OK;
 }

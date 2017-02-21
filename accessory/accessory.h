@@ -218,7 +218,7 @@ typedef struct{
 /****************************************************************************/
 teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
 teHapStatus eAccessoryFinished(tsAccessory *psAccessory);
-
+json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

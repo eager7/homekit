@@ -34,6 +34,6 @@ add_library(libsrp.a STATIC
 
 add_executable(light_bulb ${SOURCE_FILES} )
 target_link_libraries(light_bulb
-        -lpthread -ldns_sd -lssl -lcrypto
+        -lpthread -ldns_sd -lssl -lcrypto -ljson-c
         -lsodium libsrp.a
         )

@@ -2,6 +2,7 @@
 // Created by pct on 17-1-12.
 //
 #include <signal.h>
+#include <profile.h>
 #include "utils.h"
 #include "light_bulb.h"
 #include "bonjour.h"
@@ -65,6 +66,11 @@ int main(void)
     //signal(SIGTERM, vQuitSignalHandler);
 
     CHECK_RESULT(eLightBulbProfileInit("ADDDD Light", 0x221034235124, "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
+    json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
+    CHECK_POINTER(temp, -1);
+    DBG_vPrintln(T_TRUE, "%s", json_object_get_string(temp));
+    return 0;
+
     CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
 
     //while(bRunning){
