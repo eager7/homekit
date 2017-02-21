@@ -45,9 +45,6 @@ tsProfileHandle sLightBulbHandle[] = {
         {E_PROFILE_CMD_LIGHT_BULB_ON, eLightBulbOn},
         {E_PROFILE_CMD_LIGHT_BULB_OFF, eLightBulbOff},
 };
-
-
-
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/

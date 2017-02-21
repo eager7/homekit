@@ -39,6 +39,7 @@
 #include "sodium/crypto_aead_chacha20poly1305.h"
 #include "curve25519-donna.h"
 #include "bonjour.h"
+#include "controller.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -65,7 +66,7 @@ const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x
 const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
 const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #define devicePassword "523-12-643" //Password
-#define deviceIdentity "33:10:34:23:51:12"  //ID
+#define deviceIdentity "43:10:34:23:51:12"  //ID
 uint8_t controllerToAccessoryKey[32];
 uint8_t accessoryToControllerKey[32];
 unsigned long long numberOfMsgRec = 0;
@@ -79,6 +80,7 @@ const char pairingTlv8Type[] = "application/pairing+tlv8";
 /****************************************************************************/
 static tsBonjour sBonjour;
 tsController sController;
+extern tsProfile sLightBulb;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -87,28 +89,28 @@ unsigned short getSocketPortNumberV4(int _socket) {
     getsockname(_socket, (struct sockaddr *)&addr, &len);
     return ntohs(addr.sin_port);
 }
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psName, char *psModel)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
 
     memset(&sBonjour, 0, sizeof(sBonjour));
     memset(&sController, 0, sizeof(tsController));
-    sController.subSocket = -1;
+    sController.iSockFd = -1;
 
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
     sBonjour.u16Port = 0;
-    sBonjour.psInstanceName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.psInstanceName = psName;
     sBonjour.pcSetupCode = psSetupCode;
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = psProfile->sAccessory.u64AIDs;
     //sBonjour.sBonjourText.psDeviceID = psDeviceId;
-    sBonjour.sBonjourText.psModelName = psProfile->sAccessory.eInformation.sCharacteristics[3].uValue.psData;
+    sBonjour.sBonjourText.psModelName = psModel;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
-    sBonjour.sBonjourText.u32iCurrentStaNumber = 4;
+    sBonjour.sBonjourText.u32CurrentStaNumber = 4;
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
 
@@ -127,7 +129,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
         return E_BONJOUR_STATUS_ERROR;
     }
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
-#if 1
+#if 0
     do{
         DBG_vPrintln(DBG_BONJOUR, "Waiting Controller Connect");
         int subSocket = accept(sBonjour.iSocketFd, 0, NULL);
@@ -219,7 +221,7 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
     TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
 
     char temp_scharp[MIBF] = {0};
-    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32iCurrentStaNumber);
+    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32CurrentStaNumber);
     TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
 
     char temp_sf[MIBF] = {0};
@@ -264,8 +266,8 @@ void handlePairSeup()
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     int len = 0;
     do{
-        printf("Msg:%s", sController.buffer);
-        tsIpMessage *psIpMsg = psIpMessageFormat(sController.buffer, sController.len);
+        printf("Msg:%s", sController.auBuffer);
+        tsIpMessage *psIpMsg = psIpMessageFormat(sController.auBuffer, sController.iLen);
         tsIpMessage *psResponse = psIpResponseNew();
         //tsTlvType
         if(psIpMsg->sTlvMsg.psTlvMsgGetRecordData == NULL){ERR_vPrintln(1,"Null");return;}
@@ -448,7 +450,7 @@ void handlePairSeup()
                 psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
                 if (responseBuffer) {
                     psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-                    eHttpResponse(sController.subSocket, &psIpMsg->sHttp, responseBuffer, responseLen);
+                    eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, responseBuffer, responseLen);
                     eIpMessageRelease(psResponse);
                 }
 
@@ -467,7 +469,7 @@ void handlePairSeup()
             printf("%s, %d, responseBuffer = %s, responseLen = %d\n", __func__, __LINE__, responseBuffer, responseLen);
             //PrintArray(1, responseBuffer, responseLen);
             psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-            eHttpResponse(sController.subSocket, &psIpMsg->sHttp, responseBuffer, responseLen);
+            eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, responseBuffer, responseLen);
             eIpMessageRelease(psResponse);
             eIpMessageRelease(psIpMsg);
             FREE(responseBuffer);
@@ -475,7 +477,7 @@ void handlePairSeup()
         } else {
             printf("Why empty response\n");
         }
-    }while(0 < (sController.len = read(sController.subSocket, sController.buffer, 4096)));
+    }while(0 < (sController.iLen = read(sController.iSockFd, sController.auBuffer, sizeof(sController.auBuffer))));
 }
 
 void handlePairVerify() {
@@ -492,7 +494,7 @@ void handlePairVerify() {
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     printf("Start Pair Verify\n");
     do {
-        tsIpMessage *psIpMsg = psIpMessageFormat(sController.buffer, sController.len);
+        tsIpMessage *psIpMsg = psIpMessageFormat(sController.auBuffer, sController.iLen);
         tsIpMessage *psResponse = psIpResponseNew();
         bcopy(psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 6), &state, 1);
         value_rep[0] = state+1;
@@ -626,12 +628,12 @@ void handlePairVerify() {
 
         if (repBuffer) {
             psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-            eHttpResponse(sController.subSocket, &psIpMsg->sHttp, repBuffer, repLen);
+            eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, repBuffer, repLen);
             eIpMessageRelease(psResponse);
             eIpMessageRelease(psIpMsg);
             FREE(repBuffer);
         }
-    }while (!end && (0 < (sController.len = read(sController.subSocket, sController.buffer, 4096))));
+    }while (!end && (0 < (sController.iLen = read(sController.iSockFd, sController.auBuffer, MABF))));
 
 }
 
@@ -710,7 +712,13 @@ void handleAccessory(const char *request, unsigned int requestLen, char **reply,
         //Publish the characterists of the accessories
 
         printf("Ask for accessories info\n");
+        tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(tsHttpEntry));
+        sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+        sprintf(sHttp.acContentType, "%s" " application/hap+json");
+        json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
 
+        DBG_vPrintln(T_TRUE, "%s", json_object_get_string(temp));
+        eHttpMessageFormat(&sHttp, json_object_get_string(temp), json_object_get_string_len(temp), reply);
         //statusCode = 200;
         //string desc = AccessorySet::getInstance().describe();
         //replyDataLen = desc.length();
@@ -810,11 +818,11 @@ void handleAccessoryRequest() {
     numberOfMsgRec = 0;
     numberOfMsgSend = 0;
     do {
-        bzero(sController.buffer, 4096);
-        len = read(sController.subSocket, sController.buffer, 4096);
+        bzero(sController.auBuffer, MABF);
+        len = read(sController.iSockFd, sController.auBuffer, MABF);
         if (len < 0)break;
         //FIXME make sure buffer len > (2 + msgLen + 16)??
-        uint16_t msgLen = (uint8_t)sController.buffer[1]*256+(uint8_t)*sController.buffer;
+        uint16_t msgLen = (uint8_t)sController.auBuffer[1]*256+(uint8_t)*sController.auBuffer;
 
         chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
 
@@ -831,15 +839,15 @@ void handleAccessoryRequest() {
 
         //Ploy1305 key
         char verify[16];    bzero(verify, 16);
-        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)sController.buffer, msgLen, T_FALSE, verify);
+        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)sController.auBuffer, msgLen, T_FALSE, verify);
 
         bzero(decryptData, 2048);
-        chacha20_encrypt(&chacha20, (const uint8_t *)&sController.buffer[2], (uint8_t *)decryptData, msgLen);
+        chacha20_encrypt(&chacha20, (const uint8_t *)&sController.auBuffer[2], (uint8_t *)decryptData, msgLen);
 
         printf("Request: %s\nPacketLen: %d\n, MessageLen: %d\n", decryptData, len, strlen(decryptData));
 
         if(len >= (2 + msgLen + 16)
-           && memcmp((void *)verify, (void *)&sController.buffer[2 + msgLen], 16) == 0) {
+           && memcmp((void *)verify, (void *)&sController.auBuffer[2 + msgLen], 16) == 0) {
             printf("Verify successfully!\n");
         }
         else {
@@ -864,7 +872,7 @@ void handleAccessoryRequest() {
 
         Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)reply, resultLen, T_FALSE, verify);
         memcpy((unsigned char*)&reply[resultLen+2], verify, 16);
-        write(sController.subSocket, reply, resultLen+18);
+        write(sController.iSockFd, reply, resultLen+18);
         FREE(reply);
         FREE(resultData);
     }while (len > 0);
@@ -874,21 +882,21 @@ void handleAccessoryRequest() {
 void *connectionLoop(void *threadInfo)
 {
     tsController *info = (tsController *)threadInfo;
-    int subSocket = info->subSocket;
+    int subSocket = info->iSockFd;
     ssize_t len = 0;
     if (subSocket >= 0) {
         printf("Start Connect: %d\n", subSocket);
         do {
-            memset(info->buffer, 0, 4096);
-            len = read(subSocket, info->buffer, 4096);
+            memset(info->auBuffer, 0, MABF);
+            len = read(subSocket, info->auBuffer, MABF);
 
             printf("Return len %d for socket %d\n", len, subSocket);
             //printf("Message: %s\n", info->buffer);
 
             if (len > 0) {
                 tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
-                eHttpParser(info->buffer, len, &sHttp);
-                sController.len = len;
+                eHttpParser(info->auBuffer, len, &sHttp);
+                sController.iLen = len;
                 if (strstr(sHttp.acDirectory, "pair-setup")){
                     /*
                      * The process of pair-setup
@@ -956,36 +964,36 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                         struct sockaddr_in client_addr;
                         memset(&client_addr, 0, sizeof(client_addr));
                         socklen_t client_len = sizeof(client_addr);
-                        sController.subSocket = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
-                        if(-1 == sController.subSocket){
+                        sController.iSockFd = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+                        if(-1 == sController.iSockFd){
                             ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
                             break;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
-                            FD_SET(sController.subSocket, &fdSelect);
-                            if(sController.subSocket > iListenFD){
-                                iListenFD = sController.subSocket;
+                            FD_SET(sController.iSockFd, &fdSelect);
+                            if(sController.iSockFd > iListenFD){
+                                iListenFD = sController.iSockFd;
                             }
                             iNumberClient ++;
                         }
                     }
                 } else {    /* Client Communication */
-                    if(FD_ISSET(sController.subSocket, &fdTemp)){
+                    if(FD_ISSET(sController.iSockFd, &fdTemp)){
                         char buf[MABF] = {0};
-                        ssize_t len = recv(sController.subSocket, sController.buffer, sizeof(buf), 0);
+                        ssize_t len = recv(sController.iSockFd, sController.auBuffer, sizeof(buf), 0);
                         if(0 == len){
-                            ERR_vPrintln(T_TRUE, "Close Client:%d\n", sController.subSocket);
-                            close(sController.subSocket);
+                            ERR_vPrintln(T_TRUE, "Close Client:%d\n", sController.iSockFd);
+                            close(sController.iSockFd);
                             FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
-                            FD_CLR(sController.subSocket, &fdSelect);//delete this client from select set
+                            FD_CLR(sController.iSockFd, &fdSelect);//delete this client from select set
                             iNumberClient --;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
                             //eHapHandlePackage(buf, (int)len, iSockClient, &sBonjour);
                             {
                                 tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
-                                eHttpParser(sController.buffer, len, &sHttp);
-                                sController.len = len;
+                                eHttpParser(sController.auBuffer, len, &sHttp);
+                                sController.iLen = len;
                                 if (strstr(sHttp.acDirectory, "pair-setup")){
                                     /*
                                      * The process of pair-setup

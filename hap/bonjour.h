@@ -47,25 +47,39 @@ typedef enum {
 } teBonjStatus;
 
 typedef enum {
-    E_BONJOUR_FEATURE_FLAG_PAIRING = 0x01,
-} tsFeatureFlag;
+    E_BONJOUR_FEATURE_FLAG_PAIRING = 0x01,  /* Supports HAP Pairing. This flag is required for all HomeKit accessories. */
+} teFeatureFlag;
 
 typedef enum {
-    E_BONJOUR_TXT_STATUS_FLAG_UNPAIRED = 0x01,
-    E_BONJOUR_TXT_STATUS_FLAG_UNCONFIGURED_WIFI = 0x02,
-    E_BONJOUR_TXT_STATUS_FLAG_DETECTED_PROBLEM = 0x04,
-} tsTxtStatusFlag;
+    E_BONJOUR_TXT_STATUS_FLAG_UNPAIRED = 0x01,          /* Accessory has not been paired with any controllers. */
+    E_BONJOUR_TXT_STATUS_FLAG_UNCONFIGURED_WIFI = 0x02, /* Accessory has not been configured to join a Wi-Fi network. */
+    E_BONJOUR_TXT_STATUS_FLAG_DETECTED_PROBLEM = 0x04,  /* A problem has been detected on the accessory. */
+} teStatusFlag;
 
 typedef struct {
-    uint64  u64CurrentCfgNumber;    /* c#---Current configuration number */
-    uint8   u8FeatureFlag;          /* ff---Required if non-zero */
-    uint64  u64DeviceID;            /* id---The Device ID must be formatted as XX:XX:XX:XX:XX:XX */
-    char    psDeviceID[17];
-    char    *psModelName;           /* md---Model name of the accessory */
-    char    auProtocolVersion[2];   /* pv---Protocol version string <major>.<minor> */
-    uint32  u32iCurrentStaNumber;   /* s#---Current state number,This must have a value of "1" */
-    uint8   u8StatusFlag;           /* sf---Value should be an unsigned integer. Required if non-zero */
-    teAccessoryType  eAccessoryCategoryID; /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory */
+    /* c#---Current configuration number,
+     * Must update when an accessory, service, or characteristic is added or removed on the accessory server.
+     * Accessories must increment the config number after a firmware update.
+     * This must have a range of 1-4294967295 and wrap to 1 when it overflows.*/
+    uint64  u64CurrentCfgNumber;
+    /* ff---Feature flags (e.g. "0x3" for bits 0 and 1). Required if non-zero */
+    uint8   u8FeatureFlag;
+    /* id---Device ID of the accessory.The Device ID must be formatted as XX:XX:XX:XX:XX:XX,This value is also used as the accessory's Pairing Identifier. */
+    uint64  u64DeviceID;
+    char    psDeviceID[17]; /* Store XX:XX:XX:XX:XX:XX */
+    /* md---Model name of the accessory, e.g."Device1,1" */
+    char    *psModelName;
+    /* pv---Protocol version string <major>.<minor>, Required if value is not "1.0".
+     * The client should check this before displaying an accessory to the user.
+     * If the major version is greater than the major version the client software was built to support,
+     * it should hide the accessory from the user. */
+    char    auProtocolVersion[2];
+    /* s#---Current state number, This must have a value of "1" */
+    uint32  u32CurrentStaNumber;
+    /* sf---Status flags, Value should be an unsigned integer. Required if non-zero */
+    uint8   u8StatusFlag;
+    /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory,This must have a range of 1-65535.  */
+    teAccessoryType  eAccessoryCategoryID;
 } tsBonjourText;
 
 typedef struct {
@@ -82,18 +96,7 @@ typedef struct {
     tsBonjourText sBonjourText;     /* txt record struct */
 } tsBonjour;
 
-typedef struct {
-    pthread_t thread;
-    pthread_mutex_t mutex;
 
-    uint8_t controllerToAccessoryKey[32];
-    uint8_t accessoryToControllerKey[32];
-    unsigned long long numberOfMsgRec ;
-    unsigned long long numberOfMsgSend ;
-    int subSocket;
-    ssize_t len;
-    char buffer[4096];
-} tsController;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -108,7 +111,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psName, char *psModel);
 teBonjStatus eBonjourFinished(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

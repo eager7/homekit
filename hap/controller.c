@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             http parse.h
+ * MODULE:             controller.c
  *
  * COMPONENT:          home kit interface
  *
@@ -15,64 +15,22 @@
  * Copyright panchangtao@gmail.com 2017. All rights reserved
  *
  ***************************************************************************/
-#ifndef HOMEKIT_HTTP_PARSER_H
-#define HOMEKIT_HTTP_PARSER_H
-#if defined __cplusplus
-extern "C" {
-#endif
+
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
-#include "utils.h"
+
+#include "controller.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
+#define DBG_CONTROLLER 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef enum {
-    E_HTTP_PARSER_OK = 0x00,
-    E_HTTP_PARSER_ERROR,
-} teHttpStatus;
 
-typedef enum {
-    E_HTTP_STATUS_CODE_SUCCESS                  = 0,
-    E_HTTP_STATUS_CODE_REQUEST_DENIED           = -70401,
-    E_HTTP_STATUS_CODE_UNABLE_COMMUNICATION     = -70402,
-    E_HTTP_STATUS_CODE_RESOURCE_BUSY            = -70403,
-    E_HTTP_STATUS_CODE_READ_ONLY                = -70404,
-    E_HTTP_STATUS_CODE_WRITE_ONLY               = -70405,
-    E_HTTP_STATUS_CODE_NOT_NOTIFICATION         = -70406,
-    E_HTTP_STATUS_CODE_OUT_OF_RESOURCE          = -70407,
-    E_HTTP_STATUS_CODE_TIMED_OUT                = -70408,
-    E_HTTP_STATUS_CODE_NOT_EXIST                = -70409,
-    E_HTTP_STATUS_CODE_INVALID_VALUE_TO_WRITE   = -70410,
-    E_HTTP_STATUS_CODE_INSUFFICIENT_AUTHORIZATION = -70411,
-} teHttpStatusCode;
 
-typedef enum {
-    E_HTTP_STATUS_SUCCESS_OK = 200,
-    E_HTTP_STATUS_SUCCESS_NO_CONTENT = 204,
-    E_HTTP_STATUS_SUCCESS_MULTI_STATUS = 207,
-} teHttpSuccessCode;
-
-typedef enum {
-    E_HTTP_METHOD_POST,
-    E_HTTP_METHOD_PUT,
-    E_HTTP_METHOD_GET,
-} teHttpMethod;
-
-typedef struct {
-    int   iHttpStatus;
-    uint8 acHttpMethod[MIBF];
-    uint8 acDirectory[MIBF];
-    uint8 acHttpVersion[MIBF];
-    uint16 u16ContentLen;
-    uint8 acContentType[MIBF];
-    uint8 acContentData[MABF];
-} tsHttpEntry;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -80,20 +38,15 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
 
 /****************************************************************************/
-/***        Exported Functions                                            ***/
-/****************************************************************************/
-teHttpStatus eHttpParser(uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
-teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
-teHttpStatus eHttpMessageFormat(tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse);
-/****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-#if defined __cplusplus
-}
-#endif
-#endif //HOMEKIT_HTTP_PARSER_H
+
+/****************************************************************************/
+/***        Exported Functions                                            ***/
+/****************************************************************************/

@@ -136,6 +136,50 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     }
     return E_HTTP_PARSER_OK;
 }
+
+teHttpStatus eHttpMessageFormat(tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse)
+{
+    INF_vPrintln(DBG_HTTP, "--------Http Send Package[%d]--------", u16Length);
+
+    uint8 *temp = malloc(MABF);
+
+    int index = 0;
+    memcpy(&temp[index], "HTTP/1.1 ", sizeof("HTTP/1.1 ") - 1);
+    index += sizeof("HTTP/1.1 ") - 1;
+    char auHttpStatus[5] = {0};
+    sprintf(auHttpStatus, "%d", psHttpEntry->iHttpStatus);
+    memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
+    index += strlen(auHttpStatus);
+    if(200 == psHttpEntry->iHttpStatus){
+        memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
+        index += sizeof(" OK\r\n") - 1;
+    } else {
+        memcpy(&temp[index], " \r\n", sizeof(" \r\n") - 1);
+        index += sizeof(" \r\n") - 1;
+    }
+    memcpy(&temp[index], "Content-Type:", sizeof("Content-Type:") - 1);
+    index += sizeof("Content-Type:") - 1;
+    memcpy(&temp[index], psHttpEntry->acContentType, strlen((char*)psHttpEntry->acContentType));
+    index += strlen((char*)psHttpEntry->acContentType);
+    memcpy(&temp[index], "\r\n", sizeof("\r\n") - 1);
+    index += sizeof("\r\n") - 1;
+    memcpy(&temp[index], "Content-Length: ", sizeof("Content-Length: ") - 1);
+    index += sizeof("Content-Length: ") - 1;
+    char auHttpLen[5] = {0};
+    sprintf(auHttpLen, "%d", u16Length);
+    memcpy(&temp[index], auHttpLen, strlen(auHttpLen));
+    index += strlen(auHttpLen);
+    memcpy(&temp[index], "\r\n\r\n", sizeof("\r\n\r\n") - 1);
+    index += sizeof("\r\n\r\n") - 1;
+    INF_vPrintln(DBG_HTTP, "%s", temp);
+    memcpy(&temp[index], pBuffer, u16Length);
+    index += u16Length;
+
+    INF_vPrintln(DBG_HTTP, "%d", index);
+    PrintArray(DBG_HTTP, temp, index);
+    if(ppResponse) *ppResponse = temp;
+    return E_HTTP_PARSER_OK;
+}
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
