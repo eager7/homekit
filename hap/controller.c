@@ -27,6 +27,7 @@
 #include "hkdf.h"
 #include "ed25519.h"
 #include "curve25519-donna.h"
+#include "pairing.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -60,6 +61,10 @@ extern tsBonjour sBonjour;
 /****************************************************************************/
 tsController sController;
 tsThread sControllerThread;
+tsPairSetup sPairSetup;
+
+cstr *pSecretKey = NULL;
+
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -74,6 +79,9 @@ teHapStatus eControllerInit()
 {
     memset(&sControllerThread, 0, sizeof(tsThread));
     memset(&sController, 0, sizeof(tsController));
+    memset(&sPairSetup, 0, sizeof(tsPairSetup));
+    eLockCreate(&sPairSetup.mutex);
+
     sController.iSockFd = -1;
     //CHECK_RESULT(eThreadStart(pvControllerThreadHandle, &sControllerThread, E_THREAD_DETACHED), E_THREAD_OK, E_HAP_STATUS_ERROR);
 
@@ -88,171 +96,153 @@ teHapStatus eControllerFinished()
 }
 
 
-void handlePairSeup()
+tePairStatus eHandlePairSetup()
 {
-    tsTlv stateRecord;memset(&stateRecord,0,sizeof(tsTlv));
     uint8 value_rep[1] = {0};
-    tePairSetup state = E_PAIR_SETUP_M1_SRP_START_REQUEST;
-    SRP *srp;
-    srp = SRP_new(SRP6a_server_method());
-    cstr *secretKey = NULL, *publicKey = NULL, *response = NULL;
-    char sessionKey[64];
-    char *responseBuffer = 0; int responseLen = 0;
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
-    int len = 0;
-    do{
-        printf("Msg:%s", sController.auBuffer);
-        tsIpMessage *psIpMsg = psIpMessageFormat(sController.auBuffer, sController.iLen);
-        tsIpMessage *psResponse = psIpResponseNew();
-        //tsTlvType
-        if(psIpMsg->sTlvMsg.psTlvMsgGetRecordData == NULL){ERR_vPrintln(1,"Null");return;}
-        uint8 *pstate = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 6);
-        if(pstate == NULL){ERR_vPrintln(1,"Null");return;}
-        bcopy(pstate, &state, 1);
-        //state = (tePairSetup)psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_STATE);
-        value_rep[0] = state+1;
-        switch (state) {
-            case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
-                INF_vPrintln(DBG_CONTROLLER, "%s, %d: State_M1_SRPStartRequest\n", __func__, __LINE__);
-                unsigned char saltChar[16];
-                for (int i = 0; i < 16; i++) {
-                    saltChar[i] = rand();
-                }
-                SRP_RESULT result = SRP_set_username(srp, "Pair-Setup");
-                int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
-                result = SRP_set_params(srp, (const unsigned char *)modulusStr, modulusSize, (const unsigned char *)generator, 1, saltChar, 16);
-                result = SRP_set_auth_password(srp, sBonjour.pcSetupCode);
-                result = SRP_gen_pub(srp, &publicKey);
-                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_SALT,saltChar,16,&psResponse->sTlvMsg);
-                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,publicKey->data,publicKey->length,&psResponse->sTlvMsg);
-                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
-            }
-                break;
-            case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
-                INF_vPrintln(DBG_CONTROLLER, "%s, %d: State_M3_SRPVerifyRequest\n", __func__, __LINE__);
-                const char *keyStr = 0;
-                int keyLen = 0;
-                const char *proofStr;
-                int proofLen;
-                keyStr = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
-                keyLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
-                char *temp = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
-                if (temp != NULL) {
-                    proofStr = temp;
-                    proofLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
-                }
-                SRP_RESULT result = SRP_compute_key(srp, &secretKey, (const unsigned char*)keyStr, keyLen);
-                result = SRP_verify(srp, (const unsigned char*)proofStr, proofLen);
-                if (!SRP_OK(result)) {
+    tePairSetup ePairSetup;
+    uint8  *pRespBuffer = 0;
+    uint16 u16RespLen = 0;
 
+    tsIpMessage *psIpMsg = NULL;
+    tsIpMessage *psResponse = NULL;
+    sPairSetup.pSrp = SRP_new(SRP6a_server_method());
+    do{
+        DBG_vPrintln(DBG_CONTROLLER, "PairSetup Message:%s", sController.auBuffer);
+        psIpMsg    = psIpMessageFormat(sController.auBuffer, (uint16)sController.iLen);
+        psResponse = psIpResponseNew();
+
+        uint8 *pStateController = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_STATE);
+        CHECK_POINTER(pStateController, E_PAIRING_STATUS_ERROR);
+        memcpy(&ePairSetup, pStateController, 1);
+        value_rep[0] = ePairSetup + 1;
+        switch (ePairSetup) {
+            case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
+                INF_vPrintln(DBG_CONTROLLER, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
+                uint8 auSaltChar[16];
+                for (int i = 0; i < 16; i++) {
+                    auSaltChar[i] = rand();
+                }
+                SRP_RESULT Ret = SRP_set_username(sPairSetup.pSrp, "Pair-Setup");
+                int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
+                Ret = SRP_set_params(sPairSetup.pSrp, modulusStr, sizeof(modulusStr), generator, sizeof(generator), auSaltChar, sizeof(auSaltChar));
+                Ret = SRP_set_auth_password(sPairSetup.pSrp, sBonjour.pcSetupCode);
+                cstr *pPublicKey = NULL;
+                Ret = SRP_gen_pub(sPairSetup.pSrp, &pPublicKey);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_SALT,auSaltChar,16,&psResponse->sTlvMsg);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,(uint8*)pPublicKey->data,(uint16)pPublicKey->length,&psResponse->sTlvMsg);
+                psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
+            }break;
+            case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
+                DBG_vPrintln(DBG_CONTROLLER, "E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST");
+
+                uint16 u16PublicKeyLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+                uint8 *psPublicKeyBuf  = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+                CHECK_POINTER(psPublicKeyBuf, E_PAIRING_STATUS_ERROR);
+                uint16 u16ProofLen     = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
+                uint8 *psProofBuf      = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_PROOF);
+                CHECK_POINTER(psProofBuf, E_PAIRING_STATUS_ERROR);
+
+                SRP_RESULT Ret = SRP_compute_key(sPairSetup.pSrp, &pSecretKey, psPublicKeyBuf, u16PublicKeyLen);
+                Ret = SRP_verify(sPairSetup.pSrp, psProofBuf, u16ProofLen);
+                if (!SRP_OK(Ret)) {
                     psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),&psResponse->sTlvMsg);
-                    printf("Oops at M3\n");
+                    goto AuthenticationError;
                 } else {
-                    SRP_respond(srp, &response);
-                    psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PROOF,response->data,response->length,&psResponse->sTlvMsg);
-                    printf("Password Correct\n");
+                    cstr *psResponseProof = NULL;
+                    SRP_respond(sPairSetup.pSrp, &psResponseProof);
+                    psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PROOF, (uint8*)psResponseProof->data, (uint16)psResponseProof->length, &psResponse->sTlvMsg);
+                    NOT_vPrintln(DBG_CONTROLLER, "Password Correct\n");
                 }
                 const char salt[] = "Pair-Setup-Encrypt-Salt";
                 const char info[] = "Pair-Setup-Encrypt-Info";
-                int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data,
-                             secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)sessionKey, 32);
-                if (i != 0) {
-                    ERR_vPrintln(T_TRUE, "hkdf error");
-                    return;
+                if (0 != hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)pSecretKey->data,
+                              pSecretKey->length, (const unsigned char*)info, (int)strlen(info), sPairSetup.auSessionKey, LEN_HKDF_LEN)) {
+                    ERR_vPrintln(T_TRUE, "HKDF Failed");
+                    return E_PAIRING_STATUS_ERROR;
                 }
-            }
-                break;
+            }break;
             case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
-                INF_vPrintln(DBG_CONTROLLER, "%s, %d: State_M5_ExchangeRequest\n", __func__, __LINE__);
-                const char *encryptedPackage = NULL;int packageLen = 0;
-                encryptedPackage = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, 5);
-                packageLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, 5);
-                char *encryptedData = malloc(packageLen);
-                bcopy(encryptedPackage, encryptedData, packageLen-16);
-                char mac[16];
-                bcopy(&encryptedPackage[packageLen-16], mac, 16);
+                DBG_vPrintln(DBG_CONTROLLER, "E_PAIR_SETUP_M5_EXCHANGE_REQUEST");
+                uint8 *psEncryptedPackage = psIpMsg->sTlvMsg.psTlvMsgGetRecordData(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
+                uint16 u16EncryptedLen = psIpMsg->sTlvMsg.pu16TlvMsgGetRecordLength(&psIpMsg->sTlvMsg, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
+                uint8 *psEncryptedData = malloc(u16EncryptedLen);
+                memcpy(psEncryptedData, psEncryptedPackage, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
+                uint8 auAuthTag[LEN_AUTH_TAG];
+                memcpy(auAuthTag, &psEncryptedPackage[u16EncryptedLen - LEN_AUTH_TAG], sizeof(auAuthTag));
 
-                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
-                chacha20_setup(&chacha20, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg05");
+                chacha20_ctx context;
+                memset(&context, 0, sizeof(context));
+                chacha20_setup(&context, sPairSetup.auSessionKey, 32, (uint8*)"PS-Msg05");
 
-                //Ploy1305 key
-                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
-                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+                char auInKey[64] = {0};
+                char auOutKey[64] = {0};
+                chacha20_encrypt(&context, (const uint8*)auInKey, (uint8*)auOutKey, 64);
 
-                char verify[16];  bzero(verify, 16);
-                Poly1305_GenKey((const unsigned char*)temp2, (unsigned char *)encryptedData, packageLen - 16, T_FALSE, verify);
+                char auVerify[16] = {0};
+                Poly1305_GenKey((const uint8*)auOutKey, psEncryptedData, (uint16)(u16EncryptedLen - 16), T_FALSE, auVerify);
 
-                char *decryptedData = malloc(packageLen-16);
-                bzero(decryptedData, packageLen-16);
-                chacha20_decrypt(&chacha20, (const uint8_t *)encryptedData, (uint8_t *)decryptedData, packageLen-16);
-
-                if (bcmp(verify, mac, 16)) {
+                uint8 *psDecryptedData = (uint8*)malloc((size_t)(u16EncryptedLen - LEN_AUTH_TAG));
+                memset(psDecryptedData, 0, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
+                chacha20_decrypt(&context, (const uint8*)psEncryptedData, psDecryptedData, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
+                if(memcmp(auVerify, auAuthTag, LEN_AUTH_TAG)) {
                     psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),&psResponse->sTlvMsg);
+                    goto AuthenticationError;
                 }else {
-                    /*
-                    * HAK Pair Setup M6
-                    */
-                    tsTlvMessage subTLV8; memset(&subTLV8, 0, sizeof(subTLV8));
-                    eTlvMessageFormat(decryptedData, packageLen-16, &subTLV8);
-                    char *controllerIdentifier = subTLV8.psTlvMsgGetRecordData(&subTLV8, 1);
-                    char *controllerPublicKey = subTLV8.psTlvMsgGetRecordData(&subTLV8, 3);
-                    char *controllerSignature = subTLV8.psTlvMsgGetRecordData(&subTLV8, 10);
-                    char controllerHash[100];
+                    tsTlvMessage sSubTLVMsg;
+                    memset(&sSubTLVMsg, 0, sizeof(sSubTLVMsg));
+                    eTlvMessageFormat(psDecryptedData, (uint16)(u16EncryptedLen - LEN_AUTH_TAG), &sSubTLVMsg);
+                    uint8 *psControllerIdentifier = sSubTLVMsg.psTlvMsgGetRecordData(&sSubTLVMsg, E_TLV_VALUE_TYPE_IDENTIFIER);
+                    uint8 *psControllerPublicKey = sSubTLVMsg.psTlvMsgGetRecordData(&sSubTLVMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+                    uint8 *psControllerSignature = sSubTLVMsg.psTlvMsgGetRecordData(&sSubTLVMsg, E_TLV_VALUE_TYPE_SIGNATURE);
+                    uint8 auControllerHash[100];
 
-                    DBG_vPrintln(DBG_CONTROLLER,"save key");
-                    eIOSDevicePairingIDSave(controllerIdentifier, 36);
-                    eIOSDeviceLTPKSave(controllerPublicKey, 32);
+                    DBG_vPrintln(DBG_CONTROLLER,"eIOSDevicePairingIDSave & eIOSDeviceLTPKSave");
+                    eIOSDevicePairingIDSave(psControllerIdentifier, 36);
+                    eIOSDeviceLTPKSave(psControllerPublicKey, 32);
 
                     const char salt[] = "Pair-Setup-Controller-Sign-Salt";
                     const char info[] = "Pair-Setup-Controller-Sign-Info";
-                    int i = hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data, secretKey->length, (const unsigned char*)info, strlen(info), (uint8_t*)controllerHash, 32);
-                    if (i != 0) {
-                        ERR_vPrintln(T_TRUE, "hkdf error");
-                        return;
+                    if (0 != hkdf((const uint8*)salt, (int)strlen(salt), (const uint8*)pSecretKey->data, pSecretKey->length,
+                                  (const uint8*)info, (int)strlen(info), (uint8_t*)auControllerHash, 32)) {
+                        eTlvMessageRelease(&sSubTLVMsg);
+                        ERR_vPrintln(T_TRUE, "HKDF Failed");
+                        return E_PAIRING_STATUS_ERROR;
                     }
+                    memcpy(&auControllerHash[32], psControllerIdentifier, 36);
+                    memcpy(&auControllerHash[68], psControllerPublicKey,  32);
 
-                    bcopy(controllerIdentifier, &controllerHash[32], 36);
-                    bcopy(controllerPublicKey, &controllerHash[68], 32);
-
-                    DBG_vPrintln(DBG_CONTROLLER,"ed25519_sign_open");
-                    int ed25519_err = ed25519_sign_open((const unsigned char*)controllerHash, 100, (const unsigned char*)controllerPublicKey, (const unsigned char*)controllerSignature);
-                    eTlvMessageRelease(&subTLV8);
+                    int ed25519_err = ed25519_sign_open(auControllerHash, 100, psControllerPublicKey, psControllerSignature);
+                    eTlvMessageRelease(&sSubTLVMsg);
                     if (ed25519_err) {
                         ERR_vPrintln(T_TRUE, "ed25519_sign_open error");
-                        return;
-                    }
-                    else {
+                        return E_PAIRING_STATUS_ERROR;
+                    } else {
                         DBG_vPrintln(DBG_CONTROLLER, "ed25519_sign_open success");
-                        tsTlvMessage *returnTLV8 =  psTlvMessageNew();
+                        tsTlvMessage *pReturnTlvMsg =  psTlvMessageNew();
 
-                        {
-                            returnTLV8->efTlvMsgAddRecord(1,sBonjour.sBonjourText.psDeviceID,strlen(sBonjour.sBonjourText.psDeviceID),returnTLV8);
-                        }
-                        {
-                            /*
-                             * Generate Signature
-                             */
-                            const char salt[] = "Pair-Setup-Accessory-Sign-Salt";
-                            const char info[] = "Pair-Setup-Accessory-Sign-Info";
-                            uint8_t output[150];
-                            hkdf((const unsigned char*)salt, strlen(salt), (const unsigned char*)secretKey->data, secretKey->length, (const unsigned char*)info, strlen(info), output, 32);
+                        pReturnTlvMsg->efTlvMsgAddRecord(E_TLV_VALUE_TYPE_IDENTIFIER,sBonjour.sBonjourText.psDeviceID,17,pReturnTlvMsg);
 
-                            bcopy(sBonjour.sBonjourText.psDeviceID, &output[32], strlen(sBonjour.sBonjourText.psDeviceID));
+                        const uint8 salt2[] = "Pair-Setup-Accessory-Sign-Salt";
+                        const uint8 info2[] = "Pair-Setup-Accessory-Sign-Info";
+                        uint8_t output[150];
+                        hkdf(salt2, (int)strlen(salt2), (const uint8*)pSecretKey->data, pSecretKey->length, info2, (int)strlen(info2), output, 32);
+                        memcpy(&output[32], sBonjour.sBonjourText.psDeviceID, 17);
 
-                            char *signature = malloc(64);
-                            ed25519_secret_key edSecret;
-                            bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
-                            ed25519_public_key edPubKey;
-                            ed25519_publickey(edSecret, edPubKey);
+                        uint8 auSignature[64] = {0};
+                        ed25519_secret_key edSecret;
+                        bcopy(accessorySecretKey, edSecret, sizeof(edSecret));
+                        ed25519_public_key edPubKey;
+                        ed25519_publickey(edSecret, edPubKey);
 
-                            bcopy(edPubKey, &output[32+strlen(sBonjour.sBonjourText.psDeviceID)], 32);
-                            ed25519_sign(output, 64+strlen(sBonjour.sBonjourText.psDeviceID), (const unsigned char*)edSecret, (const unsigned char*)edPubKey, (unsigned char *)signature);
+                        bcopy(edPubKey, &output[32 + 17], 32);
+                        ed25519_sign(output, 64 + 17, (const uint8*)edSecret, (const uint8*)edPubKey, auSignature);
 
-                            returnTLV8->efTlvMsgAddRecord(10,signature,64,returnTLV8);
-                            returnTLV8->efTlvMsgAddRecord(3,edPubKey,32,returnTLV8);
-                        }
+                        pReturnTlvMsg->efTlvMsgAddRecord(E_TLV_VALUE_TYPE_SIGNATURE,auSignature,64,pReturnTlvMsg);
+                        pReturnTlvMsg->efTlvMsgAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,edPubKey,32,pReturnTlvMsg);
+
                         const char *tlv8Data;unsigned short tlv8Len;
-                        eTlvMsgGetBinaryData(returnTLV8,&tlv8Data, &tlv8Len);
+                        eTlvMsgGetBinaryData(pReturnTlvMsg,&tlv8Data, &tlv8Len);
 
                         char *tlv8Recorddata = malloc(tlv8Len+16);
                         int tlv8Recordlength = tlv8Len+16;
@@ -262,57 +252,64 @@ void handlePairSeup()
 
                             chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
 
-                            chacha20_setup(&ctx, (const uint8_t *)sessionKey, 32, (uint8_t *)"PS-Msg06");
+                            chacha20_setup(&ctx, (const uint8_t *)sPairSetup.auSessionKey, 32, (uint8_t *)"PS-Msg06");
                             char buffer[64], key[64];   bzero(buffer, 64);
                             chacha20_encrypt(&ctx, (const uint8_t *)buffer, (uint8_t *)key, 64);
                             chacha20_encrypt(&ctx, (const uint8_t *)tlv8Data, (uint8_t *)tlv8Recorddata, tlv8Len);
 
                             char verify[16];
-                            memset(verify, 0, 16);
-                            Poly1305_GenKey((const unsigned char *)key, (unsigned char*)tlv8Recorddata, tlv8Len, T_FALSE, verify);
-                            memcpy((unsigned char *)&tlv8Recorddata[tlv8Len], verify, 16);
+                            memset(auVerify, 0, 16);
+                            Poly1305_GenKey((const unsigned char *)key, (unsigned char*)tlv8Recorddata, tlv8Len, T_FALSE, auVerify);
+                            memcpy((unsigned char *)&tlv8Recorddata[tlv8Len], auVerify, 16);
                         }
 
                         psResponse->sTlvMsg.efTlvMsgAddRecord(5,tlv8Recorddata,tlv8Recordlength,&psResponse->sTlvMsg);
 
-                        eTlvMessageRelease(returnTLV8);
+                        eTlvMessageRelease(pReturnTlvMsg);
 
                     }
 
                 }
 
                 psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
-                psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
-                if (responseBuffer) {
+                psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&pRespBuffer,&u16RespLen);
+                if (pRespBuffer) {
                     psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-                    eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, responseBuffer, responseLen);
+                    eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
                     eIpMessageRelease(psResponse);
                 }
 
-                FREE(encryptedData);
+                FREE(psEncryptedData);
 
-                return;
+                return E_PAIRING_STATUS_ERROR;
             }
                 break;
             default:
                 break;
         }
         psResponse->sTlvMsg.efTlvMsgAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->sTlvMsg);
-        psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&responseBuffer,&responseLen);
+        psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&pRespBuffer,&u16RespLen);
 
-        if (responseBuffer) {
-            printf("%s, %d, responseBuffer = %s, responseLen = %d\n", __func__, __LINE__, responseBuffer, responseLen);
+        if (pRespBuffer) {
+            printf("%s, %d, responseBuffer = %s, responseLen = %d\n", __func__, __LINE__, pRespBuffer, u16RespLen);
             //PrintArray(1, responseBuffer, responseLen);
             psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-            eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, responseBuffer, responseLen);
+            eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
             eIpMessageRelease(psResponse);
             eIpMessageRelease(psIpMsg);
-            FREE(responseBuffer);
-            printf("Pair Setup Transfered length %d\n", len);
+            FREE(pRespBuffer);
         } else {
             printf("Why empty response\n");
         }
     }while(0 < (sController.iLen = read(sController.iSockFd, sController.auBuffer, sizeof(sController.auBuffer))));
+
+AuthenticationError:
+    psResponse->sTlvMsg.eTlvMsgGetBinaryData(&psResponse->sTlvMsg,&pRespBuffer,&u16RespLen);
+    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
+    eIpMessageRelease(psResponse);
+    eIpMessageRelease(psIpMsg);
+    FREE(pRespBuffer);
 }
 
 void handlePairVerify() {
@@ -726,7 +723,7 @@ void *connectionLoop(void *threadInfo)
                      * The process of pair-setup
                      */
                     DBG_vPrintln(DBG_CONTROLLER, "Pair Setup");
-                    handlePairSeup();
+                    eHandlePairSetup();
                     //updateConfiguration();
                 }
                 else if (strstr(sHttp.acDirectory, "pair-verify")){

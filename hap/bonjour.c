@@ -230,7 +230,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                      * The process of pair-setup
                                      */
                                     DBG_vPrintln(DBG_BONJOUR, "Pair Setup");
-                                    handlePairSeup();
+                                    eHandlePairSetup();
                                     updateConfiguration();
                                 }
                                 else if (strstr(sHttp.acDirectory, "pair-verify")){

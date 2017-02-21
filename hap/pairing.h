@@ -65,6 +65,14 @@ typedef enum {
 } tePairVerify;
 
 typedef struct {
+    tePairSetup eSetup;
+    SRP         *pSrp;
+    cstr        *pSecretKey;
+    uint8       auSessionKey[64];
+    pthread_mutex_t mutex;
+} tsPairSetup;
+
+typedef struct {
     uint8   u8Type;
     uint16  u16Len;
     uint16  u16Offset;

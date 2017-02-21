@@ -79,7 +79,7 @@ extern tsController sController;
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 teHapStatus eControllerInit();
-void handlePairSeup();
+tePairStatus eHandlePairSetup();
 void handlePairVerify();
 void handleAccessoryRequest();
 teHapStatus eControllerFinished();

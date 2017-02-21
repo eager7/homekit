@@ -66,14 +66,14 @@ typedef struct {
     uint8   u8FeatureFlag;
     /* id---Device ID of the accessory.The Device ID must be formatted as XX:XX:XX:XX:XX:XX,This value is also used as the accessory's Pairing Identifier. */
     uint64  u64DeviceID;
-    char    psDeviceID[17]; /* Store XX:XX:XX:XX:XX:XX */
+    uint8    psDeviceID[17]; /* Store XX:XX:XX:XX:XX:XX */
     /* md---Model name of the accessory, e.g."Device1,1" */
     char    *psModelName;
     /* pv---Protocol version string <major>.<minor>, Required if value is not "1.0".
      * The client should check this before displaying an accessory to the user.
      * If the major version is greater than the major version the client software was built to support,
      * it should hide the accessory from the user. */
-    char    auProtocolVersion[2];
+    uint8    auProtocolVersion[2];
     /* s#---Current state number, This must have a value of "1" */
     uint32  u32CurrentStaNumber;
     /* sf---Status flags, Value should be an unsigned integer. Required if non-zero */
