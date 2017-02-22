@@ -68,23 +68,6 @@ teHapStatus eAccessoryFinished(tsAccessory *psAccessory)
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static char *psFormatString(teTypeFormat eType, tuCharValue uData)
-{
-    static char asRet[10] = {10};
-    memset(asRet, 0, sizeof(asRet));
-    switch (eType){
-        case E_TYPE_BOOL:{ sprintf(asRet, "%x", uData.bData); } break;
-        case E_TYPE_UINT8:{ sprintf(asRet, "%x", uData.iData); } break;
-        case E_TYPE_UINT16:{ sprintf(asRet, "%x", uData.iData); } break;
-        case E_TYPE_UINT32:{ sprintf(asRet, "%x", uData.iData); } break;
-        case E_TYPE_UINT64:{ sprintf(asRet, "%x", uData.iData); } break;
-        case E_TYPE_INT:{ sprintf(asRet, "%x", uData.iData); } break;
-        case E_TYPE_FLOAT:{ sprintf(asRet, "%x", uData.fData); } break;
-        //case E_TYPE_STRING:{ sprintf(psRet, "%s", uData.bData); } break;
-        default:break;
-    }
-    return asRet;
-}
 static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psName, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryInformationInit:%s", psName);

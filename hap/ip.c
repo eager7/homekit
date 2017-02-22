@@ -21,9 +21,6 @@
 /****************************************************************************/
 
 #include "ip.h"
-#include "http_handle.h"
-#include "tlv.h"
-#include "controller.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -114,10 +111,6 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 {
     tsHttpEntry sHttpEntry;
     eHttpParser(psBuffer, (uint16)iLen, &sHttpEntry);
-
-    //sController.iSockFd = iSocketFd;
-    //sController.iLen = iLen;
-    //memcpy(sController.auBuffer, psBuffer, sizeof(sController.auBuffer));
 
     DBG_vPrintln(DBG_IP, "Data Len:%d", sHttpEntry.u16ContentLen);
     if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){

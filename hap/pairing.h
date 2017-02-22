@@ -110,20 +110,10 @@ extern tePairSetup ePair;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
-tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
-
-tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen);
-void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
-
 tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 tePairStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 
-tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len);
-tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len);
-tePairStatus eIOSDeviceLTPKSave(uint8 *buf, int len);
-tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

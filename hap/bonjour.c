@@ -23,7 +23,6 @@
 #include <profile.h>
 #include "bonjour.h"
 #include "pairing.h"
-#include "controller.h"
 #include "ip.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/

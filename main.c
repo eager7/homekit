@@ -3,7 +3,6 @@
 //
 #include <signal.h>
 #include <profile.h>
-#include "controller.h"
 #include "light_bulb.h"
 #include "bonjour.h"
 #include "poly1305.h"
@@ -62,8 +61,8 @@ int main(void)
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
     printf("power on: %d\n", poly1305_power_on_self_test());
 
-    //signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
-    //signal(SIGTERM, vQuitSignalHandler);
+    signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
+    signal(SIGTERM, vQuitSignalHandler);
 
     CHECK_RESULT(eLightBulbProfileInit("ADDDD Light", 0x221034235124, "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
     CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391", "ADDDD Light"), E_BONJOUR_STATUS_OK, -1);
