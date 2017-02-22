@@ -181,6 +181,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
     memset(&sBonjour, 0, sizeof(sBonjour));
+    ePairingInit();
 
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.psHostName = NULL;
@@ -265,5 +266,20 @@ teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
     sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
     TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
 
+    return E_BONJOUR_STATUS_OK;
+}
+
+teBonjStatus eUpdateConfiguration(tsBonjour *psBonjour)
+{
+    psBonjour->sBonjourText.u64CurrentCfgNumber++;
+    eTextRecordFormat(psBonjour);
+    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
+    DNSServiceErrorType  ret = DNSServiceUpdateRecord(psBonjour->psDnsRef, NULL, 0,
+                                                      TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), 0);
+    TXTRecordDeallocate(&psBonjour->txtRecord);
+    if(ret){
+        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
+        return E_BONJOUR_STATUS_ERROR;
+    }
     return E_BONJOUR_STATUS_OK;
 }

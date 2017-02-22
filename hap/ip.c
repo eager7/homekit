@@ -45,18 +45,7 @@ extern tsController sController;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static void vUpdateConfiguration(tsBonjour *psBonjour) {
-    psBonjour->sBonjourText.u64CurrentCfgNumber++;
-    eTextRecordFormat(psBonjour);
-    DBG_vPrintln(DBG_IP, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
-    DNSServiceErrorType  ret = DNSServiceUpdateRecord(psBonjour->psDnsRef, NULL, 0,
-                                                      TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), 0);
-    TXTRecordDeallocate(&psBonjour->txtRecord);
-    if(ret){
-        ERR_vPrintln(DBG_IP, "DNSServiceUpdateRecord Failed:%d", ret);
-        return ;
-    }
-}
+
 
 teIpStatus eHapHandleAccessoryRequest(int iSocketFd)
 {
@@ -116,7 +105,6 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
     if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
         eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
-        vUpdateConfiguration(psBonjour);
     } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
         eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
@@ -126,3 +114,4 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
     }
     return E_IP_STATUS_OK;
 }
+
