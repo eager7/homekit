@@ -80,8 +80,8 @@ extern tsController sController;
 /****************************************************************************/
 teHapStatus eControllerInit();
 tePairStatus eHandlePairSetup();
-void handlePairVerify();
-void handleAccessoryRequest();
+tePairStatus eHandlePairVerify();
+teHapStatus eHandleAccessoryRequest();
 teHapStatus eControllerFinished();
 /****************************************************************************/
 /***        Local    Functions                                            ***/

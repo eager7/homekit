@@ -28,6 +28,8 @@ extern "C" {
 #include "http_handle.h"
 #include "bonjour.h"
 #include "tlv.h"
+#include "curve25519-donna.h"
+#include "ed25519.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -69,8 +71,17 @@ typedef struct {
     SRP         *pSrp;
     cstr        *pSecretKey;
     uint8       auSessionKey[64];
+    uint8       auControllerIdentifier[36];
+    uint8       auControllerPublicKey[32];
     pthread_mutex_t mutex;
 } tsPairSetup;
+
+typedef struct {
+    curved25519_key auPublicKey;
+    curved25519_key auControllerPublicKey;
+    curved25519_key auSharedKey;
+    uint8_t auEnKey[32];
+} tsPairVerify;
 
 typedef struct {
     uint8   u8Type;

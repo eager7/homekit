@@ -24,7 +24,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_TLV 1
+#define DBG_TLV 0
 
 /****************************************************************************/
 /***        Type Definitions                                              ***/
@@ -121,7 +121,6 @@ teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTl
         psTlvMsg->psTlvMsgGetRecordData     = pu8TlvGetRecordData;
         psTlvMsg->pu16TlvMsgGetRecordLength = u16TlvMsgGetRecordLength;
         psTlvMsg->sTlvRecord[i].u8Type      = psBuffer[u16OffSet];
-        INF_vPrintln(1,"f:%p,i:%d,t:%d",pu8TlvGetRecordData, i, psTlvMsg->sTlvRecord[i].u8Type);
         u16OffSet += TLV_TYPE_LEN;
         while(psBuffer[u16OffSet] == TLV_FRAGMENTED){
             psTlvMsg->sTlvRecord[i].u16Len += TLV_FRAGMENTED;

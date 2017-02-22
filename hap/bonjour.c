@@ -235,9 +235,9 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 }
                                 else if (strstr(sHttp.acDirectory, "pair-verify")){
                                     DBG_vPrintln(DBG_BONJOUR, "pair-verify");
-                                    handlePairVerify();
+                                    eHandlePairVerify();
                                     //When pair-verify done, we handle Accessory Request
-                                    handleAccessoryRequest();
+                                    eHandleAccessoryRequest();
                                 }
                                 else if (strstr(sHttp.acDirectory, "identify")){
                                     //close(sC);
