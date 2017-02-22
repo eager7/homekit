@@ -53,7 +53,7 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8_t *buf, uint16_t len, bool_t bWithLen, char *verify)
+static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8 *buf, uint16 len, bool_t bWithLen, char *verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
         return E_PAIRING_STATUS_ERROR;
@@ -344,9 +344,146 @@ Finished:
 
     return eStatus;
 }
-static tePairStatus eM2VerifyStartResponse(int iSockFd, char *psDeviceID, tsHttpEntry *psHttpEntry);
-static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsHttpEntry *psHttpEntry);
+static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
+{
+    uint8 *psRepBuffer = 0;
+    uint16 u16RepLen = 0;
+    uint8 value_rep[1] = {E_PAIR_VERIFY_M2_START_RESPONSE};
+    uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
+    tsIpMessage *psResponse = psIpResponseNew();
+    tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
+    tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
+    tePairStatus eStatus = E_PAIRING_STATUS_OK;
 
+    memcpy(sPairVerify.auControllerPublicKey, psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY), 32);
+    curved25519_key auSecretKey;
+    for (int i = 0; i < sizeof(auSecretKey); i++) {
+        auSecretKey[i] = (uint8)rand();
+    }
+    curve25519_donna(sPairVerify.auPublicKey, auSecretKey, curveBasePoint);
+    curve25519_donna(sPairVerify.auSharedKey, auSecretKey, sPairVerify.auControllerPublicKey);
+
+    uint8 auAccessoryInfo[100] = {0};
+    memcpy(auAccessoryInfo, sPairVerify.auPublicKey, 32);
+    memcpy(&auAccessoryInfo[32], psDeviceID, LEN_DEVICE_ID);
+    memcpy(&auAccessoryInfo[32 + LEN_DEVICE_ID], sPairVerify.auControllerPublicKey, 32);
+
+    ed25519_secret_key edSecret;
+    memcpy(edSecret, accessorySecretKey, sizeof(edSecret));
+    ed25519_public_key edPubKey;
+    ed25519_publickey(edSecret, edPubKey);
+    uint8 auSignRecordData[64] = {0};
+    ed25519_sign(auAccessoryInfo, 64 + LEN_DEVICE_ID, edSecret, edPubKey, auSignRecordData);
+
+    uint8 auIdRecordData[LEN_DEVICE_ID] = {0};
+    memcpy(auIdRecordData, psDeviceID, LEN_DEVICE_ID);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,sPairVerify.auPublicKey,32,psTlvRespMsg);
+
+    tsTlvPackage* psSubTlvPackage = psTlvPackageNew();
+    psSubTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SIGNATURE,auSignRecordData,sizeof(auSignRecordData),&psSubTlvPackage->sMessage);
+    psSubTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_IDENTIFIER,auIdRecordData,LEN_DEVICE_ID,&psSubTlvPackage->sMessage);
+
+    const char salt[] = "Pair-Verify-Encrypt-Salt";
+    const char info[] = "Pair-Verify-Encrypt-Info";
+    hkdf((const uint8*)salt, (int)strlen(salt), sPairVerify.auSharedKey, 32, (const uint8*)info, (int)strlen(info), sPairVerify.auEnKey, 32);
+    uint8 *psSubMsgData = NULL;
+    uint16 u16SubMsgLen = 0;
+    psSubTlvPackage->eTlvMessageGetData(&psSubTlvPackage->sMessage,&psSubMsgData, &u16SubMsgLen);
+    eTlvPackageRelease(psSubTlvPackage);
+
+    uint8 *psEncryptedData = (uint8*)malloc(u16SubMsgLen + 16);
+    uint8 polyKey[64] = {0};
+    uint8 zero[64] = {0};
+    chacha20_ctx chacha;
+    chacha20_setup(&chacha, sPairVerify.auEnKey, 32, (uint8*)"PV-Msg02");
+    chacha20_encrypt(&chacha, zero, polyKey, 64);
+    chacha20_encrypt(&chacha, psSubMsgData, psEncryptedData, u16SubMsgLen);
+    FREE(psSubMsgData);
+
+    char verify[16] = {0};
+    ePoly1305_GenKey(polyKey, psEncryptedData, u16SubMsgLen, T_FALSE, verify);
+    memcpy(&psEncryptedData[u16SubMsgLen], verify, 16);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,(uint16)(u16SubMsgLen + 16),psTlvRespMsg);
+    FREE(psEncryptedData);
+
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
+    psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
+    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(iSockFd, &psIpMsg->sHttp, psRepBuffer, u16RepLen);
+    eIpMessageRelease(psResponse);
+    FREE(psRepBuffer);
+    return eStatus;
+}
+static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsIpMessage *psIpMsg)
+{
+    uint8 *psRepBuffer = 0;
+    uint16 u16RepLen = 0;
+    uint8 value_rep[1] = {E_PAIR_VERIFY_M2_START_RESPONSE};
+    uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
+    tsIpMessage *psResponse = psIpResponseNew();
+    tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
+    tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
+    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+
+    uint8 *psEncryptedPackData = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
+    uint16 u16EncryptedPackLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
+    uint16 u16EncryptedLen = u16EncryptedPackLen - (uint16)LEN_AUTH_TAG;
+
+    chacha20_ctx chacha20;
+    memset(&chacha20, 0, sizeof(chacha20));
+    chacha20_setup(&chacha20, sPairVerify.auEnKey, 32, (uint8*)"PV-Msg03");
+    uint8 auIn[64] = {0}, auOut[64] = {0};
+    chacha20_encrypt(&chacha20, auIn, auOut, 64);
+
+    char verify[16] = {0};
+    ePoly1305_GenKey(auOut, psEncryptedPackData, u16EncryptedLen, T_FALSE, verify);
+    if (!bcmp(verify, &psEncryptedPackData[u16EncryptedLen], LEN_AUTH_TAG)) {
+        uint8 *psEncryptedData = (uint8*)malloc(u16EncryptedLen);
+        chacha20_decrypt(&chacha20, psEncryptedPackData, psEncryptedData, u16EncryptedLen);
+        tsTlvPackage *psSubTlvPack = psTlvPackageFormat(psEncryptedData, u16EncryptedLen);
+        FREE(psEncryptedData);
+
+        uint8 *controllerID = psSubTlvPack->psTlvRecordGetData(&psSubTlvPack->sMessage,E_TLV_VALUE_TYPE_IDENTIFIER);
+        uint8 key[36] = {0};
+        uint8 recpublicKey[32] = {0};
+        eIOSDevicePairingIDRead(key, 36);
+        if(bcmp(key, controllerID, 36) == 0){
+            eIOSDeviceLTPKRead(recpublicKey, 32);
+        } else{
+            ERR_vPrintln(T_TRUE, "controllerID verify failed");
+            return E_PAIRING_STATUS_ERROR;
+        }
+
+        uint8 auIOSDeviceInfo[100];
+        memcpy(auIOSDeviceInfo, sPairVerify.auControllerPublicKey, 32);
+        memcpy(&auIOSDeviceInfo[32], controllerID, 36);
+        memcpy(&auIOSDeviceInfo[68], sPairVerify.auPublicKey, 32);
+
+        int err = ed25519_sign_open(auIOSDeviceInfo, 100, recpublicKey, psSubTlvPack->psTlvRecordGetData(&psSubTlvPack->sMessage,E_TLV_VALUE_TYPE_SIGNATURE));
+        eTlvPackageRelease(psSubTlvPack);
+        if (err == 0) {
+            hkdf((uint8*)"Control-Salt", 12, sPairVerify.auSharedKey, 32, (uint8*)"Control-Read-Encryption-Key", 27, sController.auAccessoryToControllerKey, 32);
+            hkdf((uint8*)"Control-Salt", 12, sPairVerify.auSharedKey, 32, (uint8*)"Control-Write-Encryption-Key", 28, sController.auControllerToAccessoryKey, 32);
+            INF_vPrintln(DBG_PAIR, "Verify success\n");
+        } else {
+            psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
+            ERR_vPrintln(DBG_PAIR, "Verify failed\n");
+            eStatus = E_PAIRING_STATUS_ERROR;
+            goto Finished;
+        }
+    } else{
+        ERR_vPrintln(T_TRUE, "Error verify");
+        return E_PAIRING_STATUS_ERROR;
+    }
+Finished:
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
+    psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
+    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+    eHttpResponse(iSockFd, &psIpMsg->sHttp, psRepBuffer, u16RepLen);
+    eIpMessageRelease(psResponse);
+    FREE(psRepBuffer);
+    return eStatus;
+}
 
 /****************************************************************************/
 /***        Exported Functions                                            ***/
@@ -356,15 +493,11 @@ tePairStatus ePairingInit()
     memset(&sController, 0, sizeof(tsController));
     memset(&sPairSetup, 0, sizeof(tsPairSetup));
     memset(&sPairVerify, 0, sizeof(tsPairVerify));
-
     eLockCreate(&sPairSetup.mutex);
-
     return E_PAIRING_STATUS_OK;
 }
-
 tePairStatus ePairingFinished()
 {
-    SRP_free(sPairSetup.pSrp);
     return E_PAIRING_STATUS_OK;
 }
 
@@ -616,10 +749,10 @@ tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
     tsTlvMessage *psTlvInMessage = &psIpMsg->psTlvPackage->sMessage;
     uint8 *pStateController = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_STATE);
     CHECK_POINTER(pStateController, E_PAIRING_STATUS_ERROR);
-    memcpy(&sPairSetup.eSetup, pStateController, 1);
-    INF_vPrintln(DBG_PAIR, "State:%d", sPairSetup.eSetup);
-    value_rep[0] = sPairSetup.eSetup + 1;
-    switch (sPairSetup.eSetup) {
+    memcpy(&sPairSetup.eState, pStateController, 1);
+    INF_vPrintln(DBG_PAIR, "State:%d", sPairSetup.eState);
+    value_rep[0] = sPairSetup.eState + 1;
+    switch (sPairSetup.eState) {
         case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
             INF_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
             sPairSetup.pSrp = SRP_new(SRP6a_server_method());
@@ -639,35 +772,36 @@ tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
             break;
     }
     eIpMessageRelease(psIpMsg);
-
     return E_PAIRING_STATUS_OK;
-
 }
 
 tePairStatus  eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour) {
     CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
     CHECK_POINTER(psBonjour, E_PAIRING_STATUS_ERROR);
+#if 0
     sController.iSockFd = iSocketFd;
     sController.iLen = iLen;
     memcpy(sController.auBuffer, psBuffer, sizeof(sController.auBuffer));
 
     bool_t end = T_FALSE;
-    tePairVerify ePairVerifyState = E_PAIR_VERIFY_M1_START_REQUEST;
+#endif
     uint8 value_rep[1] = {0};
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     tsIpMessage *psIpMsg = NULL, *psResponse = NULL;
     uint8 *psRepBuffer = 0;
     uint16 u16RepLen = 0;
-    do {
-        psIpMsg = psIpMessageFormat(sController.auBuffer, (uint16)sController.iLen);
-        tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
-        psResponse = psIpResponseNew();
-        tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
-        memcpy(&ePairVerifyState, psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg, E_TLV_VALUE_TYPE_STATE), 1);
-        value_rep[0] = ePairVerifyState + 1;
-        switch (ePairVerifyState) {
+    //do {
+        psIpMsg = psIpMessageFormat(psBuffer, (uint16)iLen);
+        //tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
+        //psResponse = psIpResponseNew();
+        //tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
+        memcpy(&sPairVerify.eState, psIpMsg->psTlvPackage->psTlvRecordGetData(&psIpMsg->psTlvPackage->sMessage, E_TLV_VALUE_TYPE_STATE), 1);
+        value_rep[0] = sPairVerify.eState + 1;
+        switch (sPairVerify.eState) {
             case E_PAIR_VERIFY_M1_START_REQUEST:{
                 NOT_vPrintln(DBG_PAIR, "E_PAIR_VERIFY_M1_START_REQUEST\n");
+                eM2VerifyStartResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
+#if 0
                 memcpy(sPairVerify.auControllerPublicKey, psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg, E_TLV_VALUE_TYPE_PUBLIC_KEY), 32);
                 curved25519_key auSecretKey;
                 for (int i = 0; i < sizeof(auSecretKey); i++) {
@@ -718,9 +852,12 @@ tePairStatus  eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonj
                 memcpy(&psEncryptedData[u16SubMsgLen], verify, 16);
                 psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,(uint16)(u16SubMsgLen + 16),psTlvRespMsg);
                 FREE(psEncryptedData);
+#endif
             }break;
             case E_PAIR_VERIFY_M3_FINISHED_REQUEST:{
                 NOT_vPrintln(DBG_PAIR, "E_PAIR_VERIFY_M3_FINISHED_REQUEST\n");
+                eM4VerifyFinishResponse(iSocketFd, psIpMsg);
+#if 0
                 uint8 *psEncryptedPackData = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
                 uint16 u16EncryptedPackLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
                 uint16 u16EncryptedLen = u16EncryptedPackLen - (uint16)LEN_AUTH_TAG;
@@ -771,21 +908,23 @@ tePairStatus  eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonj
                     ERR_vPrintln(T_TRUE, "Error verify");
                     return E_PAIRING_STATUS_ERROR;
                 }
+#endif
             }break;
         }
-        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
-        psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
-        psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-        eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, psRepBuffer, u16RepLen);
-        eIpMessageRelease(psResponse);
-        eIpMessageRelease(psIpMsg);
-        FREE(psRepBuffer);
-    }while (!end && (0 < (sController.iLen = (int)read(sController.iSockFd, sController.auBuffer, MABF))));
-    if(end)
-        return E_PAIRING_STATUS_OK;
-    else
-        return E_PAIRING_STATUS_ERROR;
 
+      //  psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
+        //psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
+        //psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
+        //eHttpResponse(sController.iSockFd, &psIpMsg->sHttp, psRepBuffer, u16RepLen);
+        //eIpMessageRelease(psResponse);
+        eIpMessageRelease(psIpMsg);
+        //FREE(psRepBuffer);
+    //}while (!end && (0 < (sController.iLen = (int)read(sController.iSockFd, sController.auBuffer, MABF))));
+    //if(end)
+    //    return E_PAIRING_STATUS_OK;
+    //else
+    //    return E_PAIRING_STATUS_ERROR;
+#if 0
     AuthenticationError:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psResponse->psTlvPackage->sMessage);
     psResponse->psTlvPackage->eTlvMessageGetData(&psResponse->psTlvPackage->sMessage,&psRepBuffer,&u16RepLen);
@@ -794,5 +933,6 @@ tePairStatus  eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonj
     eIpMessageRelease(psResponse);
     eIpMessageRelease(psIpMsg);
     FREE(psRepBuffer);
+#endif
     return E_PAIRING_STATUS_ERROR;
 }

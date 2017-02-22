@@ -67,7 +67,7 @@ typedef enum {
 } tePairVerify;
 
 typedef struct {
-    tePairSetup eSetup;
+    tePairSetup eState;
     SRP         *pSrp;
     cstr        *pSecretKey;
     uint8       auSessionKey[64];
@@ -77,6 +77,7 @@ typedef struct {
 } tsPairSetup;
 
 typedef struct {
+    tePairVerify eState;
     curved25519_key auPublicKey;
     curved25519_key auControllerPublicKey;
     curved25519_key auSharedKey;
