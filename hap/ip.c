@@ -23,6 +23,7 @@
 #include "ip.h"
 #include "http_handle.h"
 #include "tlv.h"
+#include "controller.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -39,7 +40,7 @@
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-
+extern tsController sController;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -47,6 +48,19 @@
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
+static void vUpdateConfiguration(tsBonjour *psBonjour) {
+    psBonjour->sBonjourText.u64CurrentCfgNumber++;
+    eTextRecordFormat(psBonjour);
+    DBG_vPrintln(DBG_IP, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
+    DNSServiceErrorType  ret = DNSServiceUpdateRecord(psBonjour->psDnsRef, NULL, 0,
+                                                      TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), 0);
+    TXTRecordDeallocate(&psBonjour->txtRecord);
+    if(ret){
+        ERR_vPrintln(DBG_IP, "DNSServiceUpdateRecord Failed:%d", ret);
+        return ;
+    }
+}
+
 teIpStatus eHapHandleAccessoryRequest(int iSocketFd)
 {
     char auBuffer[MABF] = {0};
@@ -57,40 +71,13 @@ teIpStatus eHapHandleAccessoryRequest(int iSocketFd)
     }
     //tsHttpEntry sHttpEntry; memset(&sHttpEntry, 0, sizeof(sHttpEntry));
     //CHECK_RESULT(eHttpParser(auBuffer, (uint16)iLen, &sHttpEntry), E_HTTP_PARSER_OK, E_IP_STATUS_ERROR);
-    eDecryptedHttpMessage(auBuffer, iLen);
+    //eDecryptedHttpMessage(auBuffer, iLen);
 
     return E_IP_STATUS_OK;
 }
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
-{
-    tsHttpEntry sHttpEntry;
-    eHttpParser(psBuffer, (uint16)iLen, &sHttpEntry);
-    DBG_vPrintln(DBG_IP, "Data Len:%d", sHttpEntry.u16ContentLen);
-    if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
-        DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
-        ePairSetup(iSocketFd, psBonjour, psBuffer, (uint16)iLen);
-        //eTextRecordFormat(&sBonjour);
-        //DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
-        //DNSServiceErrorType  ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, TXTRecordGetLength(&sBonjour.txtRecord),
-        //                                                  TXTRecordGetBytesPtr(&sBonjour.txtRecord), 0);
-        //TXTRecordDeallocate(&sBonjour.txtRecord);
-        //if(ret){
-        //    ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
-        //}
-    } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
-        DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
-        ePairVerify(iSocketFd, psBonjour, psBuffer, (uint16)iLen);
-        eHapHandleAccessoryRequest(iSocketFd);
-    }
-
-    //TODO:HandleHomeKitMsg(buf);
-    return E_IP_STATUS_OK;
-}
-
-
 tsIpMessage *psIpResponseNew()
 {
     tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
@@ -120,5 +107,29 @@ teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
 {
     eTlvPackageRelease(psIpMsg->psTlvPackage);
     FREE(psIpMsg);
+    return E_IP_STATUS_OK;
+}
+
+teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
+{
+    tsHttpEntry sHttpEntry;
+    eHttpParser(psBuffer, (uint16)iLen, &sHttpEntry);
+
+    //sController.iSockFd = iSocketFd;
+    //sController.iLen = iLen;
+    //memcpy(sController.auBuffer, psBuffer, sizeof(sController.auBuffer));
+
+    DBG_vPrintln(DBG_IP, "Data Len:%d", sHttpEntry.u16ContentLen);
+    if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
+        DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
+        eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
+        vUpdateConfiguration(psBonjour);
+    } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
+        DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
+        eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
+        eHandleAccessoryRequest(psBuffer, iLen, iSocketFd, psBonjour);
+    } else if (strstr((char*)sHttpEntry.acDirectory, "identify")){
+        close(iSocketFd);
+    }
     return E_IP_STATUS_OK;
 }

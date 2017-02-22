@@ -113,6 +113,7 @@ typedef struct {
 /****************************************************************************/
 teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psModel);
 teBonjStatus eBonjourFinished(tsProfile *psProfile);
+teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

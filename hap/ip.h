@@ -62,11 +62,10 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 tsIpMessage *psIpResponseNew();
 tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
 teIpStatus  eIpMessageRelease(tsIpMessage *psIpMsg);
-
+teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

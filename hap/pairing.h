@@ -84,11 +84,17 @@ typedef struct {
 } tsPairVerify;
 
 typedef struct {
-    uint8   u8Type;
-    uint16  u16Len;
-    uint16  u16Offset;
-    uint8   *psValue;
-} tsTlvType;
+    int     iSockFd;
+    int     iLen;
+    uint8   auBuffer[MABF];
+    uint64  u64NumMsgRec;
+    uint64  u64NumMsgSend;
+    uint8   auControllerToAccessoryKey[32];
+    uint8   auAccessoryToControllerKey[32];
+
+    tePairSetup  ePairSetup;
+    tePairVerify ePairVerify;
+} tsController;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -105,11 +111,14 @@ extern tePairSetup ePair;
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tePairStatus ePairSetup(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
-tePairStatus ePairSetup2(int iSockFd, char *pSetupCode, char *pBuf, uint16 u16Len);
 tePairStatus ePairVerify(int iSockFd, tsBonjour *psBonjour, char *pBuf, uint16 u16Len);
 
 tePairStatus eDecryptedHttpMessage(char *psBuffer, int iLen);
 void Poly1305_GenKey(const unsigned char * key, uint8_t * buf, uint16_t len, bool_t bWithLen, char* verify);
+
+tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+tePairStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 
 tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len);
 tePairStatus eIOSDevicePairingIDRead(uint8 *buf, int len);

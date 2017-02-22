@@ -24,6 +24,7 @@
 #include "bonjour.h"
 #include "pairing.h"
 #include "controller.h"
+#include "ip.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -36,7 +37,6 @@
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
 static teBonjStatus eBonjourSocketInit(void);
-static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
 static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
                                 const char *name, const char *regtype, const char *domain, void *context);
@@ -47,10 +47,7 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-tsBonjour sBonjour;
-
-extern tsProfile sLightBulb;
-tsQueue  sQueue;
+static tsBonjour sBonjour;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -86,52 +83,6 @@ static teBonjStatus eBonjourSocketInit(void)
     return E_BONJOUR_STATUS_OK;
 }
 
-static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
-{
-    TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
-
-    char temp_csharp[MIBF] = {0};
-    sprintf(temp_csharp, "%llu", psBonjour->sBonjourText.u64CurrentCfgNumber);
-    TXTRecordSetValue(&psBonjour->txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
-
-    char temp_ff[MIBF] = {0};
-    sprintf(temp_ff, "%d", psBonjour->sBonjourText.u8FeatureFlag);
-    TXTRecordSetValue(&psBonjour->txtRecord, "ff", 1, temp_ff);
-
-    char temp_id[MIBF] = {0};
-    sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*5) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*4) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*3) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
-    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
-
-    char temp_md[MIBF] = {0};
-    sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
-    TXTRecordSetValue(&psBonjour->txtRecord, "md", (uint8)strlen(temp_md), temp_md);
-
-    char temp_pv[MIBF] = {0};
-    sprintf(temp_pv, "%d.%d", psBonjour->sBonjourText.auProtocolVersion[0], psBonjour->sBonjourText.auProtocolVersion[1]);
-    TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
-
-    char temp_scharp[MIBF] = {0};
-    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32CurrentStaNumber);
-    TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
-
-    char temp_sf[MIBF] = {0};
-    sprintf(temp_sf, "%d", psBonjour->sBonjourText.u8StatusFlag);
-    TXTRecordSetValue(&psBonjour->txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
-
-    char temp_ci[MIBF] = {0};
-    sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
-    TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
-
-    return E_BONJOUR_STATUS_OK;
-}
-
 static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode, const char *name, const char *regtype, const char *domain, void *context)
 {
     (void)client;   // Unused
@@ -145,17 +96,7 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
     }
 }
 
-void updateConfiguration() {
-    sBonjour.sBonjourText.u64CurrentCfgNumber++;
-    eTextRecordFormat(&sBonjour);
-    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
-    DNSServiceErrorType  ret = DNSServiceUpdateRecord(sBonjour.psDnsRef, NULL, 0, TXTRecordGetLength(&sBonjour.txtRecord), TXTRecordGetBytesPtr(&sBonjour.txtRecord), 0);
-    TXTRecordDeallocate(&sBonjour.txtRecord);
-    if(ret){
-        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
-        return ;
-    }
-}
+
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
     tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
@@ -171,6 +112,9 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     }
 
     static int iNumberClient = 0;
+    int iSockFd = 0;
+    int iLen = 0;
+    uint8 auBuffer[MABF] = {0};
     while(psThreadInfo->eState == E_THREAD_RUNNING){
         fdTemp = fdSelect;  /* use temp value, because this value will be clear */
         DBG_vPrintln(DBG_BONJOUR, "select \n");
@@ -195,54 +139,31 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                         struct sockaddr_in client_addr;
                         memset(&client_addr, 0, sizeof(client_addr));
                         socklen_t client_len = sizeof(client_addr);
-                        sController.iSockFd = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
-                        if(-1 == sController.iSockFd){
+                        iSockFd = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+                        if(-1 == iSockFd){
                             ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
                             break;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
-                            FD_SET(sController.iSockFd, &fdSelect);
-                            if(sController.iSockFd > iListenFD){
-                                iListenFD = sController.iSockFd;
+                            FD_SET(iSockFd, &fdSelect);
+                            if(iSockFd > iListenFD){
+                                iListenFD = iSockFd;
                             }
                             iNumberClient ++;
                         }
                     }
                 } else {    /* Client Communication */
-                    if(FD_ISSET(sController.iSockFd, &fdTemp)){
-                        char buf[MABF] = {0};
-                        ssize_t len = recv(sController.iSockFd, sController.auBuffer, sizeof(buf), 0);
-                        if(0 == len){
-                            ERR_vPrintln(T_TRUE, "Close Client:%d\n", sController.iSockFd);
-                            close(sController.iSockFd);
+                    if(FD_ISSET(iSockFd, &fdTemp)){
+                        iLen = (int)recv(iSockFd, auBuffer, sizeof(auBuffer), 0);
+                        if(0 == iLen){
+                            ERR_vPrintln(T_TRUE, "Close Client:%d\n", iSockFd);
+                            close(iSockFd);
                             FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
-                            FD_CLR(sController.iSockFd, &fdSelect);//delete this client from select set
+                            FD_CLR(iSockFd, &fdSelect);//delete this client from select set
                             iNumberClient --;
                         } else {
-                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", (int)len, buf);
-                            //eHapHandlePackage(buf, (int)len, iSockClient, &sBonjour);
-                            {
-                                tsHttpEntry sHttp;memset(&sHttp, 0, sizeof(sHttp));
-                                eHttpParser(sController.auBuffer, len, &sHttp);
-                                sController.iLen = len;
-                                if (strstr(sHttp.acDirectory, "pair-setup")){
-                                    /*
-                                     * The process of pair-setup
-                                     */
-                                    DBG_vPrintln(DBG_BONJOUR, "Pair Setup");
-                                    eHandlePairSetup();
-                                    updateConfiguration();
-                                }
-                                else if (strstr(sHttp.acDirectory, "pair-verify")){
-                                    DBG_vPrintln(DBG_BONJOUR, "pair-verify");
-                                    eHandlePairVerify();
-                                    //When pair-verify done, we handle Accessory Request
-                                    eHandleAccessoryRequest();
-                                }
-                                else if (strstr(sHttp.acDirectory, "identify")){
-                                    //close(sC);
-                                }
-                            }
+                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", iLen, auBuffer);
+                            eHapHandlePackage(auBuffer, iLen, iSockFd, &sBonjour);
                         }
                     }
                 }
@@ -251,10 +172,8 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     }
     DBG_vPrintln(DBG_BONJOUR, "pvBonjourThreadHandle Exit");
     vThreadFinish(psThreadInfo);
-
     return NULL;
 }
-
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -300,5 +219,52 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
 teBonjStatus eBonjourFinished(tsProfile *psProfile)
 {
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
+    eThreadStop(&sBonjour.sBonjourThread);
+    return E_BONJOUR_STATUS_OK;
+}
+
+teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
+{
+    TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
+
+    char temp_csharp[MIBF] = {0};
+    sprintf(temp_csharp, "%llu", psBonjour->sBonjourText.u64CurrentCfgNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
+
+    char temp_ff[MIBF] = {0};
+    sprintf(temp_ff, "%d", psBonjour->sBonjourText.u8FeatureFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ff", 1, temp_ff);
+
+    char temp_id[MIBF] = {0};
+    sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*5) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*4) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*3) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
+
+    char temp_md[MIBF] = {0};
+    sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
+    TXTRecordSetValue(&psBonjour->txtRecord, "md", (uint8)strlen(temp_md), temp_md);
+
+    char temp_pv[MIBF] = {0};
+    sprintf(temp_pv, "%d.%d", psBonjour->sBonjourText.auProtocolVersion[0], psBonjour->sBonjourText.auProtocolVersion[1]);
+    TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
+
+    char temp_scharp[MIBF] = {0};
+    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32CurrentStaNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
+
+    char temp_sf[MIBF] = {0};
+    sprintf(temp_sf, "%d", psBonjour->sBonjourText.u8StatusFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
+
+    char temp_ci[MIBF] = {0};
+    sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
+
     return E_BONJOUR_STATUS_OK;
 }
