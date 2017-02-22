@@ -79,18 +79,23 @@ typedef struct {
     uint8   *psValue;
 } tsTlv;
 
-typedef teTlvStatus  (*tpeTlvMsgGetBinaryData)(struct _tsTlvMessage *psTlvMessage, uint8 **psBuffer, uint16 *pu16Len);
-typedef uint8* (*tpfTlvMsgGetRecordData)(struct _tsTlvMessage *psTlvMessage, teTlvValue eType);
-typedef uint16 (*tpu16TlvMsgGetRecordLength)(struct _tsTlvMessage *psTlvMessage, teTlvValue eType);
-typedef teTlvStatus (*tefTlvMsgAddRecord)(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, struct _tsTlvMessage *psTlvMessage);
-typedef struct _tsTlvMessage{
+typedef struct {
     tsTlv sTlvRecord[TLV_NUM];
     uint8 u8RecordNum;
-    tpeTlvMsgGetBinaryData eTlvMsgGetBinaryData;
-    tpfTlvMsgGetRecordData psTlvMsgGetRecordData;
-    tpu16TlvMsgGetRecordLength pu16TlvMsgGetRecordLength;
-    tefTlvMsgAddRecord efTlvMsgAddRecord;
 } tsTlvMessage;
+
+typedef teTlvStatus  (*tpeTlvMessageGetData)(tsTlvMessage *psTlvMessage, uint8 **psBuffer, uint16 *pu16Len);
+typedef uint8* (*tpfTlvRecordGetData)(tsTlvMessage *psTlvMessage, teTlvValue eType);
+typedef uint16 (*tpu16TlvRecordGetLen)(tsTlvMessage *psTlvMessage, teTlvValue eType);
+typedef teTlvStatus (*tefTlvMessageAddRecord)(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMessage);
+
+typedef struct {
+    tsTlvMessage sMessage;
+    tpeTlvMessageGetData eTlvMessageGetData;
+    tpfTlvRecordGetData psTlvRecordGetData;
+    tpu16TlvRecordGetLen pu16TlvRecordGetLen;
+    tefTlvMessageAddRecord efTlvMessageAddRecord;
+} tsTlvPackage;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -106,11 +111,9 @@ typedef struct _tsTlvMessage{
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsTlvMessage *psTlvMessageNew();
-teTlvStatus eTlvMessageFormat(uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
-teTlvStatus eTlvMessageAddRecord(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMsg);
-teTlvStatus eTlvMessageRelease(tsTlvMessage *psTlvMsg);
-teTlvStatus eTlvMsgGetBinaryData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, uint16 *pu16Len);
+tsTlvPackage *psTlvPackageNew();
+tsTlvPackage *psTlvPackageFormat(uint8 *psBuffer, uint16 u16Len);
+teTlvStatus  eTlvPackageRelease(tsTlvPackage *psTlvPackage);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

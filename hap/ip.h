@@ -44,14 +44,9 @@ typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
 typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
 typedef struct {
     tsHttpEntry sHttp;
-    tsTlvMessage sTlvMsg;
+    tsTlvPackage *psTlvPackage;
     tpfIpGetBinaryData pfIpGetBinaryData;
 }tsIpMessage;
-
-typedef struct {
-    tsHttpEntry sHttp;
-    tsTlvMessage sTlvMsg;
-} tsIpResponse;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -68,9 +63,9 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
-tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
 tsIpMessage *psIpResponseNew();
-teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg);
+tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
+teIpStatus  eIpMessageRelease(tsIpMessage *psIpMsg);
 
 /****************************************************************************/
 /***        Local    Functions                                            ***/

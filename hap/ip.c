@@ -90,29 +90,35 @@ teIpStatus eHapHandlePackage(char *psBuffer, int iLen, int iSocketFd, tsBonjour 
     return E_IP_STATUS_OK;
 }
 
-tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
-{
-    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
-    CHECK_POINTER(psIpMsg, NULL);
-    memset(psIpMsg, 0, sizeof(tsIpMessage));
-    eHttpParser(psBuffer, u16Len, &psIpMsg->sHttp);
-    CHECK_RESULT(eTlvMessageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen, &psIpMsg->sTlvMsg), E_TLV_STATUS_OK, NULL);
-    return psIpMsg;
-}
-
-teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
-{
-    eTlvMessageRelease(&psIpMsg->sTlvMsg);
-    FREE(psIpMsg);
-    return E_IP_STATUS_OK;
-}
 
 tsIpMessage *psIpResponseNew()
 {
     tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
     CHECK_POINTER(psIpMsg, NULL);
     memset(psIpMsg, 0, sizeof(tsIpMessage));
-    psIpMsg->sTlvMsg.efTlvMsgAddRecord = eTlvMessageAddRecord;
-    psIpMsg->sTlvMsg.eTlvMsgGetBinaryData = eTlvMsgGetBinaryData;
+    psIpMsg->psTlvPackage = psTlvPackageNew();
+    if(psIpMsg->psTlvPackage == NULL){
+        FREE(psIpMsg); return NULL;
+    }
     return psIpMsg;
+}
+tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
+{
+    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
+    CHECK_POINTER(psIpMsg, NULL);
+    memset(psIpMsg, 0, sizeof(tsIpMessage));
+    eHttpParser(psBuffer, u16Len, &psIpMsg->sHttp);
+    psIpMsg->psTlvPackage = psTlvPackageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen);
+    if(psIpMsg->psTlvPackage == NULL){
+        ERR_vPrintln(T_TRUE, "psTlvPackageFormat Failed");
+        FREE(psIpMsg); return NULL;
+    }
+    return psIpMsg;
+}
+
+teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
+{
+    eTlvPackageRelease(psIpMsg->psTlvPackage);
+    FREE(psIpMsg);
+    return E_IP_STATUS_OK;
 }
