@@ -185,7 +185,6 @@ teTlvStatus eTlvMsgGetBinaryData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, uint1
     for (int i = 0; i < TLV_NUM; ++i) {
         if(psTlvMsg->sTlvRecord[i].u16Len != 0){
             u16Len += psTlvMsg->sTlvRecord[i].u16Len;
-            printf("Len:%d\n", u16Len);
             uint8 *psTemp = (uint8*)realloc(psRet, u16Len);
             CHECK_POINTER(psTemp, E_TLV_STATUS_ERROR);
             psRet = psTemp;

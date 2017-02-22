@@ -48,10 +48,9 @@ const unsigned char generator[] = {0x05};
 const unsigned char modulusStr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74, 0x02, 0x0B, 0xBE, 0xA6, 0x3B, 0x13, 0x9B, 0x22, 0x51, 0x4A, 0x08, 0x79, 0x8E, 0x34, 0x04, 0xDD, 0xEF, 0x95, 0x19, 0xB3, 0xCD, 0x3A, 0x43, 0x1B, 0x30, 0x2B, 0x0A, 0x6D, 0xF2, 0x5F, 0x14, 0x37, 0x4F, 0xE1, 0x35, 0x6D, 0x6D, 0x51, 0xC2, 0x45, 0xE4, 0x85, 0xB5, 0x76, 0x62, 0x5E, 0x7E, 0xC6, 0xF4, 0x4C, 0x42, 0xE9, 0xA6, 0x37, 0xED, 0x6B, 0x0B, 0xFF, 0x5C, 0xB6, 0xF4, 0x06, 0xB7, 0xED, 0xEE, 0x38, 0x6B, 0xFB, 0x5A, 0x89, 0x9F, 0xA5, 0xAE, 0x9F, 0x24, 0x11, 0x7C, 0x4B, 0x1F, 0xE6, 0x49, 0x28, 0x66, 0x51, 0xEC, 0xE4, 0x5B, 0x3D, 0xC2, 0x00, 0x7C, 0xB8, 0xA1, 0x63, 0xBF, 0x05, 0x98, 0xDA, 0x48, 0x36, 0x1C, 0x55, 0xD3, 0x9A, 0x69, 0x16, 0x3F, 0xA8, 0xFD, 0x24, 0xCF, 0x5F, 0x83, 0x65, 0x5D, 0x23, 0xDC, 0xA3, 0xAD, 0x96, 0x1C, 0x62, 0xF3, 0x56, 0x20, 0x85, 0x52, 0xBB, 0x9E, 0xD5, 0x29, 0x07, 0x70, 0x96, 0x96, 0x6D, 0x67, 0x0C, 0x35, 0x4E, 0x4A, 0xBC, 0x98, 0x04, 0xF1, 0x74, 0x6C, 0x08, 0xCA, 0x18, 0x21, 0x7C, 0x32, 0x90, 0x5E, 0x46, 0x2E, 0x36, 0xCE, 0x3B, 0xE3, 0x9E, 0x77, 0x2C, 0x18, 0x0E, 0x86, 0x03, 0x9B, 0x27, 0x83, 0xA2, 0xEC, 0x07, 0xA2, 0x8F, 0xB5, 0xC5, 0x5D, 0xF0, 0x6F, 0x4C, 0x52, 0xC9, 0xDE, 0x2B, 0xCB, 0xF6, 0x95, 0x58, 0x17, 0x18, 0x39, 0x95, 0x49, 0x7C, 0xEA, 0x95, 0x6A, 0xE5, 0x15, 0xD2, 0x26, 0x18, 0x98, 0xFA, 0x05, 0x10, 0x15, 0x72, 0x8E, 0x5A, 0x8A, 0xAA, 0xC4, 0x2D, 0xAD, 0x33, 0x17, 0x0D, 0x04, 0x50, 0x7A, 0x33, 0xA8, 0x55, 0x21, 0xAB, 0xDF, 0x1C, 0xBA, 0x64, 0xEC, 0xFB, 0x85, 0x04, 0x58, 0xDB, 0xEF, 0x0A, 0x8A, 0xEA, 0x71, 0x57, 0x5D, 0x06, 0x0C, 0x7D, 0xB3, 0x97, 0x0F, 0x85, 0xA6, 0xE1, 0xE4, 0xC7, 0xAB, 0xF5, 0xAE, 0x8C, 0xDB, 0x09, 0x33, 0xD7, 0x1E, 0x8C, 0x94, 0xE0, 0x4A, 0x25, 0x61, 0x9D, 0xCE, 0xE3, 0xD2, 0x26, 0x1A, 0xD2, 0xEE, 0x6B, 0xF1, 0x2F, 0xFA, 0x06, 0xD9, 0x8A, 0x08, 0x64, 0xD8, 0x76, 0x02, 0x73, 0x3E, 0xC8, 0x6A, 0x64, 0x52, 0x1F, 0x2B, 0x18, 0x17, 0x7B, 0x20, 0x0C, 0xBB, 0xE1, 0x17, 0x57, 0x7A, 0x61, 0x5D, 0x6C, 0x77, 0x09, 0x88, 0xC0, 0xBA, 0xD9, 0x46, 0xE2, 0x08, 0xE2, 0x4F, 0xA0, 0x74, 0xE5, 0xAB, 0x31, 0x43, 0xDB, 0x5B, 0xFC, 0xE0, 0xFD, 0x10, 0x8E, 0x4B, 0x82, 0xD1, 0x20, 0xA9, 0x3A, 0xD2, 0xCA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 const unsigned char accessorySecretKey[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, 0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74};
 const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint8_t controllerToAccessoryKey[32];
-uint8_t accessoryToControllerKey[32];
-unsigned long long numberOfMsgRec = 0;
-unsigned long long numberOfMsgSend = 0;
+uint8 controllerToAccessoryKey[32];
+uint8 accessoryToControllerKey[32];
+
 
 const char hapJsonType[] = "application/hap+json";
 const char pairingTlv8Type[] = "application/pairing+tlv8";
@@ -467,8 +466,7 @@ static inline unsigned int bswap_32(unsigned int x) {
     return (bswap_16(x&0xffff)<<16) | (bswap_16(x>>16));
 }
 static inline unsigned long long bswap_64(unsigned long long x) {
-    return x;//(((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
-//    (bswap_32(x>>32));
+    return x;
 }
 
 void handleAccessory(const char *request, unsigned int requestLen, char **reply, unsigned int *replyLen, tsController *sender) {
@@ -613,72 +611,72 @@ void handleAccessory(const char *request, unsigned int requestLen, char **reply,
 
     printf("Reply: %s\n", *reply);
 }
-teHapStatus eHandleAccessoryRequest() {
-    char *decryptData = malloc(2048);
-    int iLenRecv = 0;
+
+teHapStatus eHandleAccessoryRequest()
+{
     DBG_vPrintln(DBG_CONTROLLER, "Successfully Connect\n");
-    numberOfMsgRec = 0;
-    numberOfMsgSend = 0;
+
+    int iLenRecv = 0;
+    uint8 auDecryptedData[MABF] = {0};
+    sController.u64NumMsgRec = 0;
+    sController.u64NumMsgSend = 0;
     do {
         memset(sController.auBuffer, 0, sizeof(sController.auBuffer));
-        iLenRecv = (int)read(sController.iSockFd, sController.auBuffer, MABF);
-        if (iLenRecv < 0)break;
-        //FIXME make sure buffer len > (2 + msgLen + 16)??
-        uint16_t msgLen = (uint8_t)sController.auBuffer[1]*256+(uint8_t)*sController.auBuffer;
+        iLenRecv = (int)read(sController.iSockFd, sController.auBuffer, sizeof(sController.auBuffer));
+        if (iLenRecv < 0){
+            ERR_vPrintln(T_TRUE, "Recvice Data Error");
+            return E_HAP_STATUS_ERROR;
+        }
+        uint16_t u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 0xff));
 
-        chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+        chacha20_ctx chacha20;
+        memset(&chacha20, 0, sizeof(chacha20));
 
-        printf("send: %llx\n", numberOfMsgRec);
-        if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
-        printf("send: %llx\n", numberOfMsgRec);
-        chacha20_setup(&chacha20, (const uint8_t *)controllerToAccessoryKey, 32, (uint8_t *)&numberOfMsgRec);
-        if (!is_big_endian()) numberOfMsgRec = bswap_64(numberOfMsgRec);
-        numberOfMsgRec++;
-        printf("send: %llx\n", numberOfMsgRec);
+        if (!is_big_endian()) sController.u64NumMsgRec = bswap_64(sController.u64NumMsgRec);
+        chacha20_setup(&chacha20, controllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
+        if (!is_big_endian()) sController.u64NumMsgRec = bswap_64(sController.u64NumMsgRec);
+        sController.u64NumMsgRec++;
 
-        char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
-        chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+        uint8 temp[64] = {0}, temp2[64] = {0};
+        chacha20_encrypt(&chacha20, temp, temp2, 64);
 
-        //Ploy1305 key
-        char verify[16];    bzero(verify, 16);
-        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)sController.auBuffer, msgLen, T_FALSE, verify);
+        char verify[16] = {0};
+        Poly1305_GenKey(temp2, sController.auBuffer, u16MsgLen, T_FALSE, verify);
+        memset(auDecryptedData, 0, sizeof(auDecryptedData));
+        chacha20_encrypt(&chacha20, &sController.auBuffer[2], auDecryptedData, u16MsgLen);
+        DBG_vPrintln(DBG_CONTROLLER, "Request: %s\nPacketLen: %d\n, MessageLen: %d\n", auDecryptedData, iLenRecv, (int)strlen(auDecryptedData));
 
-        bzero(decryptData, 2048);
-        chacha20_encrypt(&chacha20, (const uint8_t *)&sController.auBuffer[2], (uint8_t *)decryptData, msgLen);
-
-        printf("Request: %s\nPacketLen: %d\n, MessageLen: %d\n", decryptData, iLenRecv, strlen(decryptData));
-
-        if(iLenRecv >= (2 + msgLen + 16)
-           && memcmp((void *)verify, (void *)&sController.auBuffer[2 + msgLen], 16) == 0) {
-            printf("Verify successfully!\n");
+        if(iLenRecv >= (2 + u16MsgLen + 16) && memcmp((void *)verify, (void *)&sController.auBuffer[2 + u16MsgLen], 16) == 0) {
+            NOT_vPrintln(DBG_CONTROLLER, "Verify Successfully!\n");
         }
         else {
+            WAR_vPrintln(T_TRUE, "Verify Failed");
             continue;
         }
-        //Output return
-        char *resultData = 0; unsigned int resultLen = 0;
-        handleAccessory(decryptData, msgLen, &resultData, &resultLen, &sController);
+        uint8 *psRetData = 0;
+        uint16 u16RetLen = 0;
+        //handleAccessory(auDecryptedData, u16MsgLen, &psRetData, &u16RetLen, &sController);
 
         //18 = 2(resultLen) + 16(poly1305 verify key)
-        char *reply = malloc(resultLen+18);
-        reply[0] = resultLen%256;
-        reply[1] = (resultLen-(uint8_t)reply[0])/256;
+        uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);
+        psRespBuf[0] = (uint8)(u16RetLen % 256);
+        psRespBuf[1] = (uint8)((u16RetLen - psRespBuf[0]) / 256);
 
-        if (!is_big_endian()) numberOfMsgSend = bswap_64(numberOfMsgSend);
-        chacha20_setup(&chacha20, (const uint8_t *)accessoryToControllerKey, 32, (uint8_t *)&numberOfMsgSend);
-        if (!is_big_endian()) numberOfMsgSend = bswap_64(numberOfMsgSend);
-        numberOfMsgSend++;
+        if (!is_big_endian()) sController.u64NumMsgSend = bswap_64(sController.u64NumMsgSend);
+        chacha20_setup(&chacha20, (const uint8_t *)accessoryToControllerKey, 32, (uint8_t *)&sController.u64NumMsgSend);
+        if (!is_big_endian()) sController.u64NumMsgSend = bswap_64(sController.u64NumMsgSend);
+        sController.u64NumMsgSend++;
 
-        chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
-        chacha20_encrypt(&chacha20, (const uint8_t*)resultData, (uint8_t*)&reply[2], resultLen);
+        chacha20_encrypt(&chacha20, temp, temp2, 64);
+        chacha20_encrypt(&chacha20, psRetData, &psRespBuf[2], u16RetLen);
 
-        Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)reply, resultLen, T_FALSE, verify);
-        memcpy((unsigned char*)&reply[resultLen+2], verify, 16);
-        write(sController.iSockFd, reply, resultLen+18);
-        FREE(reply);
-        FREE(resultData);
+        Poly1305_GenKey((const unsigned char *)temp2, psRespBuf, u16RetLen, T_FALSE, verify);
+        memcpy(&psRespBuf[u16RetLen+2], verify, 16);
+        write(sController.iSockFd, psRespBuf, u16RetLen+18);
+        FREE(psRespBuf);
+        //FREE(psRetData);
     }while (iLenRecv > 0);
-    FREE(decryptData);
+
     return E_HAP_STATUS_OK;
 }
 #if 0
