@@ -23,7 +23,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_HTTP 0
+#define DBG_HTTP 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -137,7 +137,7 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     return E_HTTP_PARSER_OK;
 }
 
-teHttpStatus eHttpMessageFormat(tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse)
+teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffer, uint16 u16Length, uint8 **ppResponse)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Send Package[%d]--------", u16Length);
 
@@ -147,20 +147,20 @@ teHttpStatus eHttpMessageFormat(tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16
     memcpy(&temp[index], "HTTP/1.1 ", sizeof("HTTP/1.1 ") - 1);
     index += sizeof("HTTP/1.1 ") - 1;
     char auHttpStatus[5] = {0};
-    sprintf(auHttpStatus, "%d", psHttpEntry->iHttpStatus);
+    sprintf(auHttpStatus, "%d", iStatus);
     memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
     index += strlen(auHttpStatus);
-    if(200 == psHttpEntry->iHttpStatus){
+    if(200 == iStatus){
         memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
         index += sizeof(" OK\r\n") - 1;
     } else {
         memcpy(&temp[index], " \r\n", sizeof(" \r\n") - 1);
         index += sizeof(" \r\n") - 1;
     }
-    memcpy(&temp[index], "Content-Type:", sizeof("Content-Type:") - 1);
-    index += sizeof("Content-Type:") - 1;
-    memcpy(&temp[index], psHttpEntry->acContentType, strlen((char*)psHttpEntry->acContentType));
-    index += strlen((char*)psHttpEntry->acContentType);
+    memcpy(&temp[index], "Content-Type: ", sizeof("Content-Type: ") - 1);
+    index += sizeof("Content-Type: ") - 1;
+    memcpy(&temp[index], psContent, strlen(psContent));
+    index += strlen(psContent);
     memcpy(&temp[index], "\r\n", sizeof("\r\n") - 1);
     index += sizeof("\r\n") - 1;
     memcpy(&temp[index], "Content-Length: ", sizeof("Content-Length: ") - 1);

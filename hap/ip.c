@@ -21,6 +21,8 @@
 /****************************************************************************/
 
 #include "ip.h"
+#include "http_handle.h"
+#include "light_bulb.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -46,21 +48,6 @@ extern tsController sController;
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 
-
-teIpStatus eHapHandleAccessoryRequest(int iSocketFd)
-{
-    char auBuffer[MABF] = {0};
-    int iLen = (int)recv(iSocketFd, auBuffer, sizeof(auBuffer), 0);
-    if(-1 == iLen){
-        ERR_vPrintln(T_TRUE, "Recv Socket Failed");
-        return E_IP_STATUS_ERROR;
-    }
-    //tsHttpEntry sHttpEntry; memset(&sHttpEntry, 0, sizeof(sHttpEntry));
-    //CHECK_RESULT(eHttpParser(auBuffer, (uint16)iLen, &sHttpEntry), E_HTTP_PARSER_OK, E_IP_STATUS_ERROR);
-    //eDecryptedHttpMessage(auBuffer, iLen);
-
-    return E_IP_STATUS_OK;
-}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -108,10 +95,32 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
     } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
         eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
-        eHandleAccessoryRequest(psBuffer, iLen, iSocketFd, psBonjour);
+        eHandleAccessoryRequest(iSocketFd, psBonjour);
     } else if (strstr((char*)sHttpEntry.acDirectory, "identify")){
         close(iSocketFd);
+    } else {
+        DBG_vPrintln(DBG_IP, "Handle Controller Request");
     }
     return E_IP_STATUS_OK;
 }
 
+teIpStatus eHandleAccessoryPackage(uint8 *psData, uint16 u16Len, uint8 **psResp, uint16 *pu16Len)
+{
+    CHECK_POINTER(psData, E_IP_STATUS_ERROR);
+    CHECK_POINTER(psResp, E_IP_STATUS_ERROR);
+    CHECK_POINTER(pu16Len, E_IP_STATUS_ERROR);
+
+    DBG_vPrintln(DBG_IP, "eHandleAccessoryPackage:%s\n", psData);
+    tsHttpEntry sHttpEntry;
+    memset(&sHttpEntry, 0, sizeof(tsHttpEntry));
+    eHttpParser(psData, u16Len, &sHttpEntry);
+
+    if (strstr((char*)sHttpEntry.acContentData, "/accessories") == 0) {
+        //Publish the characteristics of the accessories
+        NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
+        json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
+        DBG_vPrintln(T_TRUE, "%s", json_object_get_string(temp));
+        eHttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", json_object_get_string(temp), (uint16)json_object_get_string_len(temp), psResp);
+    }
+    return E_IP_STATUS_OK;
+}

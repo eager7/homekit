@@ -89,7 +89,7 @@ typedef struct {
 /****************************************************************************/
 teHttpStatus eHttpParser(uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
 teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
-teHttpStatus eHttpMessageFormat(tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse);
+teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffer, uint16 u16Length, uint8 **ppResponse);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

@@ -56,6 +56,7 @@ int poly1305_power_on_self_test() {
 }
 #endif
 
+#define NAME "12345"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
@@ -64,9 +65,8 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    CHECK_RESULT(eLightBulbProfileInit("22222", 0x221034235126, "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
-
-    CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391", "22222"), E_BONJOUR_STATUS_OK, -1);
+    CHECK_RESULT(eLightBulbProfileInit(NAME, 0x221034235128, "12345678", "TopBand", "1234"), E_PROFILE_OK, -1);
+    CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);
