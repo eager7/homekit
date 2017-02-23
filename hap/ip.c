@@ -119,6 +119,8 @@ teIpStatus eHandleAccessoryPackage(uint8 *psData, uint16 u16Len, uint8 **psResp,
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
         json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
+
+        *pu16Len = (uint16)strlen(json_object_get_string(temp));
         eHttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", json_object_get_string(temp), (uint16)strlen(json_object_get_string(temp)), psResp);
 
     }

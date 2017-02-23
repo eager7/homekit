@@ -532,6 +532,9 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
         if (sController.iLen < 0){
             ERR_vPrintln(T_TRUE, "Recvice Data Error");
             return E_HAP_STATUS_ERROR;
+        } else if(sController.iLen == 0){
+            WAR_vPrintln(DBG_PAIR, "Disconnect Socket");
+            return E_HAP_STATUS_ERROR;
         }
         //uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 0xff));
         uint16 u16MsgLen = (uint16)((uint8)sController.auBuffer[1]*256 + (uint8)*sController.auBuffer);
