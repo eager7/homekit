@@ -111,7 +111,7 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
     asCharaTemp[4].uValue.psData = psSerialNumber;
     asCharaTemp[4].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
-
+#if 0
     //Option
     asCharaTemp[5].eIID = E_CHARACTERISTIC_FIRMWARE_VERSION;
     asCharaTemp[5].psType = "public.hap.characteristic.firmware.revision";
@@ -126,6 +126,7 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
     asCharaTemp[6].uValue.psData = "1.0";
     asCharaTemp[6].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[6], NULL);
+#endif
     return E_HAP_STATUS_OK;
 }
 
@@ -215,13 +216,13 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
     json_object *psArrayPerms = NULL;
     json_object *psJsonCharacter = NULL;
     json_object *psArrayCharacteristics =NULL;
+    json_object *psJsonService = NULL;
     json_object *psJsonRet = json_object_new_object();
     json_object *psJsonAccessory = json_object_new_object();
-    json_object *psJsonService = json_object_new_object();
 
     json_object *psArrayAccessories = json_object_new_array();
     json_object *psArrayServices = json_object_new_array();
-    if((NULL == psJsonRet) || (NULL == psJsonAccessory) || (NULL == psJsonService)  ||
+    if((NULL == psJsonRet) || (NULL == psJsonAccessory) ||
        (NULL == psArrayAccessories) || (NULL == psArrayServices))
     {
         goto ERR;
@@ -231,7 +232,6 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
         psArrayCharacteristics = json_object_new_array();
         if(NULL == psArrayCharacteristics) goto ERR;
         for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
-            INF_vPrintln(1, "[%d][%d]", i, j);
             psJsonCharacter = json_object_new_object();
             if(NULL == psJsonCharacter) goto ERR;
             char temp[5] = {0};
@@ -273,12 +273,15 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
             json_object_object_add(psJsonCharacter, "perms", psArrayPerms);
             json_object_array_add(psArrayCharacteristics, psJsonCharacter);
         }
-        INF_vPrintln(1, "%s", json_object_get_string(psArrayCharacteristics));
+        psJsonService = json_object_new_object();
+        if (NULL == psJsonService) {
+            goto ERR;
+        }
         json_object_object_add(psJsonService, "characteristics", psArrayCharacteristics);
         char temp[5] = {0};
         snprintf(temp, sizeof(temp), "%02X", psAccessory->psService[i].eIID);
         json_object_object_add(psJsonService, "type", json_object_new_string(temp));
-        json_object_object_add(psJsonService, "iid", json_object_new_int(i));
+        json_object_object_add(psJsonService, "iid", json_object_new_int((i + 1)));
         json_object_array_add(psArrayServices, psJsonService);
     }
     json_object_object_add(psJsonAccessory, "services", psArrayServices);

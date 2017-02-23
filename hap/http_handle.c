@@ -23,7 +23,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_HTTP 1
+#define DBG_HTTP 0
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -42,25 +42,27 @@
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHttpStatus eHttpParser(uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
+teHttpStatus eHttpParser(teHttpMethod eMethod, uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Parser Package[%d]--------", u16Len);
     char auTemp[MABF] = {0};
     memcpy(auTemp, pBuf, sizeof(auTemp));
 
     CHECK_POINTER(psHttpEntry, E_HTTP_PARSER_ERROR);
+    char *psContentLen = NULL;
+    char *psContentType = NULL;
 
     char *psHeader = strtok(auTemp, "\r\n");
     CHECK_POINTER(psHeader, E_HTTP_PARSER_ERROR);
-
     char *psHost = strtok(NULL, "\r\n");
     CHECK_POINTER(psHost, E_HTTP_PARSER_ERROR);
+    if(eMethod == E_HTTP_POST){
+        psContentLen = strtok(NULL, "\r\n");
+        CHECK_POINTER(psContentLen, E_HTTP_PARSER_ERROR);
 
-    char *psContentLen = strtok(NULL, "\r\n");
-    CHECK_POINTER(psContentLen, E_HTTP_PARSER_ERROR);
-
-    char *psContentType = strtok(NULL, "\r\n");
-    CHECK_POINTER(psContentType, E_HTTP_PARSER_ERROR);
+        psContentType = strtok(NULL, "\r\n");
+        CHECK_POINTER(psContentType, E_HTTP_PARSER_ERROR);
+    }
 
     char *psMethod = strtok(psHeader, " ");
     CHECK_POINTER(psMethod, E_HTTP_PARSER_ERROR);
@@ -73,21 +75,22 @@ teHttpStatus eHttpParser(uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
     memcpy(psHttpEntry->acHttpVersion, psHttpVer, sizeof(psHttpEntry->acHttpVersion));
     DBG_vPrintln(DBG_HTTP, "Method:%s,Dir:%s,Version:%s", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
 
-    char *psLen = strtok(psContentLen, ":");
-    psLen = strtok(NULL, ":");
-    CHECK_POINTER(psLen, E_HTTP_PARSER_ERROR);
-    psHttpEntry->u16ContentLen = (uint16)atoi(psLen);
-    DBG_vPrintln(DBG_HTTP, "Len:%d", psHttpEntry->u16ContentLen);
+    if(eMethod == E_HTTP_POST){
+        char *psLen = strtok(psContentLen, ":");
+        psLen = strtok(NULL, ":");
+        CHECK_POINTER(psLen, E_HTTP_PARSER_ERROR);
+        psHttpEntry->u16ContentLen = (uint16)atoi(psLen);
+        DBG_vPrintln(DBG_HTTP, "Len:%d", psHttpEntry->u16ContentLen);
 
-    char *psType = strtok(psContentType, ":");
-    psType = strtok(NULL, ":");
-    CHECK_POINTER(psType, E_HTTP_PARSER_ERROR);
-    memcpy(psHttpEntry->acContentType, psType, sizeof(psHttpEntry->acContentType));
-    DBG_vPrintln(DBG_HTTP, "Type:%s", psHttpEntry->acContentType);
+        char *psType = strtok(psContentType, ":");
+        psType = strtok(NULL, ":");
+        CHECK_POINTER(psType, E_HTTP_PARSER_ERROR);
+        memcpy(psHttpEntry->acContentType, psType, sizeof(psHttpEntry->acContentType));
+        DBG_vPrintln(DBG_HTTP, "Type:%s", psHttpEntry->acContentType);
 
-    memcpy(psHttpEntry->acContentData, &auTemp[u16Len - psHttpEntry->u16ContentLen], psHttpEntry->u16ContentLen);
-    PrintArray(DBG_HTTP, psHttpEntry->acContentData, psHttpEntry->u16ContentLen);
-
+        memcpy(psHttpEntry->acContentData, &auTemp[u16Len - psHttpEntry->u16ContentLen], psHttpEntry->u16ContentLen);
+        PrintArray(DBG_HTTP, psHttpEntry->acContentData, psHttpEntry->u16ContentLen);
+    }
     return E_HTTP_PARSER_OK;
 }
 
@@ -146,10 +149,12 @@ teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffe
     int index = 0;
     memcpy(&temp[index], "HTTP/1.1 ", sizeof("HTTP/1.1 ") - 1);
     index += sizeof("HTTP/1.1 ") - 1;
+
     char auHttpStatus[5] = {0};
     sprintf(auHttpStatus, "%d", iStatus);
     memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
     index += strlen(auHttpStatus);
+
     if(200 == iStatus){
         memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
         index += sizeof(" OK\r\n") - 1;
@@ -157,20 +162,27 @@ teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffe
         memcpy(&temp[index], " \r\n", sizeof(" \r\n") - 1);
         index += sizeof(" \r\n") - 1;
     }
+
     memcpy(&temp[index], "Content-Type: ", sizeof("Content-Type: ") - 1);
     index += sizeof("Content-Type: ") - 1;
+
     memcpy(&temp[index], psContent, strlen(psContent));
     index += strlen(psContent);
+
     memcpy(&temp[index], "\r\n", sizeof("\r\n") - 1);
     index += sizeof("\r\n") - 1;
+
     memcpy(&temp[index], "Content-Length: ", sizeof("Content-Length: ") - 1);
     index += sizeof("Content-Length: ") - 1;
+
     char auHttpLen[5] = {0};
     sprintf(auHttpLen, "%d", u16Length);
     memcpy(&temp[index], auHttpLen, strlen(auHttpLen));
     index += strlen(auHttpLen);
+
     memcpy(&temp[index], "\r\n\r\n", sizeof("\r\n\r\n") - 1);
     index += sizeof("\r\n\r\n") - 1;
+
     INF_vPrintln(DBG_HTTP, "%s", temp);
     memcpy(&temp[index], pBuffer, u16Length);
     index += u16Length;

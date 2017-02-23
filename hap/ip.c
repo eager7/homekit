@@ -67,7 +67,7 @@ tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len)
     tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
     CHECK_POINTER(psIpMsg, NULL);
     memset(psIpMsg, 0, sizeof(tsIpMessage));
-    eHttpParser(psBuffer, u16Len, &psIpMsg->sHttp);
+    eHttpParser(E_HTTP_POST, psBuffer, u16Len, &psIpMsg->sHttp);
     psIpMsg->psTlvPackage = psTlvPackageFormat(psIpMsg->sHttp.acContentData, psIpMsg->sHttp.u16ContentLen);
     if(psIpMsg->psTlvPackage == NULL){
         ERR_vPrintln(T_TRUE, "psTlvPackageFormat Failed");
@@ -86,7 +86,7 @@ teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
 teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
 {
     tsHttpEntry sHttpEntry;
-    eHttpParser(psBuffer, (uint16)iLen, &sHttpEntry);
+    eHttpParser(E_HTTP_POST, psBuffer, (uint16)iLen, &sHttpEntry);
 
     DBG_vPrintln(DBG_IP, "Data Len:%d", sHttpEntry.u16ContentLen);
     if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
@@ -111,16 +111,16 @@ teIpStatus eHandleAccessoryPackage(uint8 *psData, uint16 u16Len, uint8 **psResp,
     CHECK_POINTER(pu16Len, E_IP_STATUS_ERROR);
 
     DBG_vPrintln(DBG_IP, "eHandleAccessoryPackage:%s\n", psData);
-    tsHttpEntry sHttpEntry;
-    memset(&sHttpEntry, 0, sizeof(tsHttpEntry));
-    eHttpParser(psData, u16Len, &sHttpEntry);
+    //tsHttpEntry sHttpEntry;
+    //memset(&sHttpEntry, 0, sizeof(tsHttpEntry));
+    //eHttpParser(psData, u16Len, &sHttpEntry);
 
-    if (strstr((char*)sHttpEntry.acContentData, "/accessories") == 0) {
+    if (strstr((char*)psData, "/accessories")) {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
         json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
-        DBG_vPrintln(T_TRUE, "%s", json_object_get_string(temp));
-        eHttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", json_object_get_string(temp), (uint16)json_object_get_string_len(temp), psResp);
+        eHttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", json_object_get_string(temp), (uint16)strlen(json_object_get_string(temp)), psResp);
+
     }
     return E_IP_STATUS_OK;
 }

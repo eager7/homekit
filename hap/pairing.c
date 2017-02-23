@@ -536,7 +536,6 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
         //uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 0xff));
         uint16 u16MsgLen = (uint16)((uint8)sController.auBuffer[1]*256 + (uint8)*sController.auBuffer);
 
-
         chacha20_ctx chacha20;
         memset(&chacha20, 0, sizeof(chacha20));
 
@@ -549,10 +548,10 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
         chacha20_encrypt(&chacha20, temp, temp2, 64);
 
         char verify[16] = {0};
-        ePoly1305_GenKey(temp2, sController.auBuffer, u16MsgLen, T_FALSE, verify);
+        ePoly1305_GenKey(temp2, sController.auBuffer, u16MsgLen, T_TRUE, verify);
         memset(auDecryptedData, 0, sizeof(auDecryptedData));
         chacha20_encrypt(&chacha20, &sController.auBuffer[2], auDecryptedData, u16MsgLen);
-        DBG_vPrintln(DBG_PAIR, "Request: %s\nPacketLen: %d\n, MessageLen: %d\n", auDecryptedData, sController.iLen, (int)strlen(auDecryptedData));
+        DBG_vPrintln(DBG_PAIR, "Request: %s\nPacketLen: %d, MessageLen: %d\n", auDecryptedData, sController.iLen, (int)strlen(auDecryptedData));
 
         if(sController.iLen >= (2 + u16MsgLen + 16) && memcmp((void *)verify, (void *)&sController.auBuffer[2 + u16MsgLen], 16) == 0) {
             NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
@@ -563,8 +562,8 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
         }
         uint8 *psRetData = 0;
         uint16 u16RetLen = 0;
-        //eHandleAccessoryPackage(auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
-
+        eHandleAccessoryPackage(auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
+        DBG_vPrintln(DBG_PAIR, "Send:%s", psRetData);
         //18 = 2(resultLen) + 16(poly1305 verify key)
         uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);
         psRespBuf[0] = (uint8)(u16RetLen % 256);
@@ -578,11 +577,11 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
         chacha20_encrypt(&chacha20, temp, temp2, 64);
         chacha20_encrypt(&chacha20, psRetData, &psRespBuf[2], u16RetLen);
 
-        ePoly1305_GenKey((const unsigned char *) temp2, psRespBuf, u16RetLen, T_FALSE, verify);
+        ePoly1305_GenKey((const unsigned char *) temp2, psRespBuf, u16RetLen, T_TRUE, verify);
         memcpy(&psRespBuf[u16RetLen+2], verify, 16);
         write(iSocketFd, psRespBuf, u16RetLen+18);
         FREE(psRespBuf);
-        //FREE(psRetData);
+        FREE(psRetData);
     }while (sController.iLen > 0);
 
     return E_HAP_STATUS_OK;
