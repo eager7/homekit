@@ -536,8 +536,8 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
             WAR_vPrintln(DBG_PAIR, "Disconnect Socket");
             return E_HAP_STATUS_ERROR;
         }
-        //uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 0xff));
-        uint16 u16MsgLen = (uint16)((uint8)sController.auBuffer[1]*256 + (uint8)*sController.auBuffer);
+        uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 0xff));
+        //uint16 u16MsgLen = (uint16)((uint8)sController.auBuffer[1]*256 + (uint8)*sController.auBuffer);
 
         chacha20_ctx chacha20;
         memset(&chacha20, 0, sizeof(chacha20));
