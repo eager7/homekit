@@ -255,6 +255,7 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
                         switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
                             case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
                             case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            default: break;
                         }
                         json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iValue));
                     }
@@ -272,6 +273,7 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
                         switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
                             case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
                             case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            default: break;
                         }
                         json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fValue));
                     }
