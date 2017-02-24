@@ -37,11 +37,12 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-tsAccessoryInformation sAccessoryInformation;
+
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-
+static uint64 u64UUID = 1;
+#define UUID (u64UUID++)
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -49,7 +50,7 @@ teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64Dev
 {
     DBG_vPrintln(DBG_ACC, "Init accessory:%s type:%d", psName, eType);
     CHECK_POINTER(psAccessory, E_HAP_STATUS_MEMORY_ERROR);
-    psAccessory->u64AIDs = E_SERVICE_ACCESSORY_OBJECT;
+    psAccessory->u64AIDs = UUID;
     psAccessory->u64DeviceID = u64DeviceID;
     psAccessory->eAccessoryType = eType;
     eAccessoryInformationInit(psAccessory, psName, psSerialNumber, psManufacturer, psModel);
@@ -72,56 +73,56 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryInformationInit:%s", psName);
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, "public.hap.service.accessory-information", E_SERVICE_ACCESSORY_INFORMATION, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_ACCESSORY_INFORMATION, UUID, &psService);
 
     tsCharacteristic asCharaTemp[7];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*7);
 
-    asCharaTemp[0].eIID = E_CHARACTERISTIC_IDENTIFY;
-    asCharaTemp[0].psType = "public.hap.characteristic.identify";
+    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].eType = E_CHARACTERISTIC_IDENTIFY;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
     asCharaTemp[0].uValue.bData = T_FALSE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_WRITE;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].eIID = E_CHARACTERISTIC_MANUFACTURER;
-    asCharaTemp[1].psType = "public.hap.characteristic.manufacturer";
+    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].eType = E_CHARACTERISTIC_MANUFACTURER;
     asCharaTemp[1].eFormat = E_TYPE_STRING;
     asCharaTemp[1].uValue.psData = psManufacturer;
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
-    asCharaTemp[2].eIID = E_CHARACTERISTIC_MODEL;
-    asCharaTemp[2].psType = "public.hap.characteristic.model";
+    asCharaTemp[2].u64IID = UUID;
+    asCharaTemp[2].eType = E_CHARACTERISTIC_MODEL;
     asCharaTemp[2].eFormat = E_TYPE_STRING;
     asCharaTemp[2].uValue.psData = psModel;
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[3].eIID = E_CHARACTERISTIC_NAME;
-    asCharaTemp[3].psType = "public.hap.characteristic.name";
+    asCharaTemp[3].u64IID = UUID;
+    asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
     asCharaTemp[3].eFormat = E_TYPE_STRING;
     asCharaTemp[3].uValue.psData = psName;
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
 
-    asCharaTemp[4].eIID = E_CHARACTERISTIC_SERIAL_NUMBER;
-    asCharaTemp[4].psType = "public.hap.characteristic.serial-number";
+    asCharaTemp[4].u64IID = UUID;
+    asCharaTemp[4].eType = E_CHARACTERISTIC_SERIAL_NUMBER;
     asCharaTemp[4].eFormat = E_TYPE_STRING;
     asCharaTemp[4].uValue.psData = psSerialNumber;
     asCharaTemp[4].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
 #if 0
     //Option
-    asCharaTemp[5].eIID = E_CHARACTERISTIC_FIRMWARE_VERSION;
-    asCharaTemp[5].psType = "public.hap.characteristic.firmware.revision";
+    asCharaTemp[5].u64IID = UUID;
+    asCharaTemp[5].eType = E_CHARACTERISTIC_FIRMWARE_VERSION;
     asCharaTemp[5].eFormat = E_TYPE_STRING;
     asCharaTemp[5].uValue.psData = "1.0";
     asCharaTemp[5].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[5], NULL);
 
-    asCharaTemp[6].eIID = E_CHARACTERISTIC_HARDWARE_VERSION;
-    asCharaTemp[6].psType = "public.hap.characteristic.hardware.revision";
+    asCharaTemp[6].u64IID = UUID;
+    asCharaTemp[6].eType = E_CHARACTERISTIC_HARDWARE_VERSION;
     asCharaTemp[6].eFormat = E_TYPE_STRING;
     asCharaTemp[6].uValue.psData = "1.0";
     asCharaTemp[6].u8Perms = E_PERM_PAIRED_READ;
@@ -146,20 +147,20 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryLightBulbInit");
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, "public.hap.service.lightbulb", E_SERVICE_LIGHT_BULB, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID, &psService);
 
     tsCharacteristic asCharaTemp[E_NUM_OF_SERVICE_LIGHT_BULB];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*E_NUM_OF_SERVICE_LIGHT_BULB);
 
-    asCharaTemp[0].eIID = E_CHARACTERISTIC_ON;
-    asCharaTemp[0].psType = "public.hap.characteristic.on";
+    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].eType = E_CHARACTERISTIC_ON;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
     asCharaTemp[0].uValue.bData = T_FALSE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].eIID = E_CHARACTERISTIC_BRIGHTNESS;
-    asCharaTemp[1].psType = "public.hap.characteristic.brightness";
+    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].eType = E_CHARACTERISTIC_BRIGHTNESS;
     asCharaTemp[1].eFormat = E_TYPE_INT;
     asCharaTemp[1].uValue.iData = 100;
     asCharaTemp[1].sSetupValue.bEnable = T_TRUE;
@@ -172,8 +173,8 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
-    asCharaTemp[2].eIID = E_CHARACTERISTIC_HUE;
-    asCharaTemp[2].psType = "public.hap.characteristic.hue";
+    asCharaTemp[2].u64IID = UUID;
+    asCharaTemp[2].eType = E_CHARACTERISTIC_HUE;
     asCharaTemp[2].eFormat = E_TYPE_FLOAT;
     asCharaTemp[2].uValue.fData = 360;
     asCharaTemp[2].sSetupValue.bEnable = T_TRUE;
@@ -186,15 +187,15 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[3].eIID = E_CHARACTERISTIC_NAME;
-    asCharaTemp[3].psType = "public.hap.characteristic.name";
+    asCharaTemp[3].u64IID = UUID;
+    asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
     asCharaTemp[3].eFormat = E_TYPE_STRING;
     asCharaTemp[3].uValue.psData = "light";
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
 
-    asCharaTemp[4].eIID = E_CHARACTERISTIC_SATURATION;
-    asCharaTemp[4].psType = "public.hap.characteristic.saturation";
+    asCharaTemp[4].u64IID = UUID;
+    asCharaTemp[4].eType = E_CHARACTERISTIC_SATURATION;
     asCharaTemp[4].eFormat = E_TYPE_FLOAT;
     asCharaTemp[4].uValue.fData = 100;
     asCharaTemp[4].eUnit = E_UNIT_PERCENTAGE;
@@ -234,8 +235,8 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
         for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
             psJsonCharacter = json_object_new_object();
             if(NULL == psJsonCharacter) goto ERR;
-            char temp[5] = {0};
-            snprintf(temp, sizeof(temp), "%02X", psAccessory->psService[i].psCharacteristics[j].eIID);
+            char temp[10] = {0};
+            snprintf(temp, sizeof(temp), "%X", psAccessory->psService[i].psCharacteristics[j].eType);
             json_object_object_add(psJsonCharacter, "type", json_object_new_string(temp));
             switch (psAccessory->psService[i].psCharacteristics[j].eFormat){
                 case E_TYPE_BOOL:{
@@ -256,7 +257,7 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
                 } break;
                 default: break;
             }
-            json_object_object_add(psJsonCharacter, "iid", json_object_new_int(j));
+            json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)psAccessory->psService[i].psCharacteristics[j].u64IID));
 
             /*Perms Json Format*/
             psArrayPerms = json_object_new_array();
@@ -279,9 +280,9 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
         }
         json_object_object_add(psJsonService, "characteristics", psArrayCharacteristics);
         char temp[5] = {0};
-        snprintf(temp, sizeof(temp), "%02X", psAccessory->psService[i].eIID);
+        snprintf(temp, sizeof(temp), "%X", psAccessory->psService[i].eType);
         json_object_object_add(psJsonService, "type", json_object_new_string(temp));
-        json_object_object_add(psJsonService, "iid", json_object_new_int((i + 1)));
+        json_object_object_add(psJsonService, "iid", json_object_new_int64((int64_t)psAccessory->psService[i].u64IID));
         json_object_array_add(psArrayServices, psJsonService);
     }
     json_object_object_add(psJsonAccessory, "services", psArrayServices);
@@ -303,17 +304,17 @@ ERR:
     return NULL;
 }
 
-teHapStatus eAccessoryAddService(tsAccessory *psAccessory, char *psType, teServiceUUID eIID, tsService **ppsService)
+teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService)
 {
     tsService *psService;
     for (int i = 0; i < psAccessory->u8NumServices; ++i) {
-        if(psAccessory->psService[i].eIID == eIID){
-            INF_vPrintln(DBG_ACC, "Duplicate Service");
+        if(psAccessory->psService[i].eType == eType){
+            INF_vPrintln(DBG_ACC, "Duplicate Service:0x%16x", eType);
             if(ppsService) *ppsService = &psAccessory->psService[i];
             return E_HAP_STATUS_DUPLICATE;
         }
     }
-    DBG_vPrintln(DBG_ACC, "Create New Service[%d]:0x%016x", psAccessory->u8NumServices + 1, eIID);
+    DBG_vPrintln(DBG_ACC, "Create New Service[%d]:0x%016x", psAccessory->u8NumServices + 1, eType);
     psService = realloc(psAccessory->psService, sizeof(tsService)*(psAccessory->u8NumServices + 1));
     CHECK_POINTER(psService, E_HAP_STATUS_ERROR);
     psAccessory->psService = psService;
@@ -322,8 +323,8 @@ teHapStatus eAccessoryAddService(tsAccessory *psAccessory, char *psType, teServi
     psService = &psAccessory->psService[psAccessory->u8NumServices];
     psAccessory->u8NumServices ++;
 
-    psService->eIID = eIID;
-    psService->psType = psType;
+    psService->u64IID = u64IID;
+    psService->eType = eType;
     if(ppsService) *ppsService = psService;
     return E_HAP_STATUS_OK;
 }
@@ -332,13 +333,13 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
 {
     tsCharacteristic *psChara;
     for (int i = 0; i < psService->u8NumCharacteristics; ++i) {
-        if(psService->psCharacteristics[i].eIID == sCharaIn.eIID){
-            INF_vPrintln(DBG_ACC, "Duplicate Characteristics:0x%16x", sCharaIn.eIID);
+        if(psService->psCharacteristics[i].eType == sCharaIn.eType){
+            INF_vPrintln(DBG_ACC, "Duplicate Characteristics:0x%16x", sCharaIn.eType);
             if(ppCharaOut) *ppCharaOut = &psService->psCharacteristics[i];
             return E_HAP_STATUS_DUPLICATE;
         }
     }
-    DBG_vPrintln(DBG_ACC, "Create New Characteristics[%d]:0x%016x", psService->u8NumCharacteristics + 1, sCharaIn.eIID);
+    DBG_vPrintln(DBG_ACC, "Create New Characteristics[%d]:0x%016x", psService->u8NumCharacteristics + 1, sCharaIn.eType);
     psChara = realloc(psService->psCharacteristics, sizeof(tsCharacteristic)*(psService->u8NumCharacteristics + 1));
     CHECK_POINTER(psChara, E_HAP_STATUS_ERROR);
     psService->psCharacteristics = psChara;

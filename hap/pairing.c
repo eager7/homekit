@@ -582,6 +582,8 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
 
         ePoly1305_GenKey((const unsigned char *) temp2, psRespBuf, u16RetLen, T_TRUE, verify);
         memcpy(&psRespBuf[u16RetLen+2], verify, 16);
+        PrintArray(1,psRespBuf, u16RetLen+18);
+
         write(iSocketFd, psRespBuf, u16RetLen+18);
         FREE(psRespBuf);
         FREE(psRetData);
