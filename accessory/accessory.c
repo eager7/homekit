@@ -50,7 +50,7 @@ teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64Dev
 {
     DBG_vPrintln(DBG_ACC, "Init accessory:%s type:%d", psName, eType);
     CHECK_POINTER(psAccessory, E_HAP_STATUS_MEMORY_ERROR);
-    psAccessory->u64AIDs = UUID;
+    psAccessory->u64AIDs = 1;
     psAccessory->u64DeviceID = u64DeviceID;
     psAccessory->eAccessoryType = eType;
     eAccessoryInformationInit(psAccessory, psName, psSerialNumber, psManufacturer, psModel);
@@ -73,40 +73,40 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryInformationInit:%s", psName);
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, E_SERVICE_ACCESSORY_INFORMATION, UUID, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_ACCESSORY_INFORMATION, 1, &psService);
 
     tsCharacteristic asCharaTemp[7];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*7);
 
-    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].u64IID = 6;
     asCharaTemp[0].eType = E_CHARACTERISTIC_IDENTIFY;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
     asCharaTemp[0].uValue.bData = T_FALSE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_WRITE;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].u64IID = 3;
     asCharaTemp[1].eType = E_CHARACTERISTIC_MANUFACTURER;
     asCharaTemp[1].eFormat = E_TYPE_STRING;
     asCharaTemp[1].uValue.psData = psManufacturer;
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
-    asCharaTemp[2].u64IID = UUID;
+    asCharaTemp[2].u64IID = 4;
     asCharaTemp[2].eType = E_CHARACTERISTIC_MODEL;
     asCharaTemp[2].eFormat = E_TYPE_STRING;
     asCharaTemp[2].uValue.psData = psModel;
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[3].u64IID = UUID;
+    asCharaTemp[3].u64IID = 2;
     asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
     asCharaTemp[3].eFormat = E_TYPE_STRING;
     asCharaTemp[3].uValue.psData = psName;
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
 
-    asCharaTemp[4].u64IID = UUID;
+    asCharaTemp[4].u64IID = 5;
     asCharaTemp[4].eType = E_CHARACTERISTIC_SERIAL_NUMBER;
     asCharaTemp[4].eFormat = E_TYPE_STRING;
     asCharaTemp[4].uValue.psData = psSerialNumber;
@@ -147,22 +147,22 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryLightBulbInit");
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, 7, &psService);
 
     tsCharacteristic asCharaTemp[E_NUM_OF_SERVICE_LIGHT_BULB];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*E_NUM_OF_SERVICE_LIGHT_BULB);
 
-    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].u64IID = 9;
     asCharaTemp[0].eType = E_CHARACTERISTIC_ON;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
-    asCharaTemp[0].uValue.bData = T_FALSE;
+    asCharaTemp[0].uValue.bData = T_TRUE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].u64IID = 10;
     asCharaTemp[1].eType = E_CHARACTERISTIC_BRIGHTNESS;
     asCharaTemp[1].eFormat = E_TYPE_INT;
-    asCharaTemp[1].uValue.iData = 100;
+    asCharaTemp[1].uValue.iData = 50;
     asCharaTemp[1].sSetupValue.bEnable = T_TRUE;
     asCharaTemp[1].sSetupValue.uData.iValue = 1;
     asCharaTemp[1].eUnit = E_UNIT_PERCENTAGE;
@@ -173,6 +173,13 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
+    asCharaTemp[3].u64IID = 8;
+    asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
+    asCharaTemp[3].eFormat = E_TYPE_STRING;
+    asCharaTemp[3].uValue.psData = "light";
+    asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
+    eServiceAddCharacter(psService, asCharaTemp[3], NULL);
+#if 0
     asCharaTemp[2].u64IID = UUID;
     asCharaTemp[2].eType = E_CHARACTERISTIC_HUE;
     asCharaTemp[2].eFormat = E_TYPE_FLOAT;
@@ -187,13 +194,6 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[3].u64IID = UUID;
-    asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
-    asCharaTemp[3].eFormat = E_TYPE_STRING;
-    asCharaTemp[3].uValue.psData = "light";
-    asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
-    eServiceAddCharacter(psService, asCharaTemp[3], NULL);
-
     asCharaTemp[4].u64IID = UUID;
     asCharaTemp[4].eType = E_CHARACTERISTIC_SATURATION;
     asCharaTemp[4].eFormat = E_TYPE_FLOAT;
@@ -207,7 +207,7 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[4].sMaximumValue.uData.fValue = 100;
     asCharaTemp[4].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
-
+#endif
     return E_HAP_STATUS_OK;
 }
 
@@ -240,14 +240,41 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
             json_object_object_add(psJsonCharacter, "type", json_object_new_string(temp));
             switch (psAccessory->psService[i].psCharacteristics[j].eFormat){
                 case E_TYPE_BOOL:{
-                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.bData));
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psAccessory->psService[i].psCharacteristics[j].uValue.bData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("bool"));
                 } break;
                 case E_TYPE_INT: {
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.iValue));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.iValue));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iValue));
+                        switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
+                            case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
+                            case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                        }
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iValue));
+                    }
                     json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.iData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("int"));
                 } break;
                 case E_TYPE_FLOAT:  {
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.fValue));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.fValue));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
+                        switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
+                            case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
+                            case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                        }
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fValue));
+                    }
                     json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("float"));
                 } break;
@@ -257,6 +284,7 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
                 } break;
                 default: break;
             }
+
             json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)psAccessory->psService[i].psCharacteristics[j].u64IID));
 
             /*Perms Json Format*/
@@ -285,9 +313,8 @@ json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory)
         json_object_object_add(psJsonService, "iid", json_object_new_int64((int64_t)psAccessory->psService[i].u64IID));
         json_object_array_add(psArrayServices, psJsonService);
     }
-    json_object_object_add(psJsonAccessory, "services", psArrayServices);
-
     json_object_object_add(psJsonAccessory, "aid", json_object_new_int64((int64_t)psAccessory->u64AIDs));
+    json_object_object_add(psJsonAccessory, "services", psArrayServices);
     json_object_array_add(psArrayAccessories, psJsonAccessory);
     json_object_object_add(psJsonRet, "accessories", psArrayAccessories);
 
