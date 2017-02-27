@@ -140,7 +140,8 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     return E_HTTP_PARSER_OK;
 }
 
-teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffer, uint16 u16Length, uint8 **ppResponse)
+uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length,
+                            uint8 **ppResponse)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Send Package[%d]--------", u16Length);
 
@@ -182,15 +183,11 @@ teHttpStatus eHttpMessageFormat(int iStatus, char *psContent, const char *pBuffe
 
     memcpy(&temp[index], "\r\n\r\n", sizeof("\r\n\r\n") - 1);
     index += sizeof("\r\n\r\n") - 1;
-
-    INF_vPrintln(DBG_HTTP, "%s", temp);
+    uint16 u16Ret = (uint16)index;
     memcpy(&temp[index], pBuffer, u16Length);
-    index += u16Length;
 
-    INF_vPrintln(DBG_HTTP, "%d", index);
-    PrintArray(DBG_HTTP, temp, index);
     if(ppResponse) *ppResponse = temp;
-    return E_HTTP_PARSER_OK;
+    return u16Ret;
 }
 /****************************************************************************/
 /***        Local    Functions                                            ***/

@@ -80,7 +80,7 @@ typedef union {
     int     iData;
     float   fData;
     char    *psData;
-} tuCharValue;
+} tuChartValue;
 
 typedef union {
     int     iValue;
@@ -91,6 +91,11 @@ typedef struct {
     bool_t bEnable;
     tuThreshold uData;
 } tsThreshold;
+
+typedef struct {
+    bool_t bEnable;
+    tuChartValue uValue;
+} tsChartValue;
 
 typedef enum {
     E_NUM_OF_SERVICE_ACCESSORY_INFORMATION         = 7,
@@ -107,7 +112,7 @@ typedef enum {
 typedef struct {
     teCharacteristicType    eType;              //JsonFormat:type
     uint64                  u64IID;             //JsonFormat:iid, Instance Id
-    tuCharValue             uValue;             //JsonFormat:value
+    tuChartValue            uValue;             //JsonFormat:value
     uint8                   u8Perms;            //JsonFormat:perms, Need convert to string
     bool_t                  bEventNot;          //JsonFormat:ev
     char                    *psDescription;     //JsonFormat:description
@@ -158,7 +163,7 @@ typedef struct{
 /****************************************************************************/
 teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
 teHapStatus eAccessoryFinished(tsAccessory *psAccessory);
-json_object* psGetAccessoryInfoJson(tsAccessory *psAccessory);
+json_object * psGetAccessoryInfoJson(tsAccessory *psAccessory);
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
 teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
 /****************************************************************************/

@@ -56,7 +56,7 @@ int poly1305_power_on_self_test() {
 }
 #endif
 
-#define NAME "12345 Light"
+#define NAME "Dimer Light"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
@@ -66,7 +66,6 @@ int main(void)
     signal(SIGTERM, vQuitSignalHandler);
 
     CHECK_RESULT(eLightBulbProfileInit(NAME, 0x221034235129, "12345678", "TopBand", "Light"), E_PROFILE_OK, -1);
-
     CHECK_RESULT(eBonjourInit(&sLightBulb, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
