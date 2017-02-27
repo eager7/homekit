@@ -25,7 +25,7 @@ set(SOURCE_FILES  main.c
         poly1305-opt-master/poly1305.c
         ed25519-donna/ed25519.c
         curve25519/curve25519-donna.c
-        )
+        profiles/profile.c)
 
 add_library(libsrp.a STATIC
         srp/cstr.c  srp/srp6_server.c  srp/srp.c  srp/t_conf.c  srp/t_conv.c

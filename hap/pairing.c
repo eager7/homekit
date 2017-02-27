@@ -519,7 +519,7 @@ static inline unsigned int bswap_32(unsigned int x) {
 static inline unsigned long long bswap_64(unsigned long long x) {
     return x;
 }
-teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
+teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour)
 {
     DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
 
@@ -563,9 +563,13 @@ teHapStatus eHandleAccessoryRequest(int iSocketFd, tsBonjour *psBonjour)
             WAR_vPrintln(T_TRUE, "Verify Failed");
             continue;
         }
-        uint8 *psRetData = 0;
+        uint8 *psRetData = NULL;
         uint16 u16RetLen = 0;
-        eHandleAccessoryPackage(auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
+        eHandleAccessoryPackage(psProfile, auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
+        if(NULL == psRetData){
+            WAR_vPrintln(T_TRUE, "Null psRetData");
+            continue;
+        }
         DBG_vPrintln(DBG_PAIR, "Send:%s", psRetData);
         //18 = 2(resultLen) + 16(poly1305 verify key)
         uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);

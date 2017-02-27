@@ -35,11 +35,11 @@
 /****************************************************************************/
 static teProfileStatus eLightBulbOn(tsAccessory *psAccessory);
 static teProfileStatus eLightBulbOff(tsAccessory *psAccessory);
-static teProfileStatus eLightBulbHandle(teProfileCmd eProfileCmd);
+static teProfileStatus eLightBulbHandle(tsAccessory *psAccessory, teProfileCmd eProfileCmd);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-tsProfile sLightBulb;
+
 
 tsProfileHandle sLightBulbHandle[] = {
         {E_PROFILE_CMD_LIGHT_BULB_ON, eLightBulbOn},
@@ -52,29 +52,29 @@ tsProfileHandle sLightBulbHandle[] = {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teProfileStatus eLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
-{
-    memset(&sLightBulb, 0, sizeof(sLightBulb));
-    eAccessoryInit(&sLightBulb.sAccessory, psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
-    sLightBulb.peCallbackFunc = eLightBulbHandle;
-    sLightBulb.psGetAccessoryJsonInfo = psGetAccessoryInfoJson;
 
-    return E_PROFILE_OK;
+tsProfile * psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
+{
+    tsProfile *psProfile = psProfileNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
+    psProfile->peCallbackFunc = eLightBulbHandle;
+    psProfile->psGetAccessoryJsonInfo = psGetAccessoryInfoJson;
+
+    return psProfile;
 }
 
-teProfileStatus eLightBulbProfileFinished(void)
+teProfileStatus eLightBulbProfileRelease(tsProfile *psProfile)
 {
-    eAccessoryFinished(&sLightBulb.sAccessory);
+    eProfileRelease(psProfile);
     return E_PROFILE_OK;
 }
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static teProfileStatus eLightBulbHandle(teProfileCmd eProfileCmd)
+static teProfileStatus eLightBulbHandle(tsAccessory *psAccessory, teProfileCmd eProfileCmd)
 {
     for(int i = 0; i < sizeof(sLightBulbHandle)/sizeof(tsProfileHandle); i++){
         if((sLightBulbHandle[i].eProfileCmd == eProfileCmd)&&(sLightBulbHandle[i].peHandleFunc != NULL)){
-            return sLightBulbHandle[i].peHandleFunc(&sLightBulb.sAccessory);
+            return sLightBulbHandle[i].peHandleFunc(psAccessory);
         }
     }
     return E_PROFILE_ERROR;

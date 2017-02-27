@@ -41,8 +41,10 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory);
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-static uint64 u64UUID = 1;
-#define UUID (u64UUID++)
+static uint64 u64UUID_SERVICES = 1;
+static uint64 u64UUID_ACCESSORY = 1;
+#define UUID_SER_CHAR (u64UUID_SERVICES++)
+#define UUID_ACCESSORY (u64UUID_ACCESSORY++)
 
 /****************************************************************************/
 /***        Local    Functions                                            ***/
@@ -51,40 +53,40 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryInformationInit:%s", psName);
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, E_SERVICE_ACCESSORY_INFORMATION, UUID, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_ACCESSORY_INFORMATION, UUID_SER_CHAR, &psService);
 
     tsCharacteristic asCharaTemp[7];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*7);
 
-    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].u64IID = UUID_SER_CHAR;
     asCharaTemp[0].eType = E_CHARACTERISTIC_IDENTIFY;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
     asCharaTemp[0].uValue.bData = T_TRUE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_WRITE;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].u64IID = UUID_SER_CHAR;
     asCharaTemp[1].eType = E_CHARACTERISTIC_MANUFACTURER;
     asCharaTemp[1].eFormat = E_TYPE_STRING;
     asCharaTemp[1].uValue.psData = "ET";
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
-    asCharaTemp[2].u64IID = UUID;
+    asCharaTemp[2].u64IID = UUID_SER_CHAR;
     asCharaTemp[2].eType = E_CHARACTERISTIC_MODEL;
     asCharaTemp[2].eFormat = E_TYPE_STRING;
     asCharaTemp[2].uValue.psData = psModel;
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[3].u64IID = UUID;
+    asCharaTemp[3].u64IID = UUID_SER_CHAR;
     asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
     asCharaTemp[3].eFormat = E_TYPE_STRING;
     asCharaTemp[3].uValue.psData = "Light 1";
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
 
-    asCharaTemp[4].u64IID = UUID;
+    asCharaTemp[4].u64IID = UUID_SER_CHAR;
     asCharaTemp[4].eType = E_CHARACTERISTIC_SERIAL_NUMBER;
     asCharaTemp[4].eFormat = E_TYPE_STRING;
     asCharaTemp[4].uValue.psData = psSerialNumber;
@@ -92,14 +94,14 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, char *psN
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
 #if 0
     //Option
-    asCharaTemp[5].u64IID = UUID;
+    asCharaTemp[5].u64IID = UUID_SER_CHAR;
     asCharaTemp[5].eType = E_CHARACTERISTIC_FIRMWARE_VERSION;
     asCharaTemp[5].eFormat = E_TYPE_STRING;
     asCharaTemp[5].uValue.psData = "1.0";
     asCharaTemp[5].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[5], NULL);
 
-    asCharaTemp[6].u64IID = UUID;
+    asCharaTemp[6].u64IID = UUID_SER_CHAR;
     asCharaTemp[6].eType = E_CHARACTERISTIC_HARDWARE_VERSION;
     asCharaTemp[6].eFormat = E_TYPE_STRING;
     asCharaTemp[6].uValue.psData = "1.0";
@@ -125,19 +127,19 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 {
     DBG_vPrintln(DBG_ACC, "eAccessoryLightBulbInit");
     tsService *psService = NULL;
-    eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID, &psService);
+    eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID_SER_CHAR, &psService);
 
     tsCharacteristic asCharaTemp[E_NUM_OF_SERVICE_LIGHT_BULB];
     memset(asCharaTemp, 0, sizeof(tsCharacteristic)*E_NUM_OF_SERVICE_LIGHT_BULB);
 
-    asCharaTemp[0].u64IID = UUID;
+    asCharaTemp[0].u64IID = UUID_SER_CHAR;
     asCharaTemp[0].eType = E_CHARACTERISTIC_ON;
     asCharaTemp[0].eFormat = E_TYPE_BOOL;
     asCharaTemp[0].uValue.bData = T_TRUE;
     asCharaTemp[0].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[0], NULL);
 
-    asCharaTemp[1].u64IID = UUID;
+    asCharaTemp[1].u64IID = UUID_SER_CHAR;
     asCharaTemp[1].eType = E_CHARACTERISTIC_BRIGHTNESS;
     asCharaTemp[1].eFormat = E_TYPE_INT;
     asCharaTemp[1].uValue.iData = 50;
@@ -151,14 +153,14 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
-    asCharaTemp[3].u64IID = UUID;
+    asCharaTemp[3].u64IID = UUID_SER_CHAR;
     asCharaTemp[3].eType = E_CHARACTERISTIC_NAME;
     asCharaTemp[3].eFormat = E_TYPE_STRING;
     asCharaTemp[3].uValue.psData = "light";
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
 #if 0
-    asCharaTemp[2].u64IID = UUID;
+    asCharaTemp[2].u64IID = UUID_SER_CHAR;
     asCharaTemp[2].eType = E_CHARACTERISTIC_HUE;
     asCharaTemp[2].eFormat = E_TYPE_FLOAT;
     asCharaTemp[2].uValue.fData = 360;
@@ -172,7 +174,7 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
-    asCharaTemp[4].u64IID = UUID;
+    asCharaTemp[4].u64IID = UUID_SER_CHAR;
     asCharaTemp[4].eType = E_CHARACTERISTIC_SATURATION;
     asCharaTemp[4].eFormat = E_TYPE_FLOAT;
     asCharaTemp[4].uValue.fData = 100;
@@ -214,28 +216,31 @@ static char* trim(const char* str_buf, size_t len)
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType)
+tsAccessory *psAccessoryNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
+                            teAccessoryType eType)
 {
-    DBG_vPrintln(DBG_ACC, "Init accessory:%s type:%d", psName, eType);
-    CHECK_POINTER(psAccessory, E_HAP_STATUS_MEMORY_ERROR);
-    psAccessory->u64AIDs = 1;
+    DBG_vPrintln(DBG_ACC, "New accessory:%s type:%d", psName, eType);
+    tsAccessory *psAccessory = (tsAccessory*)malloc(sizeof(tsAccessory));
+    CHECK_POINTER(psAccessory, NULL);
+    memset(psAccessory, 0, sizeof(tsAccessory));
+    psAccessory->u64AIDs = UUID_ACCESSORY;
     psAccessory->u64DeviceID = u64DeviceID;
     psAccessory->eAccessoryType = eType;
     eAccessoryInformationInit(psAccessory, psName, psSerialNumber, psManufacturer, psModel);
     eAccessoryCategoriesInit(psAccessory, eType);
-
-    return E_HAP_STATUS_OK;
+    return psAccessory;
 }
 
-teHapStatus eAccessoryFinished(tsAccessory *psAccessory)
+teHapStatus eAccessoryRelease(tsAccessory *psAccessory)
 {
     WAR_vPrintln(DBG_ACC, "Finished accessory type:%d", psAccessory->eAccessoryType);
     FREE(psAccessory->psService->psCharacteristics);
     FREE(psAccessory->psService);
+    FREE(psAccessory);
     return E_HAP_STATUS_OK;
 }
 
-json_object * psGetAccessoryInfoJson(tsAccessory *psAccessory)
+json_object *psGetAccessoryInfoJson(tsAccessory *psAccessory)
 {
     CHECK_POINTER(psAccessory, NULL);
     json_object *psArrayPerms = NULL;
@@ -406,4 +411,24 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
     memcpy(psChara, &sCharaIn, sizeof(tsCharacteristic));
     if(ppCharaOut) *ppCharaOut = psChara;
     return E_HAP_STATUS_OK;
+}
+
+tuChartValue uGetCharacteristicInfo(int iAID, int iIID, const tsAccessory *psAccessory)
+{
+    tuChartValue Value;
+    if(psAccessory->u64AIDs == iAID){
+        for (int i = 0; i < psAccessory->u8NumServices; ++i) {
+            for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
+                if(psAccessory->psService[i].psCharacteristics[j].u64IID == iIID){
+                    return psAccessory->psService[i].psCharacteristics[j].uValue;
+                }
+            }
+        }
+    }
+    return Value;
+}
+
+tsAccessory *psGetAccessoryInstance(uint64 u64AID)
+{
+
 }

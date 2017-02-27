@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             light_bulb.h
+ * MODULE:             profile.c
  *
  * COMPONENT:          home kit interface
  *
@@ -16,18 +16,11 @@
  *
  ***************************************************************************/
 
-#ifndef HOMEKIT_LIGHT_BULB_H
-#define HOMEKIT_LIGHT_BULB_H
-
-#if defined __cplusplus
-extern "C" {
-#endif
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
-#include "utils.h"
 #include "profile.h"
-#include "accessory.h"
+
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -43,20 +36,31 @@ extern "C" {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-
 /****************************************************************************/
 /***        Local Variables                                               ***/
+/****************************************************************************/
+
+
+/****************************************************************************/
+/***        Local    Functions                                            ***/
 /****************************************************************************/
 
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile * psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel);
-teProfileStatus eLightBulbProfileRelease(tsProfile *psProfile);
-/****************************************************************************/
-/***        Local    Functions                                            ***/
-/****************************************************************************/
-#if defined __cplusplus
+tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
+                        teAccessoryType eType)
+{
+    tsProfile *psProfile = (tsProfile*)malloc(sizeof(tsProfile));
+    CHECK_POINTER(psProfile, NULL);
+    memset(psProfile, 0, sizeof(tsProfile));
+    psProfile->psAccessory = psAccessoryNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
+    return psProfile;
 }
-#endif
-#endif //HOMEKIT_LIGHT_BULB_H
+
+teHapStatus eProfileRelease(tsProfile *psProfile)
+{
+    eAccessoryRelease(psProfile->psAccessory);
+    FREE(psProfile);
+    return E_HAP_STATUS_OK;
+}

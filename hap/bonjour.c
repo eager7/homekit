@@ -21,6 +21,7 @@
 /****************************************************************************/
 #include <time.h>
 #include <profile.h>
+#include <accessory.h>
 #include "bonjour.h"
 #include "pairing.h"
 #include "ip.h"
@@ -99,7 +100,7 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
     tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
-    //tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
+    tsProfile *psProfile = (tsProfile*)psThreadInfo->pvThreadData;
     psThreadInfo->eState = E_THREAD_RUNNING;
 
     fd_set fdSelect, fdTemp;
@@ -162,7 +163,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             iNumberClient --;
                         } else {
                             DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", iLen, auBuffer);
-                            eHapHandlePackage(auBuffer, iLen, iSockFd, &sBonjour);
+                            eHapHandlePackage(psProfile, &sBonjour, auBuffer, iLen, iSockFd);
                         }
                     }
                 }
@@ -189,13 +190,13 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     sBonjour.pcSetupCode = psSetupCode;
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
-    sBonjour.sBonjourText.u64DeviceID = psProfile->sAccessory.u64DeviceID;
+    sBonjour.sBonjourText.u64DeviceID = psProfile->psAccessory->u64DeviceID;
     sBonjour.sBonjourText.psModelName = psModel;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32CurrentStaNumber = 4;
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
-    sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->sAccessory.eAccessoryType;
+    sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->psAccessory->eAccessoryType;
 
     CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
     eTextRecordFormat(&sBonjour);

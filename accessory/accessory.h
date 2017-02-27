@@ -147,6 +147,10 @@ typedef struct{
     tsService               *psService;     //json-services
 } tsAccessory;
 
+typedef struct {
+    uint8 u8NumAccessory;
+    tsAccessory *psAccessory;
+} tsAccessorySet;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -161,9 +165,9 @@ typedef struct{
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHapStatus eAccessoryInit(tsAccessory *psAccessory, char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
-teHapStatus eAccessoryFinished(tsAccessory *psAccessory);
-json_object * psGetAccessoryInfoJson(tsAccessory *psAccessory);
+tsAccessory *psAccessoryNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
+teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
+json_object *psGetAccessoryInfoJson(tsAccessory *psAccessory);
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
 teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
 /****************************************************************************/

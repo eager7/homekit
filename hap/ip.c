@@ -20,6 +20,7 @@
 /***        Include files                                                 ***/
 /****************************************************************************/
 
+#include <profile.h>
 #include "ip.h"
 #include "http_handle.h"
 #include "light_bulb.h"
@@ -83,7 +84,7 @@ teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
     return E_IP_STATUS_OK;
 }
 
-teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
+teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd)
 {
     tsHttpEntry sHttpEntry;
     eHttpParser(E_HTTP_POST, psBuffer, (uint16)iLen, &sHttpEntry);
@@ -96,7 +97,7 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
     } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
         eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
-        eHandleAccessoryRequest(iSocketFd, psBonjour);
+        eHandleAccessoryRequest(psProfile, iSocketFd, psBonjour);
     } else if (strstr((char*)sHttpEntry.acDirectory, "identify")){
         close(iSocketFd);
     } else {
@@ -105,7 +106,8 @@ teIpStatus eHapHandlePackage(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
     return E_IP_STATUS_OK;
 }
 
-teIpStatus eHandleAccessoryPackage(uint8 *psData, uint16 u16Len, uint8 **psResp, uint16 *pu16Len)
+teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
+                                   uint16 *pu16Len)
 {
     CHECK_POINTER(psData, E_IP_STATUS_ERROR);
     CHECK_POINTER(psResp, E_IP_STATUS_ERROR);
@@ -116,16 +118,45 @@ teIpStatus eHandleAccessoryPackage(uint8 *psData, uint16 u16Len, uint8 **psResp,
     if (strstr((char*)psData, "/accessories")) {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
-        json_object *temp = psGetAccessoryInfoJson(&sLightBulb.sAccessory);
+        json_object *temp = psGetAccessoryInfoJson(psProfile->psAccessory);
 
         uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                               json_object_get_string(temp), (uint16) strlen(json_object_get_string(temp)), psResp);
         *pu16Len = (uint16)strlen(json_object_get_string(temp)) + LenHttp;
+        json_object_put(temp);
     } else if(strstr((char*)psData, "/characteristics")) {
-        NOT_vPrintln(DBG_IP, "Setting Characteristics Attribute\n");
+        tsHttpEntry sHttp;
+        memset(&sHttp, 0, sizeof(tsHttpEntry));
         if(strstr((char*)psData, "PUT")){
+            eHttpParser(E_HTTP_PUT, psData, u16Len, &sHttp);
+            NOT_vPrintln(DBG_IP, "Writing Characteristics Attribute:%s\n", sHttp.acContentData);
+            uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", NULL, 0, psResp);
 
-        } else if(strstr((char*)psData, "GET"){
+        } else if(strstr((char*)psData, "GET")){
+            NOT_vPrintln(DBG_IP, "Reading Characteristics Attribute\n");
+            eHttpParser(E_HTTP_PUT, psData, u16Len, &sHttp);
+            char auId[MIBF] = {0};
+            sscanf((const char*)sHttp.acDirectory, "/characteristics?id=%[^\n]", auId);
+
+            char *temp_once = strtok(auId, ",");
+            CHECK_POINTER(temp_once, E_IP_STATUS_ERROR);
+            int aid = 0, iid = 0;
+            while(T_TRUE){
+                sscanf(temp_once, "%d.%d", &aid, &iid);
+                DBG_vPrintln(DBG_IP, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
+                if(psProfile->psAccessory->u64AIDs == aid){
+                    for (int i = 0; i < psProfile->psAccessory->u8NumServices; ++i) {
+                        for (int j = 0; j < psProfile->psAccessory->psService[i].u8NumCharacteristics; ++j) {
+                            if(psProfile->psAccessory->psService[i].psCharacteristics[j].u64IID == iid){
+                                //return psProfile->psAccessory->psService[i].psCharacteristics[j].uValue;
+                            }
+                        }
+                    }
+                }
+                temp_once = strtok(NULL, ",");
+                if(NULL == temp_once)
+                    break;
+            }
 
         }
     }

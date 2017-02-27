@@ -42,7 +42,7 @@
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teHttpStatus eHttpParser(teHttpMethod eMethod, uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
+teHttpStatus eHttpParser(teHttpMethod eMethod, const uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Parser Package[%d]--------", u16Len);
     char auTemp[MABF] = {0};
@@ -56,7 +56,7 @@ teHttpStatus eHttpParser(teHttpMethod eMethod, uint8 *pBuf, uint16 u16Len, tsHtt
     CHECK_POINTER(psHeader, E_HTTP_PARSER_ERROR);
     char *psHost = strtok(NULL, "\r\n");
     CHECK_POINTER(psHost, E_HTTP_PARSER_ERROR);
-    if(eMethod == E_HTTP_POST){
+    if(eMethod == E_HTTP_POST || eMethod == E_HTTP_PUT){
         psContentLen = strtok(NULL, "\r\n");
         CHECK_POINTER(psContentLen, E_HTTP_PARSER_ERROR);
 
@@ -75,7 +75,7 @@ teHttpStatus eHttpParser(teHttpMethod eMethod, uint8 *pBuf, uint16 u16Len, tsHtt
     memcpy(psHttpEntry->acHttpVersion, psHttpVer, sizeof(psHttpEntry->acHttpVersion));
     DBG_vPrintln(DBG_HTTP, "Method:%s,Dir:%s,Version:%s", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
 
-    if(eMethod == E_HTTP_POST){
+    if(eMethod == E_HTTP_POST || eMethod == E_HTTP_PUT){
         char *psLen = strtok(psContentLen, ":");
         psLen = strtok(NULL, ":");
         CHECK_POINTER(psLen, E_HTTP_PARSER_ERROR);
@@ -140,8 +140,7 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     return E_HTTP_PARSER_OK;
 }
 
-uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length,
-                            uint8 **ppResponse)
+uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length, uint8 **ppResponse)
 {
     INF_vPrintln(DBG_HTTP, "--------Http Send Package[%d]--------", u16Length);
 
@@ -184,7 +183,9 @@ uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuf
     memcpy(&temp[index], "\r\n\r\n", sizeof("\r\n\r\n") - 1);
     index += sizeof("\r\n\r\n") - 1;
     uint16 u16Ret = (uint16)index;
-    memcpy(&temp[index], pBuffer, u16Length);
+    if(u16Length)
+        memcpy(&temp[index], pBuffer, u16Length);
+    index += u16Length;
 
     if(ppResponse) *ppResponse = temp;
     return u16Ret;
