@@ -167,7 +167,8 @@ typedef struct {
 /****************************************************************************/
 tsAccessory *psAccessoryNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
 teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
-json_object *psGetAccessoryInfoJson(tsAccessory *psAccessory);
+json_object *psGetAccessoryInfoJson(const tsAccessory *psAccessory);
+json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd);
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
 teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
 /****************************************************************************/

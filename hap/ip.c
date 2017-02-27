@@ -118,46 +118,29 @@ teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, ui
     if (strstr((char*)psData, "/accessories")) {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
-        json_object *temp = psGetAccessoryInfoJson(psProfile->psAccessory);
+        json_object *psJsonRet = psGetAccessoryInfoJson(psProfile->psAccessory);
 
         uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
-                                              json_object_get_string(temp), (uint16) strlen(json_object_get_string(temp)), psResp);
-        *pu16Len = (uint16)strlen(json_object_get_string(temp)) + LenHttp;
-        json_object_put(temp);
+                                              json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
+        *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;
+        json_object_put(psJsonRet);
     } else if(strstr((char*)psData, "/characteristics")) {
         tsHttpEntry sHttp;
         memset(&sHttp, 0, sizeof(tsHttpEntry));
         if(strstr((char*)psData, "PUT")){
             eHttpParser(E_HTTP_PUT, psData, u16Len, &sHttp);
             NOT_vPrintln(DBG_IP, "Writing Characteristics Attribute:%s\n", sHttp.acContentData);
-            uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json", NULL, 0, psResp);
+            uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, "application/hap+json", NULL, 0, psResp);
+            *pu16Len = LenHttp;
 
         } else if(strstr((char*)psData, "GET")){
-            NOT_vPrintln(DBG_IP, "Reading Characteristics Attribute\n");
-            eHttpParser(E_HTTP_PUT, psData, u16Len, &sHttp);
-            char auId[MIBF] = {0};
-            sscanf((const char*)sHttp.acDirectory, "/characteristics?id=%[^\n]", auId);
-
-            char *temp_once = strtok(auId, ",");
-            CHECK_POINTER(temp_once, E_IP_STATUS_ERROR);
-            int aid = 0, iid = 0;
-            while(T_TRUE){
-                sscanf(temp_once, "%d.%d", &aid, &iid);
-                DBG_vPrintln(DBG_IP, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
-                if(psProfile->psAccessory->u64AIDs == aid){
-                    for (int i = 0; i < psProfile->psAccessory->u8NumServices; ++i) {
-                        for (int j = 0; j < psProfile->psAccessory->psService[i].u8NumCharacteristics; ++j) {
-                            if(psProfile->psAccessory->psService[i].psCharacteristics[j].u64IID == iid){
-                                //return psProfile->psAccessory->psService[i].psCharacteristics[j].uValue;
-                            }
-                        }
-                    }
-                }
-                temp_once = strtok(NULL, ",");
-                if(NULL == temp_once)
-                    break;
-            }
-
+            WAR_vPrintln(DBG_IP, "Reading Characteristics Attribute\n");
+            eHttpParser(E_HTTP_GET, psData, u16Len, &sHttp);
+            json_object *psJsonRet = psGetCharacteristicInfo(psProfile->psAccessory, (char*)sHttp.acDirectory);
+            uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
+                                                  json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
+            *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;
+            json_object_put(psJsonRet);
         }
     }
     return E_IP_STATUS_OK;

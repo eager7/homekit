@@ -45,7 +45,7 @@ typedef enum {
 
 typedef teProfileStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
 typedef teProfileStatus (*fpeCallbackFunc)(tsAccessory *psAccessory, teProfileCmd eProfileCmd);
-typedef json_object* (*fpsGetAccessoryJsonInfo)(tsAccessory *psAccessory);
+typedef json_object* (*fpsGetAccessoryJsonInfo)(const tsAccessory *psAccessory);
 
 typedef struct {
     teProfileCmd eProfileCmd;

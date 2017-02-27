@@ -240,7 +240,7 @@ teHapStatus eAccessoryRelease(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
-json_object *psGetAccessoryInfoJson(tsAccessory *psAccessory)
+json_object *psGetAccessoryInfoJson(const tsAccessory *psAccessory)
 {
     CHECK_POINTER(psAccessory, NULL);
     json_object *psArrayPerms = NULL;
@@ -413,19 +413,52 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
     return E_HAP_STATUS_OK;
 }
 
-tuChartValue uGetCharacteristicInfo(int iAID, int iIID, const tsAccessory *psAccessory)
+json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd)
 {
-    tuChartValue Value;
-    if(psAccessory->u64AIDs == iAID){
-        for (int i = 0; i < psAccessory->u8NumServices; ++i) {
-            for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
-                if(psAccessory->psService[i].psCharacteristics[j].u64IID == iIID){
-                    return psAccessory->psService[i].psCharacteristics[j].uValue;
+    json_object *psJsonCharacter = NULL;
+    json_object *psJsonReturn = json_object_new_object();
+    json_object *psArrayCharacter = json_object_new_array();
+    char auId[MIBF] = {0};
+    sscanf(psCmd, "/characteristics?id=%[^\n]", auId);
+    char *temp_once = strtok(auId, ",");
+    CHECK_POINTER(temp_once, NULL);
+    int aid = 0, iid = 0;
+    while(T_TRUE){
+        sscanf(temp_once, "%d.%d", &aid, &iid);
+        DBG_vPrintln(1, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
+        if(psAccessory->u64AIDs == aid){
+            for (int i = 0; i < psAccessory->u8NumServices; ++i) {
+                for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
+                    if(psAccessory->psService[i].psCharacteristics[j].u64IID == iid){
+                        psJsonCharacter = json_object_new_object();
+                        json_object_object_add(psJsonCharacter, "aid", json_object_new_int64((int64_t)aid));
+                        json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)iid));
+                        switch (psAccessory->psService[i].psCharacteristics[j].eFormat){
+                            case E_TYPE_BOOL:{
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psAccessory->psService[i].psCharacteristics[j].uValue.bData));
+                            } break;
+                            case E_TYPE_INT: {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.iData));
+                            } break;
+                            case E_TYPE_FLOAT:  {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
+                            } break;
+                            case E_TYPE_STRING: {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_string(psAccessory->psService[i].psCharacteristics[j].uValue.psData));
+                            } break;
+                            default: break;
+                        }
+                    }
                 }
             }
         }
+        json_object_array_add(psArrayCharacter, psJsonCharacter);
+        temp_once = strtok(NULL, ",");
+        if(NULL == temp_once)
+            break;
     }
-    return Value;
+    json_object_object_add(psJsonReturn, "characteristics", psArrayCharacter);
+    return psJsonReturn;
 }
 
 tsAccessory *psGetAccessoryInstance(uint64 u64AID)

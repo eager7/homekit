@@ -105,13 +105,10 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     sprintf(auHttpStatus, "%d", psHttpEntry->iHttpStatus);
     memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
     index += strlen(auHttpStatus);
-    if(200 == psHttpEntry->iHttpStatus){
-        memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
-        index += sizeof(" OK\r\n") - 1;
-    } else {
-        memcpy(&temp[index], " \r\n", sizeof(" \r\n") - 1);
-        index += sizeof(" \r\n") - 1;
-    }
+
+    memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
+    index += sizeof(" OK\r\n") - 1;
+
     memcpy(&temp[index], "Content-Type:", sizeof("Content-Type:") - 1);
     index += sizeof("Content-Type:") - 1;
     memcpy(&temp[index], psHttpEntry->acContentType, strlen((char*)psHttpEntry->acContentType));
@@ -155,13 +152,8 @@ uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuf
     memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
     index += strlen(auHttpStatus);
 
-    if(200 == iStatus){
-        memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
-        index += sizeof(" OK\r\n") - 1;
-    } else {
-        memcpy(&temp[index], " \r\n", sizeof(" \r\n") - 1);
-        index += sizeof(" \r\n") - 1;
-    }
+    memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
+    index += sizeof(" OK\r\n") - 1;
 
     memcpy(&temp[index], "Content-Type: ", sizeof("Content-Type: ") - 1);
     index += sizeof("Content-Type: ") - 1;
