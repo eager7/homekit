@@ -93,7 +93,6 @@ teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *
     if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
         eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
-        eUpdateConfiguration(psBonjour);
     } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
         eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
@@ -118,8 +117,7 @@ teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, ui
     if (strstr((char*)psData, "/accessories")) {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
-        json_object *psJsonRet = psGetAccessoryInfoJson(psProfile->psAccessory);
-
+        json_object *psJsonRet = psProfile->psGetAccessoryJsonInfo(psProfile->psAccessory);
         uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                               json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
         *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;
@@ -136,7 +134,7 @@ teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, ui
         } else if(strstr((char*)psData, "GET")){
             WAR_vPrintln(DBG_IP, "Reading Characteristics Attribute\n");
             eHttpParser(E_HTTP_GET, psData, u16Len, &sHttp);
-            json_object *psJsonRet = psGetCharacteristicInfo(psProfile->psAccessory, (char*)sHttp.acDirectory);
+            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)sHttp.acDirectory);
             uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                                   json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
             *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;

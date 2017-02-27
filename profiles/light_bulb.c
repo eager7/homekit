@@ -53,11 +53,10 @@ tsProfileHandle sLightBulbHandle[] = {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 
-tsProfile * psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
+tsProfile *psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
     psProfile->peCallbackFunc = eLightBulbHandle;
-    psProfile->psGetAccessoryJsonInfo = psGetAccessoryInfoJson;
 
     return psProfile;
 }

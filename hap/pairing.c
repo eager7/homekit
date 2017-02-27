@@ -624,7 +624,7 @@ tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
             DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M5_EXCHANGE_REQUEST");
             eM6ExchangeResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
             SRP_free(sPairSetup.pSrp);
-            eUpdateConfiguration(psBonjour);
+            psBonjour->eBonjourUpdate();
         }
         default:
             break;

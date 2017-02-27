@@ -165,10 +165,36 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsAccessory *psAccessoryNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType);
+/*****************************************************************************
+** Prototype    : psAccessoryNew
+** Description  : create a new object for accessory device
+** Input        : psName, the accessory's name
+ *                u64DeviceID, the unique id of accessory, used by bonjour
+ *                psSerialNumber, the serial number of accessory, distributed by manufacturer
+ *                psManufacturer, the factory of making accessory, such as Topband
+ *                psModel, the model of accessory, such as X7
+ *                eType, the type defined in teAccessoryType
+** Output       : None
+** Return Value : if success, return a struct of tsAccessory, else return NULL
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
+tsAccessory *psAccessoryNew(const char *psName, uint64 u64DeviceID, const char *psSerialNumber,
+                            const char *psManufacturer, const char *psModel, teAccessoryType eType);
+/*****************************************************************************
+** Prototype    : eAccessoryRelease
+** Description  : free the memory allocated by psAccessoryNew
+** Input        : psAccessory, the object allocated by psAccessoryNew
+** Output       : None
+** Return Value : always return E_HAP_STATUS_OK
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
-json_object *psGetAccessoryInfoJson(const tsAccessory *psAccessory);
-json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd);
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
 teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
 /****************************************************************************/

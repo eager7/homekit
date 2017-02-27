@@ -36,10 +36,6 @@
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
-static teBonjStatus eBonjourSocketInit(void);
-static void *pvBonjourThreadHandle(void *psThreadInfoVoid);
-static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
-                                const char *name, const char *regtype, const char *domain, void *context);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
@@ -83,7 +79,8 @@ static teBonjStatus eBonjourSocketInit(void)
     return E_BONJOUR_STATUS_OK;
 }
 
-static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode, const char *name, const char *regtype, const char *domain, void *context)
+static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
+                                const char *name, const char *regtype, const char *domain, void *context)
 {
     (void)client;   // Unused
     (void)flags;    // Unused
@@ -96,6 +93,84 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
     }
 }
 
+static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
+{
+    TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
+
+    char temp_csharp[MIBF] = {0};
+    sprintf(temp_csharp, "%llu", psBonjour->sBonjourText.u64CurrentCfgNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
+
+    char temp_ff[MIBF] = {0};
+    sprintf(temp_ff, "%d", psBonjour->sBonjourText.u8FeatureFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ff", 1, temp_ff);
+
+    char temp_id[MIBF] = {0};
+    sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*5) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*4) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*3) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
+            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
+    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
+    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
+
+    char temp_md[MIBF] = {0};
+    sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
+    TXTRecordSetValue(&psBonjour->txtRecord, "md", (uint8)strlen(temp_md), temp_md);
+
+    char temp_pv[MIBF] = {0};
+    sprintf(temp_pv, "%d.%d", psBonjour->sBonjourText.auProtocolVersion[0], psBonjour->sBonjourText.auProtocolVersion[1]);
+    TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
+
+    char temp_scharp[MIBF] = {0};
+    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32CurrentStaNumber);
+    TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
+
+    char temp_sf[MIBF] = {0};
+    sprintf(temp_sf, "%d", psBonjour->sBonjourText.u8StatusFlag);
+    TXTRecordSetValue(&psBonjour->txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
+
+    char temp_ci[MIBF] = {0};
+    sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
+    TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
+
+    return E_BONJOUR_STATUS_OK;
+}
+
+static teBonjStatus eBonjourRegister()
+{
+    tsBonjour *psBonjour = &sBonjour;
+    eTextRecordFormat(psBonjour);
+    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
+    DNSServiceErrorType  ret = DNSServiceRegister(&psBonjour->psDnsRef, 0, 0, psBonjour->sBonjourText.psModelName,
+                                                  psBonjour->psServiceName, "", psBonjour->psHostName, psBonjour->u16Port,
+                                                  TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), reg_reply,NULL);
+    TXTRecordDeallocate(&psBonjour->txtRecord);
+    if(ret){
+        ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
+        return E_BONJOUR_STATUS_ERROR;
+    }
+
+    return E_BONJOUR_STATUS_OK;
+}
+
+static teBonjStatus eBonjourUpdate()
+{
+    tsBonjour *psBonjour = &sBonjour;
+    psBonjour->sBonjourText.u64CurrentCfgNumber++;
+    eTextRecordFormat(psBonjour);
+    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
+    DNSServiceErrorType  ret = DNSServiceUpdateRecord(psBonjour->psDnsRef, NULL, 0,
+                                                      TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), 0);
+    TXTRecordDeallocate(&psBonjour->txtRecord);
+    if(ret){
+        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
+        return E_BONJOUR_STATUS_ERROR;
+    }
+    return E_BONJOUR_STATUS_OK;
+}
 
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
@@ -182,11 +257,11 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
     memset(&sBonjour, 0, sizeof(sBonjour));
+    sBonjour.eBonjourUpdate = eBonjourUpdate;
+    sBonjour.eBonjourRegister = eBonjourRegister;
     ePairingInit();
 
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
-    sBonjour.psHostName = NULL;
-    sBonjour.u16Port = 0;
     sBonjour.pcSetupCode = psSetupCode;
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
@@ -199,16 +274,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->psAccessory->eAccessoryType;
 
     CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
-    eTextRecordFormat(&sBonjour);
-    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&sBonjour.txtRecord), (const char*)TXTRecordGetBytesPtr(&sBonjour.txtRecord));
-    DNSServiceErrorType  ret = DNSServiceRegister(&sBonjour.psDnsRef, 0, 0, sBonjour.sBonjourText.psModelName,
-                                                  sBonjour.psServiceName, "", sBonjour.psHostName, sBonjour.u16Port,
-                                                  TXTRecordGetLength(&sBonjour.txtRecord), TXTRecordGetBytesPtr(&sBonjour.txtRecord), reg_reply,NULL);
-    TXTRecordDeallocate(&sBonjour.txtRecord);
-    if(ret){
-        ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
-        return E_BONJOUR_STATUS_ERROR;
-    }
+    CHECK_RESULT(sBonjour.eBonjourRegister(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
 
     sBonjour.sBonjourThread.pvThreadData = psProfile;
@@ -224,63 +290,4 @@ teBonjStatus eBonjourFinished(tsProfile *psProfile)
     return E_BONJOUR_STATUS_OK;
 }
 
-teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
-{
-    TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
 
-    char temp_csharp[MIBF] = {0};
-    sprintf(temp_csharp, "%llu", psBonjour->sBonjourText.u64CurrentCfgNumber);
-    TXTRecordSetValue(&psBonjour->txtRecord, "c#", (uint8)strlen(temp_csharp), temp_csharp);    //Configuration Number
-
-    char temp_ff[MIBF] = {0};
-    sprintf(temp_ff, "%d", psBonjour->sBonjourText.u8FeatureFlag);
-    TXTRecordSetValue(&psBonjour->txtRecord, "ff", 1, temp_ff);
-
-    char temp_id[MIBF] = {0};
-    sprintf(temp_id, "%02x:%02x:%02x:%02x:%02x:%02x",
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*5) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*4) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*3) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*2) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*1) & 0xff),
-            (uint8)(psBonjour->sBonjourText.u64DeviceID>>(8*0) & 0xff));
-    TXTRecordSetValue(&psBonjour->txtRecord, "id", (uint8)strlen(temp_id), temp_id);
-    memcpy(psBonjour->sBonjourText.psDeviceID, temp_id, sizeof(psBonjour->sBonjourText.psDeviceID));
-
-    char temp_md[MIBF] = {0};
-    sprintf(temp_md, "%s", psBonjour->sBonjourText.psModelName);
-    TXTRecordSetValue(&psBonjour->txtRecord, "md", (uint8)strlen(temp_md), temp_md);
-
-    char temp_pv[MIBF] = {0};
-    sprintf(temp_pv, "%d.%d", psBonjour->sBonjourText.auProtocolVersion[0], psBonjour->sBonjourText.auProtocolVersion[1]);
-    TXTRecordSetValue(&psBonjour->txtRecord, "pv", (uint8)strlen(temp_pv), temp_pv);
-
-    char temp_scharp[MIBF] = {0};
-    sprintf(temp_scharp, "%d", psBonjour->sBonjourText.u32CurrentStaNumber);
-    TXTRecordSetValue(&psBonjour->txtRecord, "s#", (uint8)strlen(temp_scharp), temp_scharp);
-
-    char temp_sf[MIBF] = {0};
-    sprintf(temp_sf, "%d", psBonjour->sBonjourText.u8StatusFlag);
-    TXTRecordSetValue(&psBonjour->txtRecord, "sf", (uint8)strlen(temp_sf), temp_sf);
-
-    char temp_ci[MIBF] = {0};
-    sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
-    TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
-
-    return E_BONJOUR_STATUS_OK;
-}
-
-teBonjStatus eUpdateConfiguration(tsBonjour *psBonjour)
-{
-    psBonjour->sBonjourText.u64CurrentCfgNumber++;
-    eTextRecordFormat(psBonjour);
-    DBG_vPrintln(DBG_BONJOUR, "%d-%s", TXTRecordGetLength(&psBonjour->txtRecord), (const char*)TXTRecordGetBytesPtr(&psBonjour->txtRecord));
-    DNSServiceErrorType  ret = DNSServiceUpdateRecord(psBonjour->psDnsRef, NULL, 0,
-                                                      TXTRecordGetLength(&psBonjour->txtRecord), TXTRecordGetBytesPtr(&psBonjour->txtRecord), 0);
-    TXTRecordDeallocate(&psBonjour->txtRecord);
-    if(ret){
-        ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
-        return E_BONJOUR_STATUS_ERROR;
-    }
-    return E_BONJOUR_STATUS_OK;
-}

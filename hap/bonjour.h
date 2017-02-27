@@ -32,11 +32,8 @@ extern "C" {
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
 #define BONJOUR_SERVER_TYPE "_hap._tcp."
-#define MULTICAST_DNS_ADDRESS "224.0.0.251"
-#define MULTICAST_DNS_PORT 5353
 
 #define ACCESSORY_SERVER_LISTEN 5
-#define ACCESSORY_SERVER_PORT 0
 #define MAX_NUMBER_CLIENT 8
 /****************************************************************************/
 /***        Type Definitions                                              ***/
@@ -82,10 +79,11 @@ typedef struct {
     teAccessoryType  eAccessoryCategoryID;
 } tsBonjourText;
 
+typedef teBonjStatus (*feBonjourUpdate)();
+typedef teBonjStatus (*feBonjourRegister)();
 typedef struct {
     char *psServiceName;            /* homekit bonjour server name, _hap._tcp. */
     char *psHostName;               /* accessory host name, can be NULL */
-    //char *psInstanceName;           /* same as accessory name */
     char *pcSetupCode;              /* Setup Code */
 
     int  iSocketFd;                 /* Accessory server socket */
@@ -94,9 +92,10 @@ typedef struct {
     DNSServiceRef psDnsRef;         /* mDNS pointer */
     TXTRecordRef  txtRecord;        /* txt record */
     tsBonjourText sBonjourText;     /* txt record struct */
+
+    feBonjourRegister eBonjourRegister;
+    feBonjourUpdate eBonjourUpdate;
 } tsBonjour;
-
-
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -113,8 +112,6 @@ typedef struct {
 /****************************************************************************/
 teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psModel);
 teBonjStatus eBonjourFinished(tsProfile *psProfile);
-teBonjStatus eTextRecordFormat(tsBonjour *psBonjour);
-teBonjStatus eUpdateConfiguration(tsBonjour *psBonjour);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

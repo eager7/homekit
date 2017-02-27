@@ -15,7 +15,7 @@ static void vQuitSignalHandler (int sig)
 
     return;
 }
-#if 1
+#if 0
 typedef enum{
     true = 1,
     false = 0,
@@ -56,11 +56,11 @@ int poly1305_power_on_self_test() {
 }
 #endif
 
-#define NAME "Dimer Light"
+#define NAME "Dimmer Light"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
-    printf("power on: %d\n", poly1305_power_on_self_test());
+    //printf("power on: %d\n", poly1305_power_on_self_test());
 
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
