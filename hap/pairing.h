@@ -81,11 +81,11 @@ typedef struct {
 } tsPairSetup;
 
 typedef struct {
-    tePairVerify eState;
+    tePairVerify    eState;
     curved25519_key auPublicKey;
     curved25519_key auControllerPublicKey;
     curved25519_key auSharedKey;
-    uint8_t auEnKey[32];
+    uint8_t         auSessionKey[32];
 } tsPairVerify;
 
 typedef struct {
@@ -115,9 +115,10 @@ extern tePairSetup ePair;
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePairingInit();
+teHapStatus ePairingInit();
+teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
-tePairStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour);
 
 /****************************************************************************/

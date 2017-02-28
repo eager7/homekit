@@ -292,6 +292,7 @@ teBonjStatus eBonjourFinished(tsProfile *psProfile)
 {
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     eThreadStop(&sBonjour.sBonjourThread);
+    ePairingFinished();
     return E_BONJOUR_STATUS_OK;
 }
 
