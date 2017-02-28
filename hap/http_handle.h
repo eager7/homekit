@@ -24,7 +24,7 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-
+#include "accessory_type.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -73,6 +73,11 @@ typedef struct {
     uint8 acContentType[MIBF];
     uint8 acContentData[MABF];
 } tsHttpEntry;
+
+typedef struct {
+    char *psBuffer;
+    uint16 u16Len;
+} tsHttpResp;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -88,7 +93,9 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
-char *psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length);
+tsHttpResp * psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length);
+teHapStatus eHttpRelease(tsHttpResp *psHttpResp);
+
 teHttpStatus eHttpParser(teHttpMethod eMethod, const uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
 teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
 uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length,

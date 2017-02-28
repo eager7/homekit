@@ -70,14 +70,14 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, const cha
     asCharaTemp[1].u64IID = UUID_SER_CHAR;
     asCharaTemp[1].eType = E_CHARACTERISTIC_MANUFACTURER;
     asCharaTemp[1].eFormat = E_TYPE_STRING;
-    asCharaTemp[1].uValue.psData = psManufacturer;
+    asCharaTemp[1].uValue.psData = (char*)psManufacturer;
     asCharaTemp[1].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[1], NULL);
 
     asCharaTemp[2].u64IID = UUID_SER_CHAR;
     asCharaTemp[2].eType = E_CHARACTERISTIC_MODEL;
     asCharaTemp[2].eFormat = E_TYPE_STRING;
-    asCharaTemp[2].uValue.psData = psModel;
+    asCharaTemp[2].uValue.psData = (char*)psModel;
     asCharaTemp[2].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[2], NULL);
 
@@ -91,7 +91,7 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, const cha
     asCharaTemp[4].u64IID = UUID_SER_CHAR;
     asCharaTemp[4].eType = E_CHARACTERISTIC_SERIAL_NUMBER;
     asCharaTemp[4].eFormat = E_TYPE_STRING;
-    asCharaTemp[4].uValue.psData = psSerialNumber;
+    asCharaTemp[4].uValue.psData = (char*)psSerialNumber;
     asCharaTemp[4].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
 

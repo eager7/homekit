@@ -116,7 +116,7 @@ extern tePairSetup ePair;
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tePairStatus ePairingInit();
-tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 tePairStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour);
 

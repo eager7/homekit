@@ -82,19 +82,20 @@ typedef struct {
 typedef teBonjStatus (*feBonjourUpdate)();
 typedef teBonjStatus (*feBonjourRegister)();
 typedef struct {
-    char *psServiceName;            /* homekit bonjour server name, _hap._tcp. */
-    char *psHostName;               /* accessory host name, can be NULL */
-    char *pcSetupCode;              /* Setup Code */
+    char                *psServiceName;             /* homekit bonjour server name, _hap._tcp. */
+    char                *psHostName;                /* accessory host name, can be NULL */
+    char                *pcSetupCode;               /* Setup Code */
 
-    int  iSocketFd;                 /* Accessory server socket */
-    uint16 u16Port;                 /* Accessory server socket port */
-    tsThread sBonjourThread;               /* server socket's thread */
-    DNSServiceRef psDnsRef;         /* mDNS pointer */
-    TXTRecordRef  txtRecord;        /* txt record */
-    tsBonjourText sBonjourText;     /* txt record struct */
+    int                 iSocketFd;                  /* Accessory server socket */
+    uint16              u16Port;                    /* Accessory server socket port */
+    uint8               u8NumberController;         /* The Controller Number */
+    tsThread            sBonjourThread;             /* server socket's thread */
+    DNSServiceRef       psDnsRef;                   /* mDNS pointer */
+    TXTRecordRef        txtRecord;                  /* txt record */
+    tsBonjourText       sBonjourText;               /* txt record struct */
 
-    feBonjourRegister eBonjourRegister;
-    feBonjourUpdate eBonjourUpdate;
+    feBonjourRegister   eBonjourRegister;
+    feBonjourUpdate     eBonjourUpdate;
 } tsBonjour;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/

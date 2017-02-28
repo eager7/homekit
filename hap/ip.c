@@ -84,15 +84,19 @@ teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
     return E_IP_STATUS_OK;
 }
 
-teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd)
+teHapStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd)
 {
-    tsHttpEntry *psHttpEntry = psHttpParser(psBuffer, iLen);
+    tsHttpEntry *psHttpEntry = psHttpParser(psBuffer, (uint16)iLen);
 
     DBG_vPrintln(DBG_IP, "Data Len:%d", psHttpEntry->u16ContentLen);
     if(strstr((char*)psHttpEntry->acDirectory, "pair-setup"))
     {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
-        eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
+        teHapStatus eStatus = eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
+        if(E_HAP_STATUS_OK != eStatus){
+            ERR_vPrintln(T_TRUE, "eHandlePairSetup Error:%d", eStatus);
+            return eStatus;
+        }
     }
     else if(strstr((char*)psHttpEntry->acDirectory, "pair-verify"))
     {
@@ -109,7 +113,7 @@ teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *
         DBG_vPrintln(DBG_IP, "Handle Controller Request");
     }
     FREE(psHttpEntry);
-    return E_IP_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
 teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,

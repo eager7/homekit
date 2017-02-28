@@ -57,7 +57,7 @@ int poly1305_power_on_self_test() {
 }
 #endif
 
-#define NAME "Dimmer Light"
+#define NAME "Dimmr Light"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");

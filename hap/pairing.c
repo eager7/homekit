@@ -24,6 +24,7 @@
 #include "hkdf.h"
 #include "ip.h"
 #include "mthread.h"
+#include "http_handle.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -161,6 +162,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
 
     /* 1. check if the accessory is already paired */
     if(sPairSetup.bPaired){
+        ERR_vPrintln(T_TRUE, " the accessory is already paired");
         sPairSetup.u8MaxTries++;
         eStatus = E_PAIRING_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_UNAVAILABLE;
@@ -170,6 +172,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
 
     /* 2. check if the accessory has received more than 100 unsuccessful authentication attempts */
     if(sPairSetup.u8MaxTries >= MAX_TRIES_PAIR){
+        ERR_vPrintln(T_TRUE, " the accessory has received more than 100 unsuccessful authentication attempts");
         sPairSetup.u8MaxTries++;
         eStatus = E_PAIRING_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_MAXTRIES;
@@ -179,6 +182,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
 
     /* 3. check if the accessory is currently performing a Pair Setup operation with a different controller */
     if(E_THREAD_OK != eLockLockTimed(&sPairSetup.mutex, 100)){
+        ERR_vPrintln(T_TRUE, "the accessory is currently performing a Pair Setup operation with a different controller");
         sPairSetup.u8MaxTries++;
         eStatus = E_PAIRING_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_BUSY;
@@ -212,30 +216,29 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
 
     /* 10. Respond to the iOS device's request with the following TLV */
     uint8 value_rep[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SALT,auSaltChar,16,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,(uint8*)pPublicKey->data,(uint16)pPublicKey->length,psTlvRespMessage);
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
 
 Finished:
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
 
     uint16 u16RespLen = 0;
     uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
     eIpMessageRelease(psResponse);
-    char *psRet = psHttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer, u16RespLen);
+    tsHttpResp *psHttpResp = psHttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer, u16RespLen);
     FREE(pRespBuffer);
-    if(-1 == send(iSockFd, psRet, strlen(psRet), 0)){
+    ssize_t iSend = send(iSockFd, psHttpResp->psBuffer, psHttpResp->u16Len, 0);
+    if(-1 == iSend){
         ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
     }
-    FREE(psRet);
+    DBG_vPrintln(DBG_PAIR, "Send Success:%d", (int)iSend);
+    FREE(psHttpResp);
     return eStatus;
 }
 static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
 {
-    uint8 *pRespBuffer = NULL;
-    uint16 u16RespLen = 0;
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     uint8 value_rep[] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
     tsIpMessage *psResponse = psIpResponseNew();
@@ -251,19 +254,29 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
     uint8 *psProofBuf      = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_PROOF);
     CHECK_POINTER(psProofBuf, E_PAIRING_STATUS_ERROR);
 
+    /* 1. Use the iOS device's SRP public key to compute the SRP shared secret key with SRP_compute_key() */
     SRP_RESULT Ret = SRP_compute_key(sPairSetup.pSrp, &sPairSetup.pSecretKey, psPublicKeyBuf, u16PublicKeyLen);
+
+    /* 2. Verify the iOS device's SRP proof with SRP_verify() */
     Ret = SRP_verify(sPairSetup.pSrp, psProofBuf, u16ProofLen);
     if (!SRP_OK(Ret)) {
-        ERR_vPrintln(T_TRUE, "Setup Code InCorrect");
-        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
+        ERR_vPrintln(T_TRUE, "Verify the iOS device's SRP proof Failed");
         eStatus = E_PAIRING_STATUS_ERROR;
+        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
         goto Finished;
-    } else {
-        cstr *psRespProof = NULL;
-        SRP_respond(sPairSetup.pSrp, &psRespProof);
-        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PROOF, (uint8*)psRespProof->data, (uint16)psRespProof->length, psTlvRespMessage);
-        NOT_vPrintln(DBG_PAIR, "Password Correct\n");
     }
+
+    /* 3. Generate the accessory-side SRP proof */
+    cstr *psRespProof = NULL;
+    SRP_respond(sPairSetup.pSrp, &psRespProof);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PROOF, (uint8*)psRespProof->data, (uint16)psRespProof->length, psTlvRespMessage);
+
+    /* 4. Generate the MFi challenge, MFiChallenge, from the SRP shared secret by using HKDF-SHA-512 */
+    /* 5. Derive the MFi Challenge Data, MFiChallengeData, by SHA-1 hashing the MFiChallenge */
+    /* 6. Generate the MFi proof, MFiProof, by performing challenge-response generation with the Apple Authentication Coprocessor */
+    /* 7. Read the Accessory Certificate, AccessoryCertificate, from the Apple Authentication Coprocessor */
+    /* 8. Construct a sub-TLV with the following TLV  */
+    /* 9. Derive the symmetric session encryption key, SessionKey, from the SRP shared secret by using HKDF-SHA-512 with the following parameters */
     const char salt[] = "Pair-Setup-Encrypt-Salt";
     const char info[] = "Pair-Setup-Encrypt-Info";
     if (0 != hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)sPairSetup.pSecretKey->data,
@@ -271,20 +284,26 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
         ERR_vPrintln(T_TRUE, "HKDF Failed");
         return E_PAIRING_STATUS_ERROR;
     }
+    /* 10. Encrypt the sub-TLV, encryptedData, and generate the 16 byte auth tag, authTag. This uses the ChaCha20-Poly1305 AEAD algorithm */
+    /* 11. Construct the response with the following TLV items */
+    /* 12. Send the response to the iOS device */
 Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
+    uint16 u16RespLen = 0;
+    uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-    eHttpResponse(iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
     eIpMessageRelease(psResponse);
+    tsHttpResp *psHttpResp = psHttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer, u16RespLen);
     FREE(pRespBuffer);
+    if(-1 == send(iSockFd, psHttpResp->psBuffer, psHttpResp->u16Len, 0)){
+        ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
+    }
+    FREE(psHttpResp);
 
     return eStatus;
 }
 static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
 {
-    uint8 *pRespBuffer = NULL;
-    uint16 u16RespLen = 0;
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     uint8 value_rep[] = {E_PAIR_SETUP_M6_EXCHANGE_RESPONSE};
     tsIpMessage *psResponse = psIpResponseNew();
@@ -399,11 +418,16 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     }
 Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
+    uint16 u16RespLen = 0;
+    uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-    eHttpResponse(iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
     eIpMessageRelease(psResponse);
+    tsHttpResp *psHttpResp = psHttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer, u16RespLen);
     FREE(pRespBuffer);
+    if(-1 == send(iSockFd, psHttpResp->psBuffer, psHttpResp->u16Len, 0)){
+        ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
+    }
+    FREE(psHttpResp);
 
     return eStatus;
 }
@@ -660,41 +684,46 @@ teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjo
     return E_HAP_STATUS_OK;
 }
 
-tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
+teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
 {
-    CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
-    CHECK_POINTER(psBonjour, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psBuffer, E_HAP_STATUS_ERROR);
+    CHECK_POINTER(psBonjour, E_HAP_STATUS_ERROR);
 
     uint8 value_rep[1] = {0};
     tsIpMessage *psIpMsg = NULL;
-    psIpMsg = psIpMessageFormat(psBuffer, (uint16)iLen);
-    tsTlvMessage *psTlvInMessage = &psIpMsg->psTlvPackage->sMessage;
-    uint8 *pStateController = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_STATE);
-    CHECK_POINTER(pStateController, E_PAIRING_STATUS_ERROR);
-    memcpy(&sPairSetup.eState, pStateController, 1);
-    INF_vPrintln(DBG_PAIR, "State:%d", sPairSetup.eState);
-    value_rep[0] = sPairSetup.eState + 1;
-    switch (sPairSetup.eState) {
-        case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
-            INF_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
-            eM2SrpStartResponse(iSocketFd, psBonjour->pcSetupCode, psIpMsg);
-        }break;
-        case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
-            DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST");
-            eM4SrpVerifyResponse(iSocketFd, psIpMsg);
-        }break;
-        case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
-            DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M5_EXCHANGE_REQUEST");
-            eM6ExchangeResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
-            eLockunLock(&sPairSetup.mutex);
-            SRP_free(sPairSetup.pSrp);
-            psBonjour->eBonjourUpdate();
+
+    do{
+        psIpMsg = psIpMessageFormat(psBuffer, (uint16)iLen);
+        tsTlvMessage *psTlvInMessage = &psIpMsg->psTlvPackage->sMessage;
+        uint8 *pStateController = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_STATE);
+        CHECK_POINTER(pStateController, E_HAP_STATUS_ERROR);
+        memcpy(&sPairSetup.eState, pStateController, 1);
+        INF_vPrintln(DBG_PAIR, "State:%d", sPairSetup.eState);
+        value_rep[0] = sPairSetup.eState + 1;
+        switch (sPairSetup.eState) {
+            case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
+                INF_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
+                eM2SrpStartResponse(iSocketFd, psBonjour->pcSetupCode, psIpMsg);
+            }break;
+            case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
+                DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST");
+                eM4SrpVerifyResponse(iSocketFd, psIpMsg);
+            }break;
+            case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
+                DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M5_EXCHANGE_REQUEST");
+                eM6ExchangeResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
+                eLockunLock(&sPairSetup.mutex);
+                SRP_free(sPairSetup.pSrp);
+                psBonjour->eBonjourUpdate();
+                return E_HAP_STATUS_OK;
+            }
+            default:
+                break;
         }
-        default:
-            break;
-    }
-    eIpMessageRelease(psIpMsg);
-    return E_PAIRING_STATUS_OK;
+        eIpMessageRelease(psIpMsg);
+    }while (0 < (iLen = (int)read(iSocketFd, psBuffer, MABF)));
+
+    return E_HAP_STATUS_SOCKET_ERROR;
 }
 
 tePairStatus  eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)

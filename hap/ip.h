@@ -65,7 +65,7 @@ typedef struct {
 tsIpMessage *psIpResponseNew();
 tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
 teIpStatus  eIpMessageRelease(tsIpMessage *psIpMsg);
-teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd);
+teHapStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd);
 teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
                                    uint16 *pu16Len);
 /****************************************************************************/

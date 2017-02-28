@@ -18,12 +18,13 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
+#include <accessory_type.h>
 #include "http_handle.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_HTTP 0
+#define DBG_HTTP 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -238,17 +239,30 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len)
     return psHttpEntry;
 }
 
-char *psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length)
+tsHttpResp *psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length)
 {
+    tsHttpResp *psHttpResp = (tsHttpResp*)malloc(sizeof(tsHttpResp));
+    CHECK_POINTER(psHttpResp, NULL);
+    memset(psHttpResp, 0, sizeof(tsHttpResp));
+
     char temp[MIBF] = {0};
     int iLen = snprintf(temp, 256, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
-    char *psResponse = (char*)malloc((size_t)(iLen + u16Length));
-    CHECK_POINTER(psResponse, NULL);
-    memset(psResponse, 0, (size_t)(iLen + u16Length));
-    snprintf(psResponse, (size_t)iLen+1, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
-    memcpy(&psResponse[iLen], pBuffer, u16Length);
-    INF_vPrintln(1, "psHttpFormat:\n%s", psResponse);
-    return psResponse;
+    INF_vPrintln(DBG_HTTP, "Http Response:\n%s", temp);
+    PrintArray(DBG_HTTP, pBuffer, u16Length);
+    psHttpResp->psBuffer = (char*)malloc((size_t)(iLen + u16Length));
+    CHECK_POINTER(psHttpResp->psBuffer, NULL);
+    memset(psHttpResp->psBuffer, 0, (size_t)(iLen + u16Length));
+    snprintf(psHttpResp->psBuffer, (size_t)iLen+1, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
+    memcpy(&psHttpResp->psBuffer[iLen], pBuffer, u16Length);
+    psHttpResp->u16Len = (uint16)iLen + u16Length;
+    return psHttpResp;
+}
+
+teHapStatus eHttpRelease(tsHttpResp *psHttpResp)
+{
+    FREE(psHttpResp->psBuffer);
+    FREE(psHttpResp);
+    return E_HAP_STATUS_OK;
 }
 /****************************************************************************/
 /***        Local    Functions                                            ***/

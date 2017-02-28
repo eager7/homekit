@@ -37,13 +37,6 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_HAP_STATUS_OK,
-    E_HAP_STATUS_DUPLICATE,
-    E_HAP_STATUS_ERROR,
-    E_HAP_STATUS_MEMORY_ERROR,
-} teHapStatus;
-
-typedef enum {
     E_TYPE_BOOL,    //JsonFormat:bool,Boolean value expressed as one of the following: true, false, 0 (false), and 1 (true)
     E_TYPE_UINT8,   //JsonFormat:uint8,Unsigned 8-bit integer.
     E_TYPE_UINT16,  //JsonFormat:uint16,Unsigned 32-bit integer.

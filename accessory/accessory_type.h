@@ -35,6 +35,14 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
+    E_HAP_STATUS_OK,
+    E_HAP_STATUS_DUPLICATE,
+    E_HAP_STATUS_ERROR,
+    E_HAP_STATUS_MEMORY_ERROR,
+    E_HAP_STATUS_SOCKET_ERROR,
+} teHapStatus;
+
+typedef enum {
     E_HAP_TYPE_UNKNOWN              = 0,
     E_HAP_TYPE_OTHER                = 1,
     E_HAP_TYPE_BRIDGE               = 2,

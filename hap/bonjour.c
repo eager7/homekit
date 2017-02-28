@@ -186,7 +186,6 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
         iListenFD = sBonjour.iSocketFd;
     }
 
-    static int iNumberClient = 0;
     int iSockFd = 0;
     int iLen = 0;
     uint8 auBuffer[MABF] = {0};
@@ -206,7 +205,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
             default: {
                 if( FD_ISSET(sBonjour.iSocketFd, &fdTemp) ){//there is client accept
                     DBG_vPrintln(DBG_BONJOUR, "A client connecting... \n");
-                    if(iNumberClient >= MAX_NUMBER_CLIENT){
+                    if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
                         DBG_vPrintln(DBG_BONJOUR, "Client already connected full, don't allow to connected\n");
                         FD_CLR(sBonjour.iSocketFd, &fdSelect);//delete this Server from select set
                         break;
@@ -224,7 +223,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             if(iSockFd > iListenFD){
                                 iListenFD = iSockFd;
                             }
-                            iNumberClient ++;
+                            sBonjour.u8NumberController ++;
                         }
                     }
                 } else {    /* Client Communication */
@@ -235,9 +234,16 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             close(iSockFd);
                             FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
                             FD_CLR(iSockFd, &fdSelect);//delete this client from select set
-                            iNumberClient --;
+                            sBonjour.u8NumberController --;
                         } else {
-                            eHapHandlePackage(psProfile, &sBonjour, auBuffer, iLen, iSockFd);
+                            teHapStatus eStatus = eHapHandlePackage(psProfile, &sBonjour, auBuffer, iLen, iSockFd);
+                            if(eStatus == E_HAP_STATUS_SOCKET_ERROR){
+                                ERR_vPrintln(T_TRUE, "Close Client:%d\n", iSockFd);
+                                close(iSockFd);
+                                FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                                FD_CLR(iSockFd, &fdSelect);//delete this client from select set
+                                sBonjour.u8NumberController --;
+                            }
                         }
                     }
                 }
