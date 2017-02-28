@@ -59,7 +59,7 @@ typedef enum {
     E_TLV_VALUE_TYPE_PERMISSIONS    = 0x0B,
     E_TLV_VALUE_TYPE_FRAGMENT_DATA  = 0x0C,
     E_TLV_VALUE_TYPE_FRAGMENT_LAST  = 0x0D,
-    E_TLV_VALUE_TYPE_SEPARATOR      = 0x0F,
+    E_TLV_VALUE_TYPE_SEPARATOR      = 0xFF,
 } teTlvValue;
 
 typedef enum {
@@ -71,6 +71,15 @@ typedef enum {
     E_TLV_ERROR_UNAVAILABLE     = 0x06,
     E_TLV_ERROR_BUSY            = 0x07,
 } teTlvError;
+
+typedef enum {
+    E_TLV_METHOD_RESERVED = 0x00,
+    E_TLV_METHOD_PAIR_SETUP = 0x01,
+    E_TLV_METHOD_PAIR_VERIFY = 0x02,
+    E_TLV_METHOD_ADD_PAIRING = 0x03,
+    E_TLV_METHOD_REMOVE_PAIRING = 0x04,
+    E_TLV_METHOD_LIST_PAIRING = 0x05,
+} teTlvMethod;
 
 typedef struct {
     uint8   u8Type;

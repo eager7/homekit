@@ -133,23 +133,25 @@ teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, ui
         *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;
         json_object_put(psJsonRet);
     } else if(strstr((char*)psData, "/characteristics")) {
-        tsHttpEntry sHttp;
-        memset(&sHttp, 0, sizeof(tsHttpEntry));
+        tsHttpEntry *psHttp = psHttpParser(psData, u16Len);
         if(strstr((char*)psData, "PUT")){
-            eHttpParser(E_HTTP_PUT, psData, u16Len, &sHttp);
-            NOT_vPrintln(DBG_IP, "Writing Characteristics Attribute:%s\n", sHttp.acContentData);
+            NOT_vPrintln(DBG_IP, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
             uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, "application/hap+json", NULL, 0, psResp);
             *pu16Len = LenHttp;
 
         } else if(strstr((char*)psData, "GET")){
             WAR_vPrintln(DBG_IP, "Reading Characteristics Attribute\n");
-            eHttpParser(E_HTTP_GET, psData, u16Len, &sHttp);
-            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)sHttp.acDirectory);
+            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory);
             uint16 LenHttp = u16HttpMessageFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                                   json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
             *pu16Len = (uint16)strlen(json_object_get_string(psJsonRet)) + LenHttp;
             json_object_put(psJsonRet);
         }
+        FREE(psHttp);
+    } else if(strstr((char*)psData, "/pairings")){
+        NOT_vPrintln(DBG_IP, "Controller Request Remove Pairing");
+        //eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
     }
+
     return E_IP_STATUS_OK;
 }

@@ -46,9 +46,6 @@ extern "C" {
 typedef enum {
     E_PAIRING_STATUS_OK = 0x00,
     E_PAIRING_STATUS_ERROR,
-    E_PAIRING_STATUS_ERROR_KEY,
-    E_PAIRING_STATUS_ERROR_SOCKET,
-    E_PAIRING_STATUS_NOT_FOUND,
 } tePairStatus;
 
 typedef enum {
