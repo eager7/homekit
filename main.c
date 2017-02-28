@@ -6,6 +6,7 @@
 #include "light_bulb.h"
 #include "bonjour.h"
 #include "poly1305.h"
+#include "http_handle.h"
 
 volatile sig_atomic_t bRunning = 1;
 static void vQuitSignalHandler (int sig)

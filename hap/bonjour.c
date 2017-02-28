@@ -237,7 +237,6 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             FD_CLR(iSockFd, &fdSelect);//delete this client from select set
                             iNumberClient --;
                         } else {
-                            DBG_vPrintln(DBG_BONJOUR, "RecvMsg[%d]\n%s", iLen, auBuffer);
                             eHapHandlePackage(psProfile, &sBonjour, auBuffer, iLen, iSockFd);
                         }
                     }

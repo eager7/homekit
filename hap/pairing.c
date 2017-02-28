@@ -23,7 +23,7 @@
 #include "poly1305.h"
 #include "hkdf.h"
 #include "ip.h"
-#include "bonjour.h"
+#include "mthread.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -90,6 +90,18 @@ static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8 *buf, uint16 len, b
     poly1305_finish(&verifyContext, (unsigned char*)verify);
     return E_PAIRING_STATUS_OK;
 }
+static tePairStatus eAccessoryPairedFinished()
+{
+    system("touch PairingFinished.txt");
+    return E_PAIRING_STATUS_OK;
+}
+static bool_t bAccessoryIsPaired()
+{
+    if(access("PairingFinished.txt", F_OK)){
+        return T_FALSE;
+    }
+    return T_TRUE;
+}
 static tePairStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 {
     CHECK_POINTER(buf, E_PAIRING_STATUS_ERROR);
@@ -138,37 +150,87 @@ static tePairStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
     fclose(fp);
     return E_PAIRING_STATUS_OK;
 }
+
 static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessage *psIpMsg)
 {
-    uint8 *pRespBuffer = NULL;
-    uint16 u16RespLen = 0;
+    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    uint8 value_err[1] = {0};
     tsIpMessage *psResponse = psIpResponseNew();
     CHECK_POINTER(psResponse, E_PAIRING_STATUS_ERROR);
     tsTlvMessage *psTlvRespMessage = &psResponse->psTlvPackage->sMessage;
 
+    /* 1. check if the accessory is already paired */
+    if(sPairSetup.bPaired){
+        sPairSetup.u8MaxTries++;
+        eStatus = E_PAIRING_STATUS_ERROR;
+        value_err[0] = E_TLV_ERROR_UNAVAILABLE;
+        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
+        goto Finished;
+    }
+
+    /* 2. check if the accessory has received more than 100 unsuccessful authentication attempts */
+    if(sPairSetup.u8MaxTries >= MAX_TRIES_PAIR){
+        sPairSetup.u8MaxTries++;
+        eStatus = E_PAIRING_STATUS_ERROR;
+        value_err[0] = E_TLV_ERROR_MAXTRIES;
+        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
+        goto Finished;
+    }
+
+    /* 3. check if the accessory is currently performing a Pair Setup operation with a different controller */
+    if(E_THREAD_OK != eLockLockTimed(&sPairSetup.mutex, 100)){
+        sPairSetup.u8MaxTries++;
+        eStatus = E_PAIRING_STATUS_ERROR;
+        value_err[0] = E_TLV_ERROR_BUSY;
+        psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
+        goto Finished;
+    }
+
+    /* 4. Create new SRP session */
+    sPairSetup.pSrp = SRP_new(SRP6a_server_method());
+
+    /* 5. Set SRP username */
+    SRP_RESULT Ret = SRP_set_username(sPairSetup.pSrp, "Pair-Setup");
+
+    /* 6. Generate 16 bytes of random salt and set it with SRP_set_params() */
     uint8 auSaltChar[16];
     for (int i = 0; i < 16; i++) {
         auSaltChar[i] = rand();
     }
-    SRP_RESULT Ret = SRP_set_username(sPairSetup.pSrp, "Pair-Setup");
     int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
     Ret = SRP_set_params(sPairSetup.pSrp, modulusStr, sizeof(modulusStr), generator, sizeof(generator), auSaltChar, sizeof(auSaltChar));
+
+    /* 7. generate a random setup code and set it with SRP_set_auth_password() */
     Ret = SRP_set_auth_password(sPairSetup.pSrp, pSetupCode);
+
+    /* 8. Present the Setup Code to the user */
+    NOT_vPrintln(T_TRUE, "Setup Code:%s", pSetupCode);
+
+    /* 9. Generate an SRP public key */
     cstr *pPublicKey = NULL;
     Ret = SRP_gen_pub(sPairSetup.pSrp, &pPublicKey);
+
+    /* 10. Respond to the iOS device's request with the following TLV */
     uint8 value_rep[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SALT,auSaltChar,16,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,(uint8*)pPublicKey->data,(uint16)pPublicKey->length,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
 
+Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
-    psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    psIpMsg->sHttp.iHttpStatus = E_HTTP_STATUS_SUCCESS_OK;
-    eHttpResponse(iSockFd, &psIpMsg->sHttp, pRespBuffer, u16RespLen);
-    eIpMessageRelease(psResponse);
-    FREE(pRespBuffer);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
 
-    return E_PAIRING_STATUS_OK;
+    uint16 u16RespLen = 0;
+    uint8 *pRespBuffer = NULL;
+    psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
+    eIpMessageRelease(psResponse);
+    char *psRet = psHttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer, u16RespLen);
+    FREE(pRespBuffer);
+    if(-1 == send(iSockFd, psRet, strlen(psRet), 0)){
+        ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
+    }
+    FREE(psRet);
+    return eStatus;
 }
 static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
 {
@@ -332,6 +394,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
             memcpy(&tlv8Recorddata[tlv8Len], auVerify, 16);
             psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8Recorddata,(uint16)tlv8Recordlength,psTlvRespMessage);
             eTlvPackageRelease(pReturnTlvPackage);
+
         }
     }
 Finished:
@@ -493,6 +556,7 @@ tePairStatus ePairingInit()
     memset(&sController, 0, sizeof(tsController));
     memset(&sPairSetup, 0, sizeof(tsPairSetup));
     memset(&sPairVerify, 0, sizeof(tsPairVerify));
+    sPairSetup.bPaired = bAccessoryIsPaired();
     eLockCreate(&sPairSetup.mutex);
     return E_PAIRING_STATUS_OK;
 }
@@ -613,7 +677,6 @@ tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
     switch (sPairSetup.eState) {
         case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
             INF_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
-            sPairSetup.pSrp = SRP_new(SRP6a_server_method());
             eM2SrpStartResponse(iSocketFd, psBonjour->pcSetupCode, psIpMsg);
         }break;
         case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
@@ -623,6 +686,7 @@ tePairStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
         case E_PAIR_SETUP_M5_EXCHANGE_REQUEST: {
             DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M5_EXCHANGE_REQUEST");
             eM6ExchangeResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
+            eLockunLock(&sPairSetup.mutex);
             SRP_free(sPairSetup.pSrp);
             psBonjour->eBonjourUpdate();
         }

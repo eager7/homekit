@@ -56,7 +56,7 @@ typedef enum {
     E_HTTP_STATUS_SUCCESS_OK = 200,
     E_HTTP_STATUS_SUCCESS_NO_CONTENT = 204,
     E_HTTP_STATUS_SUCCESS_MULTI_STATUS = 207,
-} teHttpSuccessCode;
+} teHttpCode;
 
 typedef enum {
     E_HTTP_POST,
@@ -87,6 +87,8 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
+char *psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length);
 teHttpStatus eHttpParser(teHttpMethod eMethod, const uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
 teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
 uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length,

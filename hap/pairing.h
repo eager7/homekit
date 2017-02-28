@@ -38,6 +38,8 @@ extern "C" {
 #define LEN_AUTH_TAG 16
 #define LEN_CHA20_KEY 32
 #define LEN_HKDF_LEN 32
+
+#define MAX_TRIES_PAIR 100
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -67,12 +69,14 @@ typedef enum {
 } tePairVerify;
 
 typedef struct {
+    bool_t      bPaired;
     tePairSetup eState;
     SRP         *pSrp;
     cstr        *pSecretKey;
     uint8       auSessionKey[64];
     uint8       auControllerIdentifier[36];
     uint8       auControllerPublicKey[32];
+    uint8       u8MaxTries;
     pthread_mutex_t mutex;
 } tsPairSetup;
 

@@ -86,22 +86,29 @@ teIpStatus eIpMessageRelease(tsIpMessage *psIpMsg)
 
 teIpStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd)
 {
-    tsHttpEntry sHttpEntry;
-    eHttpParser(E_HTTP_POST, psBuffer, (uint16)iLen, &sHttpEntry);
+    tsHttpEntry *psHttpEntry = psHttpParser(psBuffer, iLen);
 
-    DBG_vPrintln(DBG_IP, "Data Len:%d", sHttpEntry.u16ContentLen);
-    if(strstr((char*)sHttpEntry.acDirectory, "pair-setup")){
+    DBG_vPrintln(DBG_IP, "Data Len:%d", psHttpEntry->u16ContentLen);
+    if(strstr((char*)psHttpEntry->acDirectory, "pair-setup"))
+    {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
         eHandlePairSetup(psBuffer, iLen, iSocketFd, psBonjour);
-    } else if(strstr((char*)sHttpEntry.acDirectory, "pair-verify")){
+    }
+    else if(strstr((char*)psHttpEntry->acDirectory, "pair-verify"))
+    {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
         eHandlePairVerify(psBuffer, iLen, iSocketFd, psBonjour);
         eHandleAccessoryRequest(psProfile, iSocketFd, psBonjour);
-    } else if (strstr((char*)sHttpEntry.acDirectory, "identify")){
+    }
+    else if(strstr((char*)psHttpEntry->acDirectory, "identify"))
+    {
         close(iSocketFd);
-    } else {
+    }
+    else
+    {
         DBG_vPrintln(DBG_IP, "Handle Controller Request");
     }
+    FREE(psHttpEntry);
     return E_IP_STATUS_OK;
 }
 

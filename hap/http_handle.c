@@ -105,9 +105,7 @@ teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer
     sprintf(auHttpStatus, "%d", psHttpEntry->iHttpStatus);
     memcpy(&temp[index], auHttpStatus, strlen(auHttpStatus));
     index += strlen(auHttpStatus);
-
-    memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);
-    index += sizeof(" OK\r\n") - 1;
+    memcpy(&temp[index], " OK\r\n", sizeof(" OK\r\n") - 1);index += sizeof(" OK\r\n") - 1;
 
     memcpy(&temp[index], "Content-Type:", sizeof("Content-Type:") - 1);
     index += sizeof("Content-Type:") - 1;
@@ -181,6 +179,76 @@ uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuf
 
     if(ppResponse) *ppResponse = temp;
     return u16Ret;
+}
+
+tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len)
+{
+    INF_vPrintln(1, "--------Http Parser Package[%d]--------", u16Len);
+
+    tsHttpEntry *psHttpEntry = (tsHttpEntry*)malloc(sizeof(tsHttpEntry));
+    CHECK_POINTER(psHttpEntry, NULL);
+    memset(psHttpEntry, 0, sizeof(tsHttpEntry));
+
+    int iNumber = 0,  iLen = 0;
+    size_t offset = 0;
+    char auHeader[MIBF] = {0}, auHost[MIBF] = {0}, auContentLen[MIBF] = {0}, auContentType[MIBF] = {0};
+    for (size_t i = 0; i < u16Len; ++i) {
+        if(pBuf[i] == '\r' && pBuf[i+1] == '\n'){
+            iNumber++;
+            switch (iNumber){
+                case 1:{
+                    memcpy(auHeader, &pBuf[0], i);
+                    sscanf(auHeader, "%s %s %s", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
+                    DBG_vPrintln(DBG_HTTP, "[%s][%s][%s]\n", psHttpEntry->acHttpMethod, psHttpEntry->acDirectory, psHttpEntry->acHttpVersion);
+                    offset = i + 2;
+                }
+                    break;
+                case 2:{
+                    memcpy(auHost, &pBuf[offset], i - offset);
+                    DBG_vPrintln(DBG_HTTP, "[%s]\n\n", auHost);
+                    offset = i + 2;
+                    if(!strstr((char*)pBuf, "Content-Length:")){
+                        return psHttpEntry;
+                    }
+                }
+                    break;
+                case 3:{
+                    memcpy(auContentLen, &pBuf[offset], i - offset);
+                    sscanf(auContentLen, "Content-Length: %d", (int*)&psHttpEntry->u16ContentLen);
+                    DBG_vPrintln(DBG_HTTP, "[%d]\n\n", psHttpEntry->u16ContentLen);
+                    offset = i +2 ;
+                }
+                    break;
+                case 4:{
+                    memcpy(auContentType, &pBuf[offset], i - offset);
+                    sscanf(auContentType, "Content-Type: %s", psHttpEntry->acContentType);
+                    DBG_vPrintln(DBG_HTTP, "[%s]\n\n", psHttpEntry->acContentType);
+                    offset = i + 4;
+                    memcpy(psHttpEntry->acContentData, &pBuf[offset], u16Len - offset);
+                    psHttpEntry->u16ContentLen = u16Len - (uint16)offset;
+                    PrintArray(DBG_HTTP, psHttpEntry->acContentData, psHttpEntry->u16ContentLen);
+                    return psHttpEntry;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+
+    return psHttpEntry;
+}
+
+char *psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length)
+{
+    char temp[MIBF] = {0};
+    int iLen = snprintf(temp, 256, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
+    char *psResponse = (char*)malloc((size_t)(iLen + u16Length));
+    CHECK_POINTER(psResponse, NULL);
+    memset(psResponse, 0, (size_t)(iLen + u16Length));
+    snprintf(psResponse, (size_t)iLen+1, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
+    memcpy(&psResponse[iLen], pBuffer, u16Length);
+    INF_vPrintln(1, "psHttpFormat:\n%s", psResponse);
+    return psResponse;
 }
 /****************************************************************************/
 /***        Local    Functions                                            ***/

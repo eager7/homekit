@@ -93,7 +93,7 @@ teThreadStatus eThreadYield(void);/*Function to yield the CPU to another thread*
 teThreadStatus eLockCreate(pthread_mutex_t *psLock);
 teThreadStatus eLockDestroy(pthread_mutex_t *psLock);
 teThreadStatus eLockLock(pthread_mutex_t *psLock);
-teThreadStatus eMLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout);
+teThreadStatus eLockLockTimed(pthread_mutex_t *psLock, uint32 u32WaitTimeout);
 teThreadStatus eLockTryLock(pthread_mutex_t *psLock);
 teThreadStatus eLockunLock(pthread_mutex_t *psLock);
 
