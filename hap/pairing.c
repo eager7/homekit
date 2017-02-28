@@ -54,7 +54,7 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8 *buf, uint16 len, bool_t bWithLen, char *verify)
+static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, char *verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
         return E_PAIRING_STATUS_ERROR;
@@ -65,12 +65,12 @@ static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8 *buf, uint16 len, b
     char waste[16];
     bzero(waste, 16);
     if (bWithLen) {
-        poly1305_update(&verifyContext, (const unsigned char *)&buf[0], 1);
-        poly1305_update(&verifyContext, (const unsigned char *)&buf[1], 1);
+        poly1305_update(&verifyContext, &buf[0], 1);
+        poly1305_update(&verifyContext, &buf[1], 1);
         poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
-        poly1305_update(&verifyContext, (const unsigned char *)&buf[2], len);
+        poly1305_update(&verifyContext, &buf[2], len);
     } else {
-        poly1305_update(&verifyContext, (const unsigned char *)buf, len);
+        poly1305_update(&verifyContext, buf, len);
     }
     if (len%16 > 0)
         poly1305_update(&verifyContext, (const unsigned char *)waste, 16-(len%16));
@@ -90,6 +90,34 @@ static tePairStatus ePoly1305_GenKey(const uint8 *key, uint8 *buf, uint16 len, b
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
     poly1305_finish(&verifyContext, (unsigned char*)verify);
     return E_PAIRING_STATUS_OK;
+}
+static uint8* psDecryptedMessage(const uint8 *psBuffer, int iLen)
+{
+    uint16 u16MsgLen = (psBuffer[0] | ((uint16)psBuffer[1] << 8));
+    chacha20_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    chacha20_setup(&ctx, sController.auControllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
+    sController.u64NumMsgRec++;
+
+    char auVerify[16] = {0};
+    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0};
+    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
+    ePoly1305_GenKey(auKeyOut, psBuffer, u16MsgLen, T_TRUE, auVerify);
+
+    uint8 *psDecryptedBuffer = (uint8*)malloc(u16MsgLen);
+    memset(psDecryptedBuffer, 0, u16MsgLen);
+    chacha20_encrypt(&ctx, &psBuffer[2], psDecryptedBuffer, u16MsgLen);
+    DBG_vPrintln(DBG_PAIR, "psDecryptedMessage:\n%s\nPacketLen: %d, MessageLen: %d\n", psDecryptedBuffer, iLen, u16MsgLen);
+
+    if(iLen >= (2 + u16MsgLen + 16) && memcmp((void *)auVerify, (void *)&psBuffer[2 + u16MsgLen], 16) == 0) {
+        NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
+        return psDecryptedBuffer;
+    }
+    else {
+        WAR_vPrintln(T_TRUE, "Verify Failed");
+        FREE(psDecryptedBuffer);
+        return NULL;
+    }
 }
 static tePairStatus eAccessoryPairedFinished()
 {
@@ -437,6 +465,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8Recorddata,(uint16)tlv8Recordlength,psTlvRespMessage);
 
     /* 7. Send the response to the iOS device with the following TLV items */
+    //eAccessoryPairedFinished();
 Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
     uint16 u16RespLen = 0;
@@ -637,97 +666,6 @@ teHapStatus ePairingFinished()
     eLockDestroy(&sPairSetup.mutex);
     return E_HAP_STATUS_OK;
 }
-
-int is_big_endian(void)
-{
-    union {
-        uint32_t i;
-        char c[4];
-    } e = { 0x01000000 };
-
-    return e.c[0];
-}
-
-static inline unsigned long long bswap_64(unsigned long long x) {
-    return x;
-}
-teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour)
-{
-    DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
-
-    uint8 auDecryptedData[MABF] = {0};
-    sController.u64NumMsgRec = 0;
-    sController.u64NumMsgSend = 0;
-    do {
-        memset(sController.auBuffer, 0, sizeof(sController.auBuffer));
-        sController.iLen = (int)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
-        if (sController.iLen < 0){
-            ERR_vPrintln(T_TRUE, "Recvice Data Error");
-            return E_HAP_STATUS_ERROR;
-        } else if(sController.iLen == 0){
-            WAR_vPrintln(DBG_PAIR, "Disconnect Socket");
-            return E_HAP_STATUS_ERROR;
-        }
-        uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 8));
-        //uint16 u16MsgLen = (uint16)((uint8)sController.auBuffer[1]*256 + (uint8)*sController.auBuffer);
-
-        chacha20_ctx chacha20;
-        memset(&chacha20, 0, sizeof(chacha20));
-
-        if (!is_big_endian()) sController.u64NumMsgRec = bswap_64(sController.u64NumMsgRec);
-        chacha20_setup(&chacha20, sController.auControllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
-        if (!is_big_endian()) sController.u64NumMsgRec = bswap_64(sController.u64NumMsgRec);
-        sController.u64NumMsgRec++;
-
-        uint8 temp[64] = {0}, temp2[64] = {0};
-        chacha20_encrypt(&chacha20, temp, temp2, 64);
-
-        char verify[16] = {0};
-        ePoly1305_GenKey(temp2, sController.auBuffer, u16MsgLen, T_TRUE, verify);
-        memset(auDecryptedData, 0, sizeof(auDecryptedData));
-        chacha20_encrypt(&chacha20, &sController.auBuffer[2], auDecryptedData, u16MsgLen);
-        DBG_vPrintln(DBG_PAIR, "Request: %s\nPacketLen: %d, MessageLen: %d\n", auDecryptedData, sController.iLen, (int)strlen(auDecryptedData));
-
-        if(sController.iLen >= (2 + u16MsgLen + 16) && memcmp((void *)verify, (void *)&sController.auBuffer[2 + u16MsgLen], 16) == 0) {
-            NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
-        }
-        else {
-            WAR_vPrintln(T_TRUE, "Verify Failed");
-            continue;
-        }
-        uint8 *psRetData = NULL;
-        uint16 u16RetLen = 0;
-        eHandleAccessoryPackage(psProfile, auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
-        if(NULL == psRetData){
-            WAR_vPrintln(T_TRUE, "Null psRetData");
-            continue;
-        }
-        DBG_vPrintln(DBG_PAIR, "Send:%s", psRetData);
-        //18 = 2(resultLen) + 16(poly1305 verify key)
-        uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);
-        psRespBuf[0] = (uint8)(u16RetLen % 256);
-        psRespBuf[1] = (uint8)((u16RetLen - psRespBuf[0]) / 256);
-
-        if (!is_big_endian()) sController.u64NumMsgSend = bswap_64(sController.u64NumMsgSend);
-        chacha20_setup(&chacha20, (const uint8_t *)sController.auAccessoryToControllerKey, 32, (uint8_t *)&sController.u64NumMsgSend);
-        if (!is_big_endian()) sController.u64NumMsgSend = bswap_64(sController.u64NumMsgSend);
-        sController.u64NumMsgSend++;
-
-        chacha20_encrypt(&chacha20, temp, temp2, 64);
-        chacha20_encrypt(&chacha20, psRetData, &psRespBuf[2], u16RetLen);
-
-        ePoly1305_GenKey((const unsigned char *) temp2, psRespBuf, u16RetLen, T_TRUE, verify);
-        memcpy(&psRespBuf[u16RetLen+2], verify, 16);
-        //PrintArray(1,psRespBuf, u16RetLen+18);
-
-        write(iSocketFd, psRespBuf, u16RetLen+18);
-        FREE(psRespBuf);
-        FREE(psRetData);
-    }while (sController.iLen > 0);
-
-    return E_HAP_STATUS_OK;
-}
-
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
 {
     CHECK_POINTER(psBuffer, E_HAP_STATUS_ERROR);
@@ -764,7 +702,6 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
-
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
 {
     CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
@@ -791,3 +728,80 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
+
+teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour)
+{
+    DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
+
+    uint8 auDecryptedData[MABF] = {0};
+    sController.u64NumMsgRec = 0;
+    sController.u64NumMsgSend = 0;
+    do {
+        memset(sController.auBuffer, 0, sizeof(sController.auBuffer));
+        sController.iLen = (int)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
+        if (sController.iLen < 0){
+            ERR_vPrintln(T_TRUE, "Recvice Data Error");
+            return E_HAP_STATUS_ERROR;
+        } else if(sController.iLen == 0){
+            WAR_vPrintln(DBG_PAIR, "Disconnect Socket");
+            return E_HAP_STATUS_ERROR;
+        }
+
+        //psDecryptedMessage(sController.auBuffer, sController.iLen);
+
+        uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 8));
+
+        chacha20_ctx chacha20;
+        memset(&chacha20, 0, sizeof(chacha20));
+        chacha20_setup(&chacha20, sController.auControllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
+        sController.u64NumMsgRec++;
+
+        uint8 temp[64] = {0}, temp2[64] = {0};
+        chacha20_encrypt(&chacha20, temp, temp2, 64);
+
+        char verify[16] = {0};
+        ePoly1305_GenKey(temp2, sController.auBuffer, u16MsgLen, T_TRUE, verify);
+        memset(auDecryptedData, 0, sizeof(auDecryptedData));
+        chacha20_encrypt(&chacha20, &sController.auBuffer[2], auDecryptedData, u16MsgLen);
+        DBG_vPrintln(DBG_PAIR, "Request: %s\nPacketLen: %d, MessageLen: %d\n", auDecryptedData, sController.iLen, (int)strlen(auDecryptedData));
+
+        if(sController.iLen >= (2 + u16MsgLen + 16) && memcmp((void *)verify, (void *)&sController.auBuffer[2 + u16MsgLen], 16) == 0) {
+            NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
+        }
+        else {
+            WAR_vPrintln(T_TRUE, "Verify Failed");
+            continue;
+        }
+
+
+
+        uint8 *psRetData = NULL;
+        uint16 u16RetLen = 0;
+        eHandleAccessoryPackage(psProfile, auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
+        if(NULL == psRetData){
+            WAR_vPrintln(T_TRUE, "Null psRetData");
+            continue;
+        }
+        DBG_vPrintln(DBG_PAIR, "Send:%s", psRetData);
+        //18 = 2(resultLen) + 16(poly1305 verify key)
+        uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);
+        psRespBuf[0] = (uint8)(u16RetLen % 256);
+        psRespBuf[1] = (uint8)((u16RetLen - psRespBuf[0]) / 256);
+
+        chacha20_setup(&chacha20, (const uint8_t *)sController.auAccessoryToControllerKey, 32, (uint8_t *)&sController.u64NumMsgSend);
+        sController.u64NumMsgSend++;
+
+        chacha20_encrypt(&chacha20, temp, temp2, 64);
+        chacha20_encrypt(&chacha20, psRetData, &psRespBuf[2], u16RetLen);
+
+        ePoly1305_GenKey((const unsigned char *) temp2, psRespBuf, u16RetLen, T_TRUE, verify);
+        memcpy(&psRespBuf[u16RetLen+2], verify, 16);
+
+        write(iSocketFd, psRespBuf, u16RetLen+18);
+        FREE(psRespBuf);
+        FREE(psRetData);
+    }while (sController.iLen > 0);
+
+    return E_HAP_STATUS_OK;
+}
+

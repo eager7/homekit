@@ -116,8 +116,7 @@ teHapStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 
     return E_HAP_STATUS_OK;
 }
 
-teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
-                                   uint16 *pu16Len)
+teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp, uint16 *pu16Len)
 {
     CHECK_POINTER(psData, E_IP_STATUS_ERROR);
     CHECK_POINTER(psResp, E_IP_STATUS_ERROR);
