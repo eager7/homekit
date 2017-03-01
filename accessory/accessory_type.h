@@ -40,6 +40,7 @@ typedef enum {
     E_HAP_STATUS_ERROR,
     E_HAP_STATUS_MEMORY_ERROR,
     E_HAP_STATUS_SOCKET_ERROR,
+    E_HAP_STATUS_VERIFY_ERROR,
 } teHapStatus;
 
 typedef enum {

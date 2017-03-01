@@ -66,7 +66,7 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    tsProfile *psLightBulb = psLightBulbProfileInit(NAME, 0x221034235129, "12345678", "TopBand", "Light");
+    tsProfile *psLightBulb = psLightBulbProfileInit(NAME, 0x221034235130, "12345678", "TopBand", "Light");
     CHECK_RESULT(eBonjourInit(psLightBulb, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){

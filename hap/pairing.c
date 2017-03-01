@@ -26,6 +26,7 @@
 #include "mthread.h"
 #include "http_handle.h"
 #include "tlv.h"
+#include <sodium.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -55,7 +56,7 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, char *verify)
+static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
         return E_PAIRING_STATUS_ERROR;
@@ -92,32 +93,82 @@ static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 
     poly1305_finish(&verifyContext, (unsigned char*)verify);
     return E_PAIRING_STATUS_OK;
 }
-static teHapStatus eDecryptedMessage(const uint8 *psBufferIn, int iLenIn, uint8 **ppsBufferOut, uint16 *pu16LenOut)
+static teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                     const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData, uint16 *pu16LenOut)
 {
-    uint16 u16MsgLen = (psBufferIn[0] | ((uint16)psBufferIn[1] << 8));
+    const uint8 *psEncryptedData = &psBuffer[0];
+    const uint8 *psAuthTag = &psBuffer[u16LenIn - LEN_AUTH_TAG];
+
+    chacha20_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
+
+    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
+    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
+
+    ePoly1305_GenKey(auKeyOut, psBuffer, u16LenIn, T_FALSE, auVerify);
+    if(memcmp(auVerify, &psBuffer[u16LenIn], LEN_AUTH_TAG)){
+        ERR_vPrintln(T_TRUE, "ChaCha20-Poly1305 Verify Failed");
+        return E_HAP_STATUS_VERIFY_ERROR;
+    }
+    chacha20_encrypt(&ctx, &sController.auBuffer[2], psDecryptedData, (size_t)(u16LenIn - LEN_AUTH_TAG));
+    if(pu16LenOut) *pu16LenOut = u16LenIn + (uint16)LEN_AUTH_TAG;
+    return E_HAP_STATUS_OK;
+}
+static teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                          const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut)
+{
+    chacha20_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
+
+    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
+    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
+    chacha20_encrypt(&ctx, psBuffer, psEncryptedData, u16LenIn);
+
+    ePoly1305_GenKey(auKeyOut, psEncryptedData, u16LenIn, T_FALSE, auVerify);
+    memcpy(&psEncryptedData[u16LenIn], auVerify, 16);
+    if(pu16LenOut) *pu16LenOut = u16LenIn + (uint16)LEN_AUTH_TAG;
+    return E_HAP_STATUS_OK;
+}
+static teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                            const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData, uint16 *pu16LenOut)
+{
+    uint16 u16MsgLen = (psBuffer[0] | ((uint16)psBuffer[1] << 8));
     *pu16LenOut = u16MsgLen;
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
-    chacha20_setup(&ctx, sController.auControllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
-    sController.u64NumMsgRec++;
+    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
 
-    char auVerify[16] = {0};
-    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0};
+    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
     chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-    ePoly1305_GenKey(auKeyOut, psBufferIn, u16MsgLen, T_TRUE, auVerify);
-
-    chacha20_encrypt(&ctx, &psBufferIn[2], *ppsBufferOut, u16MsgLen);
-    DBG_vPrintln(DBG_PAIR, "psDecryptedMessage:\n%s\nPacketLen: %d, MessageLen: %d\n", *ppsBufferOut, iLenIn, u16MsgLen);
-
-    if(iLenIn >= (2 + u16MsgLen + 16) && memcmp((void *)auVerify, (void *)&psBufferIn[2 + u16MsgLen], 16) == 0) {
+    ePoly1305_GenKey(auKeyOut, psBuffer, u16MsgLen, T_TRUE, auVerify);
+    if(u16LenIn >= (2 + u16MsgLen + 16) && memcmp(auVerify, &sController.auBuffer[2 + u16MsgLen], 16) == 0) {
+        chacha20_encrypt(&ctx, &psBuffer[2], psDecryptedData, u16MsgLen);
         NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
         return E_HAP_STATUS_OK;
     }
-    else {
-        WAR_vPrintln(T_TRUE, "Verify Failed");
-        return E_HAP_STATUS_ERROR;
-    }
+    ERR_vPrintln(T_TRUE, "ChaCha20-Poly1305 Verify Failed");
+    return E_HAP_STATUS_VERIFY_ERROR;
 }
+static teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                            const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData, uint16 *pu16LenOut)
+{
+    psDecryptedData[0] = (uint8)(u16LenIn % 256);
+    psDecryptedData[1] = (uint8)((u16LenIn - psDecryptedData[0]) / 256);
+
+    chacha20_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
+    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
+    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
+    chacha20_encrypt(&ctx, psBuffer, &psDecryptedData[2], u16LenIn);
+    ePoly1305_GenKey(auKeyOut, psDecryptedData, u16LenIn, T_TRUE, auVerify);
+    memcpy(&psDecryptedData[u16LenIn+2], auVerify, 16);
+    *pu16LenOut = u16LenIn + (uint16)18;
+    return E_HAP_STATUS_OK;
+}
+
 static tePairStatus eAccessoryPairedFinished()
 {
     system("touch PairingFinished.txt");
@@ -545,22 +596,14 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     uint16 u16SubMsgLen = 0;
     psSubTlvPackage->eTlvMessageGetData(&psSubTlvPackage->sMessage,&psSubMsgData, &u16SubMsgLen);
     eTlvPackageRelease(psSubTlvPackage);
+    uint16 u16EncryptedLen = 0;
     uint8 *psEncryptedData = (uint8*)malloc(u16SubMsgLen + 16);
-    uint8 polyKey[64] = {0};
-    uint8 zero[64] = {0};
-    chacha20_ctx chacha;
-    chacha20_setup(&chacha, sPairVerify.auSessionKey, 32, (uint8*)"PV-Msg02");
-    chacha20_encrypt(&chacha, zero, polyKey, 64);
-    chacha20_encrypt(&chacha, psSubMsgData, psEncryptedData, u16SubMsgLen);
+    eEncryptedMessageNoLen(psSubMsgData, u16SubMsgLen, sPairVerify.auSessionKey, (uint8*)"PV-Msg02", psEncryptedData, &u16EncryptedLen);
     FREE(psSubMsgData);
-
-    char verify[16] = {0};
-    ePoly1305_GenKey(polyKey, psEncryptedData, u16SubMsgLen, T_FALSE, verify);
-    memcpy(&psEncryptedData[u16SubMsgLen], verify, 16);
 
     /* 8. Construct the response with the following TLV items */
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY, sPairVerify.auPublicKey, 32, psTlvRespMsg);
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,(uint16)(u16SubMsgLen + 16),psTlvRespMsg);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,u16EncryptedLen,psTlvRespMsg);
     FREE(psEncryptedData);
 
     /* 9. Send the response to the iOS device */
@@ -781,11 +824,11 @@ teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjo
 {
     DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
 
-    uint8 auDecryptedData[MABF] = {0};
+    uint8 auHttpData[MABF] = {0};
     sController.u64NumMsgRec = 0;
     sController.u64NumMsgSend = 0;
     do {
-        memset(auDecryptedData, 0, sizeof(auDecryptedData));
+        memset(auHttpData, 0, sizeof(auHttpData));
         memset(sController.auBuffer, 0, sizeof(sController.auBuffer));
         sController.iLen = (int)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
         if (sController.iLen < 0){
@@ -797,51 +840,23 @@ teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjo
         }
         NOT_vPrintln(DBG_PAIR, "eHandleAccessoryRequest:\n%s", sController.auBuffer);
 
-        uint16 u16MsgLen = (sController.auBuffer[0] | ((uint16)sController.auBuffer[1] << 8));
-
-        chacha20_ctx ctx;
-        memset(&ctx, 0, sizeof(ctx));
-        chacha20_setup(&ctx, sController.auControllerToAccessoryKey, 32, (uint8*)&sController.u64NumMsgRec);
+        uint16 u16MsgLen = 0;
+        eDecryptedMessageWithLen(sController.auBuffer, (uint16)sController.iLen, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
         sController.u64NumMsgRec++;
-
-        char auVerify[16] = {0};
-        uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0};
-        chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-        ePoly1305_GenKey(auKeyOut, sController.auBuffer, u16MsgLen, T_TRUE, auVerify);
-        chacha20_encrypt(&ctx, &sController.auBuffer[2], auDecryptedData, u16MsgLen);
-        DBG_vPrintln(DBG_PAIR, "Request: %s\nPacketLen: %d, MessageLen: %d\n", auDecryptedData, sController.iLen, (int)strlen(auDecryptedData));
-
-        if(sController.iLen >= (2 + u16MsgLen + 16) &&
-                memcmp(auVerify, &sController.auBuffer[2 + u16MsgLen], 16) == 0) {
-            NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
-        }
-        else {
-            WAR_vPrintln(T_TRUE, "Verify Failed");
-            continue;
-        }
 
         uint8 *psRetData = NULL;
         uint16 u16RetLen = 0;
-        eHandleAccessoryPackage(psProfile, auDecryptedData, u16MsgLen, &psRetData, &u16RetLen);
+        eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen);
         if(NULL == psRetData){
             WAR_vPrintln(T_TRUE, "Null psRetData");
             continue;
         }
 
-        uint8 *psRespBuf = (uint8*)malloc(u16RetLen + 18);
-        psRespBuf[0] = (uint8)(u16RetLen % 256);
-        psRespBuf[1] = (uint8)((u16RetLen - psRespBuf[0]) / 256);
+        uint16 u16SendLen = 0;
+        eEncryptedMessageWithLen(psRetData, u16RetLen, sController.auAccessoryToControllerKey, (uint8_t *)&sController.u64NumMsgSend, auHttpData, &u16SendLen);
+        send(iSocketFd, auHttpData, u16SendLen, 0);
 
-        chacha20_setup(&ctx, (const uint8_t *)sController.auAccessoryToControllerKey, 32, (uint8_t *)&sController.u64NumMsgSend);
         sController.u64NumMsgSend++;
-        chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-        chacha20_encrypt(&ctx, psRetData, &psRespBuf[2], u16RetLen);
-        FREE(psRetData);
-        ePoly1305_GenKey(auKeyOut, psRespBuf, u16RetLen, T_TRUE, auVerify);
-        memcpy(&psRespBuf[u16RetLen+2], auVerify, 16);
-
-        write(iSocketFd, psRespBuf, u16RetLen+18);
-        FREE(psRespBuf);
     }while (sController.iLen > 0);
 
     return E_HAP_STATUS_OK;
