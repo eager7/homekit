@@ -151,7 +151,7 @@ tsTlvPackage *psTlvPackageNew()
     psTlvPackage->eTlvMessageGetData = eTlvMessageGetData;
     return psTlvPackage;
 }
-teTlvStatus eTlvPackageRelease(tsTlvPackage *psTlvPackage)
+teTlvStatus   eTlvPackageRelease(tsTlvPackage *psTlvPackage)
 {
     psTlvPackage->psTlvRecordGetData = NULL;
     psTlvPackage->pu16TlvRecordGetLen = NULL;

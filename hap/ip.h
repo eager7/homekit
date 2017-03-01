@@ -35,18 +35,14 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef enum {
-    E_IP_STATUS_OK = 0,
-    E_IP_STATUS_ERROR = 0,
-} teIpStatus;
-
 typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
 typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
+typedef teHapStatus (*tefIpSend)(tsTlvMessage *psTlv);
 typedef struct {
-    tsHttpEntry sHttp;
+    tsHttpEntry *psHttp;
     tsTlvPackage *psTlvPackage;
     tpfIpGetBinaryData pfIpGetBinaryData;
-}tsIpMessage;
+} tsIpMessage;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -63,11 +59,12 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tsIpMessage *psIpResponseNew();
-tsIpMessage *psIpMessageFormat(uint8 *psBuffer, uint16 u16Len);
-teIpStatus  eIpMessageRelease(tsIpMessage *psIpMsg);
+tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len);
+teHapStatus eIpMessageRelease(tsIpMessage *psIpMsg);
+
 teHapStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd);
-teIpStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
-                                   uint16 *pu16Len);
+teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
+                                    uint16 *pu16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

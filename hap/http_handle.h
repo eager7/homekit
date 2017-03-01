@@ -33,11 +33,6 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_HTTP_PARSER_OK = 0x00,
-    E_HTTP_PARSER_ERROR,
-} teHttpStatus;
-
-typedef enum {
     E_HTTP_STATUS_CODE_SUCCESS                  = 0,
     E_HTTP_STATUS_CODE_REQUEST_DENIED           = -70401,
     E_HTTP_STATUS_CODE_UNABLE_COMMUNICATION     = -70402,
@@ -74,10 +69,6 @@ typedef struct {
     uint8 acContentData[MABF];
 } tsHttpEntry;
 
-typedef struct {
-    char *psBuffer;
-    uint16 u16Len;
-} tsHttpResp;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -93,13 +84,7 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
-tsHttpResp * psHttpFormat(teHttpCode eStatus, const char *psType, uint8 *pBuffer, uint16 u16Length);
-teHapStatus eHttpRelease(tsHttpResp *psHttpResp);
-
-teHttpStatus eHttpParser(teHttpMethod eMethod, const uint8 *pBuf, uint16 u16Len, tsHttpEntry *psHttpEntry);
-teHttpStatus eHttpResponse(int iSockFd, tsHttpEntry *psHttpEntry, uint8 *pBuffer, uint16 u16Length);
-uint16 u16HttpMessageFormat(int iStatus, const char *psContent, const char *pBuffer, uint16 u16Length,
-                            uint8 **ppResponse);
+uint16 u16HttpFormat(teHttpCode eStatus, const char *psType, const uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

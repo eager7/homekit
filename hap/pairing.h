@@ -49,6 +49,11 @@ typedef enum {
 } tePairStatus;
 
 typedef enum {
+    E_PARIING_REMOVE_M1_REMOVE_PAIRING_REQUEST = 0x01,
+    E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE = 0x02,
+} tePairingRemove;
+
+typedef enum {
     E_PAIR_SETUP_SRP_START_NULL         = 0x00,
     E_PAIR_SETUP_M1_SRP_START_REQUEST      = 0x01,
     E_PAIR_SETUP_M2_SRP_START_RESPONSE     = 0x02,
@@ -116,6 +121,7 @@ teHapStatus ePairingInit();
 teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
 teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour);
 
 /****************************************************************************/
