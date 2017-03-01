@@ -196,7 +196,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
     uint8 auBuffer[MABF] = {0};
     while(psThreadInfo->eState == E_THREAD_RUNNING){
         fdTemp = fdSelect;  /* use temp value, because this value will be clear */
-        DBG_vPrintln(DBG_BONJOUR, "select \n");
+        DBG_vPrintln(DBG_BONJOUR, "========select.... \n");
         int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
         switch(iResult) {
             case 0:
@@ -205,6 +205,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 
             case -1:
                 WAR_vPrintln(T_TRUE, "receive message error:%s \n", strerror(errno));
+                sleep(1);
                 break;
 
             default: {
@@ -218,7 +219,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                         struct sockaddr_in client_addr;
                         memset(&client_addr, 0, sizeof(client_addr));
                         socklen_t client_len = sizeof(client_addr);
-                        iSockFd = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+                        iSockFd = accept(sBonjour.iSocketFd, (struct sockaddr*)&client_addr, &client_len);
                         if(-1 == iSockFd){
                             ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
                             break;
@@ -227,11 +228,14 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 if(asSocket[i].iSocketFd == -1){
                                     DBG_vPrintln(DBG_BONJOUR, "A client[%d] connected[%s]", i, inet_ntoa(client_addr.sin_addr));
                                     asSocket[i].iSocketFd = iSockFd;
-                                    FD_SET(iSockFd, &fdSelect);
-                                    if(iSockFd > iListenFD){
-                                        iListenFD = iSockFd;
+                                    FD_SET(asSocket[i].iSocketFd, &fdSelect);
+                                    if(asSocket[i].iSocketFd > iListenFD){
+                                        iListenFD = asSocket[i].iSocketFd;
                                     }
                                     sBonjour.u8NumberController ++;
+                                    if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
+                                        FD_CLR(sBonjour.iSocketFd, &fdSelect);//delete this server from select set
+                                    }
                                     break;
                                 }
                             }
@@ -246,17 +250,27 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 DBG_vPrintln(DBG_BONJOUR, "A client[%d] receive data", i);
                                 iLen = (int)recv(asSocket[i].iSocketFd, auBuffer, sizeof(auBuffer), 0);
                                 if(0 == iLen){
-                                    ERR_vPrintln(T_TRUE, "Close Client:%d\n", asSocket[i].iSocketFd);
+                                    ERR_vPrintln(T_TRUE, "Close Client[%d]:%d\n", i, asSocket[i].iSocketFd);
                                     close(asSocket[i].iSocketFd);
-                                    FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                                    asSocket[i].iSocketFd = -1;
+                                    asSocket[i].u64NumberSend = 0;
+                                    asSocket[i].u64NumberReceive = 0;
                                     FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
+                                    if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
+                                        FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                                    }
                                     sBonjour.u8NumberController --;
                                 } else {
                                     teHapStatus eStatus = eHapHandlePackage(auBuffer, (uint16)iLen, &asSocket[i], psProfile, &sBonjour);
                                     if(eStatus == E_HAP_STATUS_SOCKET_ERROR){
                                         ERR_vPrintln(T_TRUE, "Close Client:%d\n", asSocket[i].iSocketFd);
                                         close(asSocket[i].iSocketFd);
-                                        FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                                        asSocket[i].iSocketFd = -1;
+                                        asSocket[i].u64NumberSend = 0;
+                                        asSocket[i].u64NumberReceive = 0;
+                                        if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
+                                            FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
+                                        }
                                         FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
                                         sBonjour.u8NumberController --;
                                     }
