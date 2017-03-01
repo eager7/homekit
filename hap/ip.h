@@ -62,7 +62,8 @@ tsIpMessage *psIpResponseNew();
 tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len);
 teHapStatus eIpMessageRelease(tsIpMessage *psIpMsg);
 
-teHapStatus eHapHandlePackage(tsProfile *psProfile, tsBonjour *psBonjour, uint8 *psBuffer, int iLen, int iSocketFd);
+teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+                              tsBonjour *psBonjour);
 teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
                                     uint16 *pu16Len);
 /****************************************************************************/

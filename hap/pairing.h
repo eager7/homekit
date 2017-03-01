@@ -91,9 +91,6 @@ typedef struct {
 } tsPairVerify;
 
 typedef struct {
-    int     iSockFd;
-    int     iLen;
-    uint8   auBuffer[MABF];
     uint64  u64NumMsgRec;
     uint64  u64NumMsgSend;
     uint8   auControllerToAccessoryKey[32];
@@ -122,7 +119,8 @@ teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+                                    tsBonjour *psBonjour);
 
 /****************************************************************************/
 /***        Local    Functions                                            ***/

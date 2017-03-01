@@ -236,7 +236,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             FD_CLR(iSockFd, &fdSelect);//delete this client from select set
                             sBonjour.u8NumberController --;
                         } else {
-                            teHapStatus eStatus = eHapHandlePackage(psProfile, &sBonjour, auBuffer, iLen, iSockFd);
+                            teHapStatus eStatus = eHapHandlePackage(auBuffer, (uint16)iLen, iSockFd, psProfile, &sBonjour);
                             if(eStatus == E_HAP_STATUS_SOCKET_ERROR){
                                 ERR_vPrintln(T_TRUE, "Close Client:%d\n", iSockFd);
                                 close(iSockFd);

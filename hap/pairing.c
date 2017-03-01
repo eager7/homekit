@@ -94,11 +94,8 @@ static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 
     return E_PAIRING_STATUS_OK;
 }
 static teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
-                                     const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData, uint16 *pu16LenOut)
+                                     const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData)
 {
-    const uint8 *psEncryptedData = &psBuffer[0];
-    const uint8 *psAuthTag = &psBuffer[u16LenIn - LEN_AUTH_TAG];
-
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
     chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
@@ -111,8 +108,7 @@ static teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn
         ERR_vPrintln(T_TRUE, "ChaCha20-Poly1305 Verify Failed");
         return E_HAP_STATUS_VERIFY_ERROR;
     }
-    chacha20_encrypt(&ctx, &sController.auBuffer[2], psDecryptedData, (size_t)(u16LenIn - LEN_AUTH_TAG));
-    if(pu16LenOut) *pu16LenOut = u16LenIn + (uint16)LEN_AUTH_TAG;
+    chacha20_decrypt(&ctx, psBuffer, psDecryptedData, (size_t)u16LenIn);
     return E_HAP_STATUS_OK;
 }
 static teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
@@ -143,8 +139,8 @@ static teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16Len
     uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
     chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
     ePoly1305_GenKey(auKeyOut, psBuffer, u16MsgLen, T_TRUE, auVerify);
-    if(u16LenIn >= (2 + u16MsgLen + 16) && memcmp(auVerify, &sController.auBuffer[2 + u16MsgLen], 16) == 0) {
-        chacha20_encrypt(&ctx, &psBuffer[2], psDecryptedData, u16MsgLen);
+    if(u16LenIn >= (2 + u16MsgLen + 16) && memcmp(auVerify, &psBuffer[2 + u16MsgLen], 16) == 0) {
+        chacha20_decrypt(&ctx, &psBuffer[2], psDecryptedData, u16MsgLen);
         NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
         return E_HAP_STATUS_OK;
     }
@@ -232,6 +228,7 @@ static teHapStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
 static teHapStatus eIOSDeviceRemovePairing()
 {
     system("rm IOSDeviceLTPK.txt IOSDevicePairingID.txt PairingFinished.txt");
+    sPairSetup.bPaired = T_FALSE;
     return E_HAP_STATUS_OK;
 }
 
@@ -636,26 +633,19 @@ static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsIpMessage *psIpMsg)
 
     uint8 *psEncryptedPackData = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
     uint16 u16EncryptedPackLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
-    uint16 u16EncryptedLen = u16EncryptedPackLen - (uint16)LEN_AUTH_TAG;
 
     /* 1. Verify the iOS device's authTag */
-    chacha20_ctx chacha20;
-    memset(&chacha20, 0, sizeof(chacha20));
-    chacha20_setup(&chacha20, sPairVerify.auSessionKey, 32, (uint8*)"PV-Msg03");
-    uint8 auInKey[64] = {0}, auOutKey[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&chacha20, auInKey, auOutKey, 64);
-    ePoly1305_GenKey(auOutKey, psEncryptedPackData, u16EncryptedLen, T_FALSE, auVerify);
-    if (memcmp(auVerify, &psEncryptedPackData[u16EncryptedLen], LEN_AUTH_TAG)){
+    uint16 u16DecryptedLen = u16EncryptedPackLen - (uint16)LEN_AUTH_TAG;
+    uint8 *psDecryptedData = (uint8*)malloc(u16DecryptedLen);
+    if(E_HAP_STATUS_OK != eDecryptedMessageNoLen(psEncryptedPackData, u16DecryptedLen, sPairVerify.auSessionKey, (uint8*)"PV-Msg03", psDecryptedData)){
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
         eStatus = E_PAIRING_STATUS_ERROR;
         goto Finished;
     }
 
     /* 2. Decrypt the sub-TLV in encryptedData */
-    uint8 *psEncryptedData = (uint8*)malloc(u16EncryptedLen);
-    chacha20_decrypt(&chacha20, psEncryptedPackData, psEncryptedData, u16EncryptedLen);
-    tsTlvPackage *psSubTlvPack = psTlvPackageFormat(psEncryptedData, u16EncryptedLen);
-    FREE(psEncryptedData);
+    tsTlvPackage *psSubTlvPack = psTlvPackageFormat(psDecryptedData, u16DecryptedLen);
+    FREE(psDecryptedData);
     uint8 *controllerID = psSubTlvPack->psTlvRecordGetData(&psSubTlvPack->sMessage,E_TLV_VALUE_TYPE_IDENTIFIER);
     if(NULL == controllerID){
         ERR_vPrintln(T_TRUE, "Decrypted Failed");
@@ -820,28 +810,20 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     eTlvPackageRelease(psTlvInMsg);
     return E_HAP_STATUS_OK;
 }
-teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjour *psBonjour)
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+                                    tsBonjour *psBonjour)
 {
     DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
 
     uint8 auHttpData[MABF] = {0};
-    sController.u64NumMsgRec = 0;
-    sController.u64NumMsgSend = 0;
     do {
         memset(auHttpData, 0, sizeof(auHttpData));
-        memset(sController.auBuffer, 0, sizeof(sController.auBuffer));
-        sController.iLen = (int)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
-        if (sController.iLen < 0){
-            ERR_vPrintln(T_TRUE, "Recvice Data Error");
-            return E_HAP_STATUS_ERROR;
-        } else if(sController.iLen == 0){
-            WAR_vPrintln(DBG_PAIR, "Disconnect Socket");
-            return E_HAP_STATUS_ERROR;
-        }
-        NOT_vPrintln(DBG_PAIR, "eHandleAccessoryRequest:\n%s", sController.auBuffer);
+        //u16Len = (uint16)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
+        //u16Len = (uint16)recv(iSocketFd, psBuffer, MABF, 0);
 
         uint16 u16MsgLen = 0;
-        eDecryptedMessageWithLen(sController.auBuffer, (uint16)sController.iLen, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
+        //eDecryptedMessageWithLen(sController.auBuffer, u16Len, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
+        eDecryptedMessageWithLen(psBuffer, u16Len, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
         sController.u64NumMsgRec++;
 
         uint8 *psRetData = NULL;
@@ -857,7 +839,7 @@ teHapStatus eHandleAccessoryRequest(tsProfile *psProfile, int iSocketFd, tsBonjo
         send(iSocketFd, auHttpData, u16SendLen, 0);
 
         sController.u64NumMsgSend++;
-    }while (sController.iLen > 0);
+    }while ( 0);//u16Len >
 
     return E_HAP_STATUS_OK;
 }
