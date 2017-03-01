@@ -26,6 +26,7 @@
 #include "mthread.h"
 #include "http_handle.h"
 #include "tlv.h"
+#include "bonjour.h"
 #include <sodium.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -810,36 +811,37 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     eTlvPackageRelease(psTlvInMsg);
     return E_HAP_STATUS_OK;
 }
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
                                     tsBonjour *psBonjour)
 {
-    DBG_vPrintln(DBG_PAIR, "Successfully Connect\n");
+    DBG_vPrintln(DBG_PAIR, "Successfully Connect:[%llu][%llu]\n", psSocket->u64NumberReceive, psSocket->u64NumberSend);
 
     uint8 auHttpData[MABF] = {0};
-    do {
-        memset(auHttpData, 0, sizeof(auHttpData));
-        //u16Len = (uint16)recv(iSocketFd, sController.auBuffer, sizeof(sController.auBuffer), 0);
-        //u16Len = (uint16)recv(iSocketFd, psBuffer, MABF, 0);
+    memset(auHttpData, 0, sizeof(auHttpData));
 
-        uint16 u16MsgLen = 0;
-        //eDecryptedMessageWithLen(sController.auBuffer, u16Len, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
-        eDecryptedMessageWithLen(psBuffer, u16Len, sController.auControllerToAccessoryKey, (uint8*)&sController.u64NumMsgRec, auHttpData, &u16MsgLen);
-        sController.u64NumMsgRec++;
+    uint16 u16MsgLen = 0;
+    if(E_HAP_STATUS_OK != eDecryptedMessageWithLen(psBuffer, u16Len, sController.auControllerToAccessoryKey,
+                                                   (uint8*)&psSocket->u64NumberReceive, auHttpData, &u16MsgLen)){
+        return E_HAP_STATUS_ERROR;
+    }
+    psSocket->u64NumberReceive++;
+    sController.u64NumMsgRec++;
 
-        uint8 *psRetData = NULL;
-        uint16 u16RetLen = 0;
-        eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen);
-        if(NULL == psRetData){
-            WAR_vPrintln(T_TRUE, "Null psRetData");
-            continue;
-        }
+    uint8 *psRetData = NULL;
+    uint16 u16RetLen = 0;
+    eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen);
+    if(NULL == psRetData){
+        WAR_vPrintln(T_TRUE, "Null psRetData");
+        return E_HAP_STATUS_ERROR;
+    }
 
-        uint16 u16SendLen = 0;
-        eEncryptedMessageWithLen(psRetData, u16RetLen, sController.auAccessoryToControllerKey, (uint8_t *)&sController.u64NumMsgSend, auHttpData, &u16SendLen);
-        send(iSocketFd, auHttpData, u16SendLen, 0);
+    uint16 u16SendLen = 0;
+    eEncryptedMessageWithLen(psRetData, u16RetLen, sController.auAccessoryToControllerKey,
+                              (uint8_t *)&psSocket->u64NumberSend, auHttpData, &u16SendLen);
+    send(psSocket->iSocketFd, auHttpData, u16SendLen, 0);
 
-        sController.u64NumMsgSend++;
-    }while ( 0);//u16Len >
+    psSocket->u64NumberSend++;
+    sController.u64NumMsgSend++;
 
     return E_HAP_STATUS_OK;
 }

@@ -119,7 +119,7 @@ teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
                                     tsBonjour *psBonjour);
 
 /****************************************************************************/

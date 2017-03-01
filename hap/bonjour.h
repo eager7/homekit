@@ -97,6 +97,12 @@ typedef struct {
     feBonjourRegister   eBonjourRegister;
     feBonjourUpdate     eBonjourUpdate;
 } tsBonjour;
+
+typedef struct {
+    int iSocketFd;
+    uint64 u64NumberReceive;
+    uint64 u64NumberSend;
+} tsSocket;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/

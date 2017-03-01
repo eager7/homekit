@@ -24,6 +24,7 @@
 #include "ip.h"
 #include "http_handle.h"
 #include "light_bulb.h"
+#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -88,16 +89,15 @@ teHapStatus eIpMessageRelease(tsIpMessage *psIpMsg)
     return E_HAP_STATUS_OK;
 }
 
-teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsProfile *psProfile,
+teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
                               tsBonjour *psBonjour)
 {
     tsHttpEntry *psHttpEntry = psHttpParser(psBuffer, (uint16)u16Len);
 
-    DBG_vPrintln(DBG_IP, "Data Len:%d", psHttpEntry->u16ContentLen);
     if(strstr((char*)psHttpEntry->acDirectory, "pair-setup"))
     {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Setup");
-        teHapStatus eStatus = eHandlePairSetup(psBuffer, u16Len, iSocketFd, psBonjour);
+        teHapStatus eStatus = eHandlePairSetup(psBuffer, u16Len, psSocket->iSocketFd, psBonjour);
         if(E_HAP_STATUS_OK != eStatus){
             ERR_vPrintln(T_TRUE, "eHandlePairSetup Error:%d", eStatus);
             return eStatus;
@@ -106,17 +106,21 @@ teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, int iSocketFd, tsP
     else if(strstr((char*)psHttpEntry->acDirectory, "pair-verify"))
     {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
-        eHandlePairVerify(psBuffer, u16Len, iSocketFd, psBonjour);
+        teHapStatus eStatus = eHandlePairVerify(psBuffer, u16Len, psSocket->iSocketFd, psBonjour);
+        if(E_HAP_STATUS_OK != eStatus){
+            ERR_vPrintln(T_TRUE, "eHandlePairSetup Error:%d", eStatus);
+            return eStatus;
+        }
         //eHandleAccessoryRequest(psBuffer, u16Len, iSocketFd, psProfile, psBonjour);
     }
     else if(strstr((char*)psHttpEntry->acDirectory, "identify"))
     {
-        close(iSocketFd);
+        //close(psSocket);
     }
     else
     {
         DBG_vPrintln(DBG_IP, "Handle Controller Request:%d", u16Len);
-        eHandleAccessoryRequest(psBuffer, u16Len, iSocketFd, psProfile, psBonjour);
+        eHandleAccessoryRequest(psBuffer, u16Len, psSocket, psProfile, psBonjour);
     }
     FREE(psHttpEntry);
     return E_HAP_STATUS_OK;
