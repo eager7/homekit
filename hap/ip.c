@@ -60,7 +60,7 @@ tsIpMessage *psIpResponseNew()
     tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
     CHECK_POINTER(psIpMsg, NULL);
     memset(psIpMsg, 0, sizeof(tsIpMessage));
-    psIpMsg->psTlvPackage = psTlvPackageNew();
+    psIpMsg->psTlvPackage = psTlvPackageGenerate();
     if(psIpMsg->psTlvPackage == NULL){
         FREE(psIpMsg); return NULL;
     }
@@ -136,10 +136,11 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
     if (strstr((char*)psData, "/accessories")) {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_IP, "Ask for accessories info\n");
-        json_object *psJsonRet = psProfile->psGetAccessoryJsonInfo(psProfile->psAccessory);
+        json_object *psJsonRet = psProfile->psGetAccessoryInfo(psProfile->psAccessory);
         *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                  (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
         json_object_put(psJsonRet);
+        DBG_vPrintln(DBG_IP, "Accessory Info:\n%s", *psResp);
     } else if(strstr((char*)psData, "/characteristics")) {
         tsHttpEntry *psHttp = psHttpParser(psData, u16Len);
         if(strstr((char*)psData, "PUT")){
@@ -155,7 +156,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         }
         FREE(psHttp);
     } else if(strstr((char*)psData, "/pairings")){
-        NOT_vPrintln(DBG_IP, "Controller Request Remove Pairing");
+        NOT_vPrintln(DBG_IP, "Controller Request Add/Remove Pairing");
         eHandlePairingRemove(psData, u16Len, psResp, pu16Len);
     }
 

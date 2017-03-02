@@ -44,7 +44,7 @@
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static json_object *psGetAccessoryInfoJson(const tsAccessory *psAccessory)
+static json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
 {
     CHECK_POINTER(psAccessory, NULL);
     json_object *psArrayPerms = NULL;
@@ -219,14 +219,16 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel, teAccessoryType eType)
+tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
+                        teAccessoryType eType, fpsSetCharacteristicInfo fsCallBack)
 {
     tsProfile *psProfile = (tsProfile*)malloc(sizeof(tsProfile));
     CHECK_POINTER(psProfile, NULL);
     memset(psProfile, 0, sizeof(tsProfile));
-    psProfile->psGetAccessoryJsonInfo = psGetAccessoryInfoJson;
+    psProfile->psGetAccessoryInfo = psGetAccessoryInfo;
     psProfile->psGetCharacteristicInfo = psGetCharacteristicInfo;
-    psProfile->psAccessory = psAccessoryNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
+    psProfile->psSetCharacteristicInfo = fsCallBack;
+    psProfile->psAccessory = psAccessoryGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
     return psProfile;
 }
 

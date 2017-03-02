@@ -35,7 +35,7 @@ extern "C" {
 #define TLV_HEADER (TLV_TYPE_LEN + TLV_LEN_LEN)
 #define TLV_FRAGMENTED 255
 
-#define TLV_NUM 10
+#define TLV_NUM 5
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -91,6 +91,7 @@ typedef struct {
 typedef struct {
     tsTlv sTlvRecord[TLV_NUM];
     uint8 u8RecordNum;
+    uint8 *psMessage;
 } tsTlvMessage;
 
 typedef teTlvStatus  (*tpeTlvMessageGetData)(tsTlvMessage *psTlvMessage, uint8 **psBuffer, uint16 *pu16Len);
@@ -99,11 +100,11 @@ typedef uint16 (*tpu16TlvRecordGetLen)(tsTlvMessage *psTlvMessage, teTlvValue eT
 typedef teTlvStatus (*tefTlvMessageAddRecord)(teTlvValue eType, uint8 *psBuffer, uint16 u16Len, tsTlvMessage *psTlvMessage);
 
 typedef struct {
-    tsTlvMessage sMessage;
-    tpeTlvMessageGetData eTlvMessageGetData;
-    tpfTlvRecordGetData psTlvRecordGetData;
-    tpu16TlvRecordGetLen pu16TlvRecordGetLen;
-    tefTlvMessageAddRecord efTlvMessageAddRecord;
+    tsTlvMessage            sMessage;
+    tpfTlvRecordGetData     psTlvRecordGetData;
+    tpu16TlvRecordGetLen    pu16TlvRecordGetLen;
+    tpeTlvMessageGetData    eTlvMessageGetData;
+    tefTlvMessageAddRecord  efTlvMessageAddRecord;
 } tsTlvPackage;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -120,7 +121,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsTlvPackage *psTlvPackageNew();
+tsTlvPackage *psTlvPackageGenerate();
 tsTlvPackage *psTlvPackageFormat(uint8 *psBuffer, uint16 u16Len);
 teTlvStatus  eTlvPackageRelease(tsTlvPackage *psTlvPackage);
 /****************************************************************************/

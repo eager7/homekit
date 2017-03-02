@@ -306,11 +306,10 @@ Finished:
     uint16 u16RespLen = 0;
     uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    eIpMessageRelease(psResponse);
     uint8 *psSendBuf = NULL;
     uint16 u16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer,
                                            u16RespLen, &psSendBuf);
-    FREE(pRespBuffer);
+    eIpMessageRelease(psResponse);
     ssize_t iSend = send(iSockFd, psSendBuf, u16Len, 0);
     FREE(psSendBuf);
     if(-1 == iSend){
@@ -374,11 +373,10 @@ Finished:
     uint16 u16RespLen = 0;
     uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    eIpMessageRelease(psResponse);
     uint8 *psSendBuffer = NULL;
     uint16 u16SendLen = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer,
                                            u16RespLen, &psSendBuffer);
-    FREE(pRespBuffer);
+    eIpMessageRelease(psResponse);
     if(-1 == send(iSockFd, psSendBuffer, u16SendLen, 0)){
         ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
     }
@@ -494,7 +492,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     ed25519_sign(auAccessoryX, 64 + LEN_DEVICE_ID, (const uint8*)edAccessoryLTSK, (const uint8*)edAccessoryLTPK, auAcceoosrySignature);
 
     /* 5. Construct the sub-TLV with the following TLV items */
-    tsTlvPackage *pReturnTlvPackage = psTlvPackageNew();
+    tsTlvPackage *pReturnTlvPackage = psTlvPackageGenerate();
     pReturnTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_IDENTIFIER, psDeviceID, LEN_DEVICE_ID, &pReturnTlvPackage->sMessage);
     pReturnTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SIGNATURE,auAcceoosrySignature,64,&pReturnTlvPackage->sMessage);
     pReturnTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,edAccessoryLTPK,32,&pReturnTlvPackage->sMessage);
@@ -502,7 +500,6 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     uint8 *tlvEncryptedData = NULL;
     uint16 tlv8Len = 0;
     pReturnTlvPackage->eTlvMessageGetData(&pReturnTlvPackage->sMessage, &tlvEncryptedData, &tlv8Len);
-    eTlvPackageRelease(pReturnTlvPackage);
 
     /* 6. Encrypt the sub-TLV, encryptedData, and generate the 16 byte auth tag, authTag. */
     uint8 *tlv8Recorddata = malloc(tlv8Len+16);
@@ -514,6 +511,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     uint8 buffer[64] = {0}, key[64] = {0};
     chacha20_encrypt(&ctx, buffer, key, 64);
     chacha20_encrypt(&ctx, tlvEncryptedData, tlv8Recorddata, tlv8Len);
+    eTlvPackageRelease(pReturnTlvPackage);
 
     uint8 verify[16] = {0};
     ePoly1305_GenKey(key, tlv8Recorddata, tlv8Len, T_FALSE, auVerify);
@@ -527,11 +525,10 @@ Finished:
     uint16 u16RespLen = 0;
     uint8 *pRespBuffer = NULL;
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMessage,&pRespBuffer,&u16RespLen);
-    eIpMessageRelease(psResponse);
     uint8 *psHttpResp = NULL;
     uint16 u16SendLen = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", pRespBuffer,
                                            u16RespLen, &psHttpResp);
-    FREE(pRespBuffer);
+    eIpMessageRelease(psResponse);
     if(-1 == send(iSockFd, psHttpResp, u16SendLen, 0)){
         ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
     }
@@ -576,7 +573,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     ed25519_sign(auAccessoryInfo, 64 + LEN_DEVICE_ID, edAccessoryLTSK, edPubKey, auAccessorySignature);
 
     /* 5. Construct a sub-TLV with the following items */
-    tsTlvPackage* psSubTlvPackage = psTlvPackageNew();
+    tsTlvPackage* psSubTlvPackage = psTlvPackageGenerate();
     psSubTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SIGNATURE,auAccessorySignature,sizeof(auAccessorySignature),&psSubTlvPackage->sMessage);
     //uint8 auIdRecordData[LEN_DEVICE_ID] = {0};
     //memcpy(auIdRecordData, psBonjour->sBonjourText.psDeviceID, LEN_DEVICE_ID);
@@ -592,11 +589,10 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     uint8 *psSubMsgData = NULL;
     uint16 u16SubMsgLen = 0;
     psSubTlvPackage->eTlvMessageGetData(&psSubTlvPackage->sMessage,&psSubMsgData, &u16SubMsgLen);
-    eTlvPackageRelease(psSubTlvPackage);
     uint16 u16EncryptedLen = 0;
     uint8 *psEncryptedData = (uint8*)malloc(u16SubMsgLen + 16);
     eEncryptedMessageNoLen(psSubMsgData, u16SubMsgLen, sPairVerify.auSessionKey, (uint8*)"PV-Msg02", psEncryptedData, &u16EncryptedLen);
-    FREE(psSubMsgData);
+    eTlvPackageRelease(psSubTlvPackage);
 
     /* 8. Construct the response with the following TLV items */
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY, sPairVerify.auPublicKey, 32, psTlvRespMsg);
@@ -608,10 +604,9 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
 
-    eIpMessageRelease(psResponse);
     uint8 *psSendBuf = NULL;
     uint16 u16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", psRepBuffer, u16RepLen, &psSendBuf);
-    FREE(psRepBuffer);
+    eIpMessageRelease(psResponse);
     ssize_t iSend = send(iSockFd, psSendBuf, u16Len, 0);
     FREE(psSendBuf);
     if(-1 == iSend){
@@ -692,11 +687,10 @@ static tePairStatus eM4VerifyFinishResponse(tsSocket *psSockFd, tsIpMessage *psI
 Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMsg);
     psResponse->psTlvPackage->eTlvMessageGetData(psTlvRespMsg,&psRepBuffer,&u16RepLen);
-    eIpMessageRelease(psResponse);
     uint8 *psHttpResp = NULL;
     uint16 u16SendLen = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", psRepBuffer, u16RepLen,
                                            &psHttpResp);
-    FREE(psRepBuffer);
+    eIpMessageRelease(psResponse);
     if(-1 == send(psSockFd->iSocketFd, psHttpResp, u16SendLen, 0)){
         ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
     }
@@ -789,17 +783,17 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     tsHttpEntry *psHttp = psHttpParser(psBuffer, u16Len);
     tsTlvPackage *psTlvInMsg = psTlvPackageFormat(psHttp->acContentData, psHttp->u16ContentLen);
     FREE(psHttp);
-    tsTlvPackage *psTlvResp = psTlvPackageNew();
+    tsTlvPackage *psTlvResp = psTlvPackageGenerate();
     teTlvMethod eMethod = E_TLV_METHOD_RESERVED;
     memcpy(&eMethod, psTlvInMsg->psTlvRecordGetData(&psTlvInMsg->sMessage, E_TLV_VALUE_TYPE_METHOD), 1);
     switch (eMethod){
         case E_TLV_METHOD_REMOVE_PAIRING:{
+            NOT_vPrintln(DBG_PAIR, "E_TLV_METHOD_REMOVE_PAIRING");
             uint8 value_rep[] = {E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE};
             psTlvResp->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psTlvResp->sMessage);
             psTlvResp->eTlvMessageGetData(&psTlvResp->sMessage,&psRepBuffer,&u16RepLen);
-            eTlvPackageRelease(psTlvResp);
             *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", psRepBuffer, u16RepLen, ppResp);
-            FREE(psRepBuffer);
+            eTlvPackageRelease(psTlvResp);
             eIOSDeviceRemovePairing();
         }
             break;

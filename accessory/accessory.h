@@ -159,7 +159,7 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 /*****************************************************************************
-** Prototype    : psAccessoryNew
+** Prototype    : psAccessoryGenerate
 ** Description  : create a new object for accessory device
 ** Input        : psName, the accessory's name
  *                u64DeviceID, the unique id of accessory, used by bonjour
@@ -174,12 +174,12 @@ typedef struct {
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-tsAccessory *psAccessoryNew(const char *psName, uint64 u64DeviceID, const char *psSerialNumber,
-                            const char *psManufacturer, const char *psModel, teAccessoryType eType);
+tsAccessory *psAccessoryGenerate(const char *psName, uint64 u64DeviceID, const char *psSerialNumber,
+                                 const char *psManufacturer, const char *psModel, teAccessoryType eType);
 /*****************************************************************************
 ** Prototype    : eAccessoryRelease
 ** Description  : free the memory allocated by psAccessoryNew
-** Input        : psAccessory, the object allocated by psAccessoryNew
+** Input        : psAccessory, the object allocated by psAccessoryGenerate
 ** Output       : None
 ** Return Value : always return E_HAP_STATUS_OK
 
@@ -188,8 +188,6 @@ tsAccessory *psAccessoryNew(const char *psName, uint64 u64DeviceID, const char *
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
-teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
-teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

@@ -44,8 +44,8 @@ typedef enum {
 } teProfileCmd;
 
 typedef teProfileStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
-typedef teProfileStatus (*fpeCallbackFunc)(tsAccessory *psAccessory, teProfileCmd eProfileCmd);
-typedef json_object* (*fpsGetAccessoryJsonInfo)(const tsAccessory *psAccessory);
+typedef uint8* (*fpsSetCharacteristicInfo)(tsAccessory *psAccessory, const char *psCmd);
+typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
 typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd);
 
 typedef struct {
@@ -54,10 +54,10 @@ typedef struct {
 } tsProfileHandle;
 
 typedef struct {
-    tsAccessory     *psAccessory;
-    fpeCallbackFunc peCallbackFunc;
-    fpsGetAccessoryJsonInfo psGetAccessoryJsonInfo;
-    fpsGetCharacteristicInfo psGetCharacteristicInfo;
+    tsAccessory                 *psAccessory;
+    fpsGetAccessoryInfo         psGetAccessoryInfo;
+    fpsSetCharacteristicInfo    psSetCharacteristicInfo;
+    fpsGetCharacteristicInfo    psGetCharacteristicInfo;
 } tsProfile;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -74,7 +74,7 @@ typedef struct {
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                        teAccessoryType eType);
+                        teAccessoryType eType, fpsSetCharacteristicInfo fsCallBack);
 teHapStatus eProfileRelease(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

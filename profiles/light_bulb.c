@@ -48,24 +48,6 @@ tsProfileHandle sLightBulbHandle[] = {
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-
-/****************************************************************************/
-/***        Exported Functions                                            ***/
-/****************************************************************************/
-
-tsProfile *psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
-{
-    tsProfile *psProfile = psProfileNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, E_HAP_TYPE_LIGHT_BULB);
-    psProfile->peCallbackFunc = eLightBulbHandle;
-
-    return psProfile;
-}
-
-teProfileStatus eLightBulbProfileRelease(tsProfile *psProfile)
-{
-    eProfileRelease(psProfile);
-    return E_PROFILE_OK;
-}
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -87,5 +69,21 @@ static teProfileStatus eLightBulbOn(tsAccessory *psAccessory)
 static teProfileStatus eLightBulbOff(tsAccessory *psAccessory)
 {
     DBG_vPrintln(DBG_PROFILE, "eLightBulbOff");
+    return E_PROFILE_OK;
+}
+/****************************************************************************/
+/***        Exported Functions                                            ***/
+/****************************************************************************/
+
+tsProfile *psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
+{
+    tsProfile *psProfile = psProfileNew(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
+                                        E_HAP_TYPE_LIGHT_BULB, NULL);
+    return psProfile;
+}
+
+teProfileStatus eLightBulbProfileRelease(tsProfile *psProfile)
+{
+    eProfileRelease(psProfile);
     return E_PROFILE_OK;
 }
