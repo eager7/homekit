@@ -4,6 +4,7 @@
 
 	32 bit integer curve25519 implementation
 */
+#include <string.h>
 
 typedef uint32_t bignum25519[10];
 typedef uint32_t bignum25519align16[12];

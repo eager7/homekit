@@ -89,6 +89,8 @@ char *strchr(), *strrchr(), *strtok();
 #endif /* not STDC_HEADERS */
 
 #include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 
 #if TIME_WITH_SYS_TIME
 #include <sys/time.h>
