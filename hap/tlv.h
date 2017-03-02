@@ -35,7 +35,7 @@ extern "C" {
 #define TLV_HEADER (TLV_TYPE_LEN + TLV_LEN_LEN)
 #define TLV_FRAGMENTED 255
 
-#define TLV_NUM 5
+#define TLV_NUM 10
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/

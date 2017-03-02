@@ -160,10 +160,10 @@ teTlvStatus eTlvPackageRelease(tsTlvPackage *psTlvPackage)
     psTlvPackage->pu16TlvRecordGetLen = NULL;
     psTlvPackage->efTlvMessageAddRecord = NULL;
     psTlvPackage->eTlvMessageGetData = NULL;
+    FREE(psTlvPackage->sMessage.psMessage);
     for (int i = 0; i < TLV_NUM; ++i) {
         FREE(psTlvPackage->sMessage.sTlvRecord[i].psValue);
     }
-    FREE(psTlvPackage->sMessage.psMessage);
     FREE(psTlvPackage);
     return E_TLV_STATUS_OK;
 }
