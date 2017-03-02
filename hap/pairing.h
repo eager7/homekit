@@ -90,15 +90,6 @@ typedef struct {
     uint8_t         auSessionKey[32];
 } tsPairVerify;
 
-typedef struct {
-    //uint64  u64NumMsgRec;
-    //uint64  u64NumMsgSend;
-    //uint8   auControllerToAccessoryKey[32];
-    //uint8   auAccessoryToControllerKey[32];
-
-    tePairSetup  ePairSetup;
-    tePairVerify ePairVerify;
-} tsController;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
