@@ -621,7 +621,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     DBG_vPrintln(DBG_PAIR, "Send Success:%d", (int)iSend);
     return eStatus;
 }
-static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsIpMessage *psIpMsg)
+static tePairStatus eM4VerifyFinishResponse(tsSocket *psSockFd, tsIpMessage *psIpMsg)
 {
     uint8 *psRepBuffer = 0;
     uint16 u16RepLen = 0;
@@ -679,9 +679,9 @@ static tePairStatus eM4VerifyFinishResponse(int iSockFd, tsIpMessage *psIpMsg)
     eTlvPackageRelease(psSubTlvPack);
     if (err == 0) {
         hkdf((uint8*)"Control-Salt", 12, sPairVerify.auSharedKey, 32,
-             (uint8*)"Control-Read-Encryption-Key", 27, sController.auAccessoryToControllerKey, 32);
+             (uint8*)"Control-Read-Encryption-Key", 27, psSockFd->auAccessoryToControllerKey, 32);
         hkdf((uint8*)"Control-Salt", 12, sPairVerify.auSharedKey, 32,
-             (uint8*)"Control-Write-Encryption-Key", 28, sController.auControllerToAccessoryKey, 32);
+             (uint8*)"Control-Write-Encryption-Key", 28, psSockFd->auControllerToAccessoryKey, 32);
         INF_vPrintln(DBG_PAIR, "PairVerify success\n");
     } else {
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
@@ -698,7 +698,7 @@ Finished:
     uint16 u16SendLen = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/pairing+tlv8", psRepBuffer, u16RepLen,
                                            &psHttpResp);
     FREE(psRepBuffer);
-    if(-1 == send(iSockFd, psHttpResp, u16SendLen, 0)){
+    if(-1 == send(psSockFd->iSocketFd, psHttpResp, u16SendLen, 0)){
         ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
     }
     FREE(psHttpResp);
@@ -758,7 +758,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
-teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
+teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, tsBonjour *psBonjour)
 {
     CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
     CHECK_POINTER(psBonjour, E_PAIRING_STATUS_ERROR);
@@ -771,16 +771,16 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjou
         switch (sPairVerify.eState) {
             case E_PAIR_VERIFY_M1_START_REQUEST:{
                 NOT_vPrintln(DBG_PAIR, "E_PAIR_VERIFY_M1_START_REQUEST\n");
-                eM2VerifyStartResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
+                eM2VerifyStartResponse(psSocketFd->iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
             }break;
             case E_PAIR_VERIFY_M3_FINISHED_REQUEST:{
                 NOT_vPrintln(DBG_PAIR, "E_PAIR_VERIFY_M3_FINISHED_REQUEST\n");
-                eM4VerifyFinishResponse(iSocketFd, psIpMsg);
+                eM4VerifyFinishResponse(psSocketFd, psIpMsg);
                 return E_HAP_STATUS_OK;
             }break;
         }
         eIpMessageRelease(psIpMsg);
-    }while (0 < (iLen = (int)read(iSocketFd, psBuffer, MABF)));
+    }while (0 < (iLen = (int)read(psSocketFd->iSocketFd, psBuffer, MABF)));
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
@@ -820,12 +820,11 @@ teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *ps
     memset(auHttpData, 0, sizeof(auHttpData));
 
     uint16 u16MsgLen = 0;
-    if(E_HAP_STATUS_OK != eDecryptedMessageWithLen(psBuffer, u16Len, sController.auControllerToAccessoryKey,
+    if(E_HAP_STATUS_OK != eDecryptedMessageWithLen(psBuffer, u16Len, psSocket->auControllerToAccessoryKey,
                                                    (uint8*)&psSocket->u64NumberReceive, auHttpData, &u16MsgLen)){
         return E_HAP_STATUS_ERROR;
     }
     psSocket->u64NumberReceive++;
-    sController.u64NumMsgRec++;
 
     uint8 *psRetData = NULL;
     uint16 u16RetLen = 0;
@@ -836,12 +835,11 @@ teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *ps
     }
 
     uint16 u16SendLen = 0;
-    eEncryptedMessageWithLen(psRetData, u16RetLen, sController.auAccessoryToControllerKey,
+    eEncryptedMessageWithLen(psRetData, u16RetLen, psSocket->auAccessoryToControllerKey,
                               (uint8_t *)&psSocket->u64NumberSend, auHttpData, &u16SendLen);
     send(psSocket->iSocketFd, auHttpData, u16SendLen, 0);
 
     psSocket->u64NumberSend++;
-    sController.u64NumMsgSend++;
 
     return E_HAP_STATUS_OK;
 }

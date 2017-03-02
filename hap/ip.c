@@ -106,7 +106,7 @@ teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket
     else if(strstr((char*)psHttpEntry->acDirectory, "pair-verify"))
     {
         DBG_vPrintln(DBG_IP, "IOS Device Pair Verify");
-        teHapStatus eStatus = eHandlePairVerify(psBuffer, u16Len, psSocket->iSocketFd, psBonjour);
+        teHapStatus eStatus = eHandlePairVerify(psBuffer, u16Len, psSocket, psBonjour);
         if(E_HAP_STATUS_OK != eStatus){
             ERR_vPrintln(T_TRUE, "eHandlePairSetup Error:%d", eStatus);
             return eStatus;

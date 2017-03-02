@@ -252,27 +252,25 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 if(0 == iLen){
                                     ERR_vPrintln(T_TRUE, "Close Client[%d]:%d\n", i, asSocket[i].iSocketFd);
                                     close(asSocket[i].iSocketFd);
-                                    asSocket[i].iSocketFd = -1;
-                                    asSocket[i].u64NumberSend = 0;
-                                    asSocket[i].u64NumberReceive = 0;
                                     FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
                                     if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
                                         FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
                                     }
                                     sBonjour.u8NumberController --;
+                                    memset(&asSocket[i], 0, sizeof(tsSocket));
+                                    asSocket[i].iSocketFd = -1;
                                 } else {
                                     teHapStatus eStatus = eHapHandlePackage(auBuffer, (uint16)iLen, &asSocket[i], psProfile, &sBonjour);
                                     if(eStatus == E_HAP_STATUS_SOCKET_ERROR){
                                         ERR_vPrintln(T_TRUE, "Close Client:%d\n", asSocket[i].iSocketFd);
                                         close(asSocket[i].iSocketFd);
-                                        asSocket[i].iSocketFd = -1;
-                                        asSocket[i].u64NumberSend = 0;
-                                        asSocket[i].u64NumberReceive = 0;
                                         if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
                                             FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
                                         }
                                         FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
                                         sBonjour.u8NumberController --;
+                                        memset(&asSocket[i], 0, sizeof(tsSocket));
+                                        asSocket[i].iSocketFd = -1;
                                     }
                                 }
                             }

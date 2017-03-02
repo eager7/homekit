@@ -91,10 +91,10 @@ typedef struct {
 } tsPairVerify;
 
 typedef struct {
-    uint64  u64NumMsgRec;
-    uint64  u64NumMsgSend;
-    uint8   auControllerToAccessoryKey[32];
-    uint8   auAccessoryToControllerKey[32];
+    //uint64  u64NumMsgRec;
+    //uint64  u64NumMsgSend;
+    //uint8   auControllerToAccessoryKey[32];
+    //uint8   auAccessoryToControllerKey[32];
 
     tePairSetup  ePairSetup;
     tePairVerify ePairVerify;
@@ -117,7 +117,7 @@ extern tePairSetup ePair;
 teHapStatus ePairingInit();
 teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
-teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
 teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
                                     tsBonjour *psBonjour);
