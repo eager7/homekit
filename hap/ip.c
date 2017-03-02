@@ -72,9 +72,9 @@ tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len)
     CHECK_POINTER(psIpMsg, NULL);
     memset(psIpMsg, 0, sizeof(tsIpMessage));
     psIpMsg->psHttp = psHttpParser(psBuffer, u16Len);
-    psIpMsg->psTlvPackage = psTlvPackageFormat(psIpMsg->psHttp->acContentData, psIpMsg->psHttp->u16ContentLen);
+    psIpMsg->psTlvPackage = psTlvPackageParser(psIpMsg->psHttp->acContentData, psIpMsg->psHttp->u16ContentLen);
     if(psIpMsg->psTlvPackage == NULL){
-        ERR_vPrintln(T_TRUE, "psTlvPackageFormat Failed");
+        ERR_vPrintln(T_TRUE, "psTlvPackageParser Failed");
         FREE(psIpMsg); return NULL;
     }
     return psIpMsg;

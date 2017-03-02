@@ -60,13 +60,12 @@ typedef enum {
 } teHttpMethod;
 
 typedef struct {
-    int   iHttpStatus;
-    uint8 acHttpMethod[MIBF];
-    uint8 acDirectory[MIBF];
-    uint8 acHttpVersion[MIBF];
-    uint16 u16ContentLen;
-    uint8 acContentType[MIBF];
-    uint8 acContentData[MABF];
+    uint8   acHttpMethod[MIBF];         /* the method of http, can be POST,GET,PUT */
+    uint8   acDirectory[MIBF];          /* the directory of http, such as /pair-setup */
+    uint8   acHttpVersion[MIBF];        /* the version of http, usually is HTTP/1.1 */
+    uint16  u16ContentLen;              /* the length of http data, can be 0 */
+    uint8   acContentType[MIBF];        /* the type of http data, such as application/hap+json */
+    uint8   acContentData[MABF];        /* the data of http, such as TLV format of json format */
 } tsHttpEntry;
 
 /****************************************************************************/
@@ -83,7 +82,34 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+/*****************************************************************************
+** Prototype    : psHttpParser
+** Description  : create a new object for http message
+** Input        : pBuf, the data be received by socket
+ *                u16Len, the len of pBuf
+** Output       : None
+** Return Value : if success, return a struct of tsHttpEntry, need to release
+ *                after using it, else return NULL
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
+/*****************************************************************************
+** Prototype    : u16HttpFormat
+** Description  : add http header, method, version, status and content-type for users' data
+** Input        : eStatus, the status of http, such as E_HTTP_STATUS_SUCCESS_OK
+ *                psType, the type of http, such as application/hap+json
+ *                pBuffer, user's data will send, can be NULL
+ *                u16Length, user's data len, can be 0
+** Output       : ppResponse, the http message, need to release after using it
+** Return Value : return the length of http message
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 uint16 u16HttpFormat(teHttpCode eStatus, const char *psType, const uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

@@ -421,7 +421,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     chacha20_decrypt(&context, (const uint8*)psEncryptedData, psDecryptedData, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
     FREE(psEncryptedData);
 
-    tsTlvPackage *psSubTlvPackage = psTlvPackageFormat(psDecryptedData, (uint16) (u16EncryptedLen - LEN_AUTH_TAG));
+    tsTlvPackage *psSubTlvPackage = psTlvPackageParser(psDecryptedData, (uint16) (u16EncryptedLen - LEN_AUTH_TAG));
     FREE(psDecryptedData);
     uint8 *psIOSDevicePairingID = psSubTlvPackage->psTlvRecordGetData(&psSubTlvPackage->sMessage, E_TLV_VALUE_TYPE_IDENTIFIER);
     uint8 *psIOSDeviceLTPK = psSubTlvPackage->psTlvRecordGetData(&psSubTlvPackage->sMessage, E_TLV_VALUE_TYPE_PUBLIC_KEY);
@@ -639,7 +639,7 @@ static tePairStatus eM4VerifyFinishResponse(tsSocket *psSockFd, tsIpMessage *psI
     }
 
     /* 2. Decrypt the sub-TLV in encryptedData */
-    tsTlvPackage *psSubTlvPack = psTlvPackageFormat(psDecryptedData, u16DecryptedLen);
+    tsTlvPackage *psSubTlvPack = psTlvPackageParser(psDecryptedData, u16DecryptedLen);
     FREE(psDecryptedData);
     uint8 *controllerID = psSubTlvPack->psTlvRecordGetData(&psSubTlvPack->sMessage,E_TLV_VALUE_TYPE_IDENTIFIER);
     if(NULL == controllerID){
@@ -781,7 +781,7 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     uint8 *psRepBuffer = NULL;
     uint16 u16RepLen = 0;
     tsHttpEntry *psHttp = psHttpParser(psBuffer, u16Len);
-    tsTlvPackage *psTlvInMsg = psTlvPackageFormat(psHttp->acContentData, psHttp->u16ContentLen);
+    tsTlvPackage *psTlvInMsg = psTlvPackageParser(psHttp->acContentData, psHttp->u16ContentLen);
     FREE(psHttp);
     tsTlvPackage *psTlvResp = psTlvPackageGenerate();
     teTlvMethod eMethod = E_TLV_METHOD_RESERVED;

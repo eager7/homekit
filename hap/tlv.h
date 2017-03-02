@@ -121,8 +121,44 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+/*****************************************************************************
+** Prototype    : psTlvPackageGenerate
+** Description  : malloc a struct of tsTlvPackage, then init and set the callback
+** Input        : None
+** Output       : None
+** Return Value : return the struct object of tsTlvPackage, then need release after
+ *                using it by eTlvPackageRelease
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 tsTlvPackage *psTlvPackageGenerate();
-tsTlvPackage *psTlvPackageFormat(uint8 *psBuffer, uint16 u16Len);
+/*****************************************************************************
+** Prototype    : psTlvPackageParser
+** Description  : parser the tlv message and split it
+** Input        : psBuffer, the data of tlv message
+ *                u16Len, the len of psBuffer
+** Output       : None
+** Return Value : if success, return the struct object of tsTlvPackage, then need release after
+ *                using it by eTlvPackageRelease; else, return NULL
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
+tsTlvPackage *psTlvPackageParser(uint8 *psBuffer, uint16 u16Len);
+/*****************************************************************************
+** Prototype    : eTlvPackageRelease
+** Description  : free the memory of psTlvPackage
+** Input        : psTlvPackage
+** Output       : None
+** Return Value : E_TLV_STATUS_OK
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teTlvStatus  eTlvPackageRelease(tsTlvPackage *psTlvPackage);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

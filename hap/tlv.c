@@ -168,7 +168,7 @@ teTlvStatus eTlvPackageRelease(tsTlvPackage *psTlvPackage)
     return E_TLV_STATUS_OK;
 }
 
-tsTlvPackage *psTlvPackageFormat(uint8 *psBuffer, uint16 u16Len)
+tsTlvPackage *psTlvPackageParser(uint8 *psBuffer, uint16 u16Len)
 {
     CHECK_POINTER(psBuffer, NULL);
     tsTlvPackage *psTlvPackage = psTlvPackageGenerate();
