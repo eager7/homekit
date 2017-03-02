@@ -161,7 +161,7 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[3].uValue.psData = "light";
     asCharaTemp[3].u8Perms = E_PERM_PAIRED_READ;
     eServiceAddCharacter(psService, asCharaTemp[3], NULL);
-#if 0
+
     asCharaTemp[2].u64IID = UUID_SER_CHAR;
     asCharaTemp[2].eType = E_CHARACTERISTIC_HUE;
     asCharaTemp[2].eFormat = E_TYPE_FLOAT;
@@ -189,7 +189,7 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     asCharaTemp[4].sMaximumValue.uData.fValue = 100;
     asCharaTemp[4].u8Perms = E_PERM_PAIRED_READ | E_PERM_PAIRED_WRITE | E_PERM_EVENT_NOT;
     eServiceAddCharacter(psService, asCharaTemp[4], NULL);
-#endif
+
     return E_HAP_STATUS_OK;
 }
 
