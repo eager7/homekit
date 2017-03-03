@@ -248,31 +248,42 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                         } else {
                             if(FD_ISSET(asSocket[i].iSocketFd, &fdTemp)){
                                 DBG_vPrintln(DBG_BONJOUR, "A client[%d] receive data", i);
+                                bool_t bDisconnected = T_FALSE;
                                 iLen = (int)recv(asSocket[i].iSocketFd, auBuffer, sizeof(auBuffer), 0);
                                 if(0 == iLen){
-                                    ERR_vPrintln(T_TRUE, "Close Client[%d]:%d\n", i, asSocket[i].iSocketFd);
+                                    bDisconnected = T_TRUE;
+                                } else {
+                                    tsHttpEntry *psHttpEntry = psHttpParser(auBuffer, (uint16)iLen);
+                                    if(strstr((char*)psHttpEntry->acDirectory, "pair-setup")) {
+                                        DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
+                                        if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairSetup(auBuffer, iLen, asSocket[i].iSocketFd, &sBonjour)){
+                                            bDisconnected = T_TRUE;
+                                        }
+                                    } else if(strstr((char*)psHttpEntry->acDirectory, "pair-verify")) {
+                                        DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
+                                        if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairVerify(auBuffer, iLen, &asSocket[i], &sBonjour)){
+                                            bDisconnected = T_TRUE;
+                                        }
+                                    } else if(strstr((char*)psHttpEntry->acDirectory, "identify")) {
+                                        //close(psSocket);
+                                    } else {
+                                        DBG_vPrintln(DBG_BONJOUR, "Handle Controller Request");
+                                        eHandleAccessoryRequest(auBuffer, (uint16)iLen, &asSocket[i], psProfile, &sBonjour);
+                                    }
+                                    FREE(psHttpEntry);
+                                }
+                                if(bDisconnected == T_TRUE){
+                                    ERR_vPrintln(T_TRUE, "Close Client:%d\n", asSocket[i].iSocketFd);
                                     close(asSocket[i].iSocketFd);
-                                    FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
                                     if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
                                         FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
                                     }
+                                    FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
                                     sBonjour.u8NumberController --;
                                     memset(&asSocket[i], 0, sizeof(tsSocket));
                                     asSocket[i].iSocketFd = -1;
-                                } else {
-                                    teHapStatus eStatus = eHapHandlePackage(auBuffer, (uint16)iLen, &asSocket[i], psProfile, &sBonjour);
-                                    if(eStatus == E_HAP_STATUS_SOCKET_ERROR){
-                                        ERR_vPrintln(T_TRUE, "Close Client:%d\n", asSocket[i].iSocketFd);
-                                        close(asSocket[i].iSocketFd);
-                                        if(sBonjour.u8NumberController >= MAX_NUMBER_CLIENT){
-                                            FD_SET(sBonjour.iSocketFd, &fdSelect);//Add socket server fd into select fd
-                                        }
-                                        FD_CLR(asSocket[i].iSocketFd, &fdSelect);//delete this client from select set
-                                        sBonjour.u8NumberController --;
-                                        memset(&asSocket[i], 0, sizeof(tsSocket));
-                                        asSocket[i].iSocketFd = -1;
-                                    }
                                 }
+
                             }
                         }
                     }

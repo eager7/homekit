@@ -36,11 +36,11 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
-typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
 typedef teHapStatus (*tefIpSend)(tsTlvMessage *psTlv);
 typedef struct {
     tsHttpEntry *psHttp;
     tsTlvPackage *psTlvPackage;
+    tefIpSend efIpSend;
     tpfIpGetBinaryData pfIpGetBinaryData;
 } tsIpMessage;
 /****************************************************************************/
@@ -61,11 +61,6 @@ typedef struct {
 tsIpMessage *psIpResponseNew();
 tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len);
 teHapStatus eIpMessageRelease(tsIpMessage *psIpMsg);
-
-teHapStatus eHapHandlePackage(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
-                              tsBonjour *psBonjour);
-teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp,
-                                    uint16 *pu16Len);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
