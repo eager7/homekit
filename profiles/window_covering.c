@@ -140,7 +140,7 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     sCharaTemp.sMaximumValue.uData.iData = 90;
     sCharaTemp.u8Perms = E_PERM_PAIRED_READ | E_PERM_EVENT_NOT | E_PERM_PAIRED_WRITE;
     eServiceAddCharacter(psService, sCharaTemp, NULL);
-
+#if 0
     memset(&sCharaTemp, 0, sizeof(tsCharacteristic));
     sCharaTemp.u64IID = UUID_SERVICE_CHARACTER;
     sCharaTemp.eType = E_CHARACTERISTIC_CURRENT_VERTICAL_TILT_ANGLE;
@@ -170,7 +170,7 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     sCharaTemp.sMaximumValue.uData.iData = 90;
     sCharaTemp.u8Perms = E_PERM_PAIRED_READ | E_PERM_EVENT_NOT | E_PERM_PAIRED_WRITE;//
     eServiceAddCharacter(psService, sCharaTemp, NULL);
-
+#endif
     memset(&sCharaTemp, 0, sizeof(tsCharacteristic));
     sCharaTemp.u64IID = UUID_SERVICE_CHARACTER;
     sCharaTemp.eType = E_CHARACTERISTIC_OBSTRUCTION_DETECTED;
