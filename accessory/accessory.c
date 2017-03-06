@@ -215,7 +215,8 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
     return E_HAP_STATUS_OK;
 }
 
-teHapStatus eAccessoryGetCharacter(tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID, tsCharacteristic **ppCharacter)
+teHapStatus eAccessoryGetCharacter(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID,
+                                   tsCharacteristic **ppCharacter)
 {
     for (int i = 0; i < psAccessory->u8NumServices; ++i) {
         for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {

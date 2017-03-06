@@ -235,51 +235,45 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     sscanf(psCmd, "/characteristics?id=%[^\n]", auId);
     char *temp_once = strtok(auId, ",");
     CHECK_POINTER(temp_once, NULL);
-    int aid = 0, iid = 0;
+    uint64 u64AID = 0, u64IID = 0;
     while(T_TRUE){
-        sscanf(temp_once, "%d.%d", &aid, &iid);
-        DBG_vPrintln(DBG_PROFILE, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
-        if(psAccessory->u64AIDs == aid){
-            for (int i = 0; i < psAccessory->u8NumServices; ++i) {
-                for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
-                    if(psAccessory->psService[i].psCharacteristics[j].u64IID == iid){
-                        if(!(psAccessory->psService[i].psCharacteristics[j].u8Perms & E_PERM_PAIRED_READ)){
-                            FREE(psJsonReturn);
-                            FREE(psArrayCharacter);
-                            return NULL;
-                        }
-                        psJsonCharacter = json_object_new_object();
-                        json_object_object_add(psJsonCharacter, "aid", json_object_new_int64((int64_t)aid));
-                        json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)iid));
-                        switch (psAccessory->psService[i].psCharacteristics[j].eFormat){
-                            case E_TYPE_BOOL:{
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psAccessory->psService[i].psCharacteristics[j].uValue.bData));
-                            } break;
-                            case E_TYPE_INT: {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.iData));
-                            } break;
-                            case E_TYPE_UINT8: {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u8Data));
-                            } break;
-                            case E_TYPE_UINT16: {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u16Data));
-                            } break;
-                            case E_TYPE_UINT32: {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u32Data));
-                            } break;
-                            case E_TYPE_FLOAT:  {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
-                            } break;
-                            case E_TYPE_STRING: {
-                                json_object_object_add(psJsonCharacter, "value", json_object_new_string(psAccessory->psService[i].psCharacteristics[j].uValue.psData));
-                            } break;
-                            default: break;
-                        }
-                        break;
-                    }
-                }
-            }
+        sscanf(temp_once, "%llu.%llu", &u64AID, &u64IID);
+        DBG_vPrintln(DBG_PROFILE, "temp_once:%s,aid:%llu,iid:%llu\n", temp_once, u64AID, u64IID);
+        tsCharacteristic *psCharacter = NULL;
+        eAccessoryGetCharacter(psAccessory, u64AID, u64IID, &psCharacter);
+        if((NULL == psCharacter) || !(psCharacter->u8Perms & E_PERM_PAIRED_READ)){
+            FREE(psJsonReturn);
+            FREE(psArrayCharacter);
+            return NULL;
         }
+        psJsonCharacter = json_object_new_object();
+        json_object_object_add(psJsonCharacter, "aid", json_object_new_int64((int64_t)u64AID));
+        json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)u64IID));
+        switch (psCharacter->eFormat){
+            case E_TYPE_BOOL:{
+                json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psCharacter->uValue.bData));
+            } break;
+            case E_TYPE_INT: {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.iData));
+            } break;
+            case E_TYPE_UINT8: {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.u8Data));
+            } break;
+            case E_TYPE_UINT16: {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.u16Data));
+            } break;
+            case E_TYPE_UINT32: {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.u32Data));
+            } break;
+            case E_TYPE_FLOAT:  {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_double(psCharacter->uValue.fData));
+            } break;
+            case E_TYPE_STRING: {
+                json_object_object_add(psJsonCharacter, "value", json_object_new_string(psCharacter->uValue.psData));
+            } break;
+            default: break;
+        }
+
         json_object_array_add(psArrayCharacter, psJsonCharacter);
         temp_once = strtok(NULL, ",");
         if(NULL == temp_once)

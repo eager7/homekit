@@ -240,12 +240,12 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
                 json_object_array_add(psArrayResp, psJsonRespTemp);
             }
             switch (psCharacter->eFormat){
-                case E_TYPE_INT:    psCharacter->uValue.iData = json_object_get_int(psJsonValue);
-                case E_TYPE_BOOL:   psCharacter->uValue.bData = (bool_t)json_object_get_boolean(psJsonValue);
-                case E_TYPE_UINT8:  psCharacter->uValue.u8Data = (uint8)json_object_get_int(psJsonValue);
+                case E_TYPE_INT:    psCharacter->uValue.iData   = json_object_get_int(psJsonValue);
+                case E_TYPE_BOOL:   psCharacter->uValue.bData   = (bool_t)json_object_get_boolean(psJsonValue);
+                case E_TYPE_UINT8:  psCharacter->uValue.u8Data  = (uint8)json_object_get_int(psJsonValue);
                 case E_TYPE_UINT16: psCharacter->uValue.u16Data = (uint16)json_object_get_int(psJsonValue);
                 case E_TYPE_UINT32: psCharacter->uValue.u32Data = (uint32)json_object_get_int(psJsonValue);
-                case E_TYPE_FLOAT:  psCharacter->uValue.fData = (float)json_object_get_double(psJsonValue);
+                case E_TYPE_FLOAT:  psCharacter->uValue.fData   = (float)json_object_get_double(psJsonValue);
                 default:break;
             }
         }

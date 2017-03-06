@@ -199,7 +199,8 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
 
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
 
-teHapStatus eAccessoryGetCharacter(tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID, tsCharacteristic **ppCharacter);
+teHapStatus eAccessoryGetCharacter(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID,
+                                   tsCharacteristic **ppCharacter);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
