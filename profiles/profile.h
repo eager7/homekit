@@ -34,17 +34,13 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_PROFILE_OK,
-    E_PROFILE_ERROR,
-} teProfileStatus;
-
-typedef enum {
     E_PROFILE_CMD_LIGHT_BULB_ON,
     E_PROFILE_CMD_LIGHT_BULB_OFF,
 } teProfileCmd;
 
-typedef teProfileStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
-typedef uint8* (*fpsSetCharacteristicInfo)(tsAccessory *psAccessory, const char *psCmd);
+typedef teHapStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
+typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
+typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len);
 typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
 typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd);
 
@@ -55,8 +51,9 @@ typedef struct {
 
 typedef struct {
     tsAccessory                 *psAccessory;
+    fpeInitCategory             peInitCategory;
     fpsGetAccessoryInfo         psGetAccessoryInfo;
-    fpsSetCharacteristicInfo    psSetCharacteristicInfo;
+    fpeSetCharacteristicInfo    peSetCharacteristicInfo;
     fpsGetCharacteristicInfo    psGetCharacteristicInfo;
 } tsProfile;
 /****************************************************************************/
@@ -73,8 +70,9 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                        teAccessoryType eType, fpsSetCharacteristicInfo fsCallBack);
+tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer,
+                             char *psModel, teAccessoryCategories eType, fpeInitCategory fsInitCategory,
+                             fpeSetCharacteristicInfo fsCallBack);
 teHapStatus eProfileRelease(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

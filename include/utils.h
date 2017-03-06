@@ -68,6 +68,7 @@ extern "C" {
 #define MIBF    256
 #define MDBF    1024
 #define MABF    2048
+#define MMBF    4096
 #define PACKED __attribute__((__packed__))
 
 #define CHECK_RESULT(fun,value,ret) do{ if(value!=fun){ERR_vPrintln(T_TRUE, "Error:%s", strerror(errno));return ret;}}while(0)

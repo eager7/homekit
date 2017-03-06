@@ -19,12 +19,13 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
+#include <accessory.h>
 #include "profile.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
+#define DBG_PROFILE 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -77,39 +78,96 @@ static json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
                         json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psAccessory->psService[i].psCharacteristics[j].uValue.bData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("bool"));
                 } break;
-                case E_TYPE_INT: {
+                case E_TYPE_UINT8: {
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.iValue));
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.u8Data));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.iValue));
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.u8Data));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iValue));
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u8Data));
                         switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
                             case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
-                            case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
                             default: break;
                         }
-                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iValue));
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u8Data));
+                    }
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u8Data));
+                    json_object_object_add(psJsonCharacter, "format", json_object_new_string("uint8"));
+                } break;
+                case E_TYPE_UINT16: {
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.u16Data));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.u16Data));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u16Data));
+                        switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
+                            case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
+                            case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            default: break;
+                        }
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u16Data));
+                    }
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u16Data));
+                    json_object_object_add(psJsonCharacter, "format", json_object_new_string("uint16"));
+                } break;
+                case E_TYPE_UINT32: {
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.u8Data));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.u8Data));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u8Data));
+                        switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
+                            case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
+                            case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            default: break;
+                        }
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.u8Data));
+                    }
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u8Data));
+                    json_object_object_add(psJsonCharacter, "format", json_object_new_string("uint8"));
+                } break;
+                case E_TYPE_INT: {
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.iData));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.iData));
+                    }
+                    if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iData));
+                        switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
+                            case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
+                            case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            default: break;
+                        }
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.iData));
                     }
                     json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.iData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("int"));
                 } break;
                 case E_TYPE_FLOAT:  {
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.fValue));
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.fData));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.fValue));
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.fData));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
                         switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
                             case E_UNIT_PERCENTAGE:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("percentage"));break;
-                            case E_UNIT_ARCDEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
+                            case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
                             default: break;
                         }
-                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fValue));
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fData));
                     }
                     json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("float"));
@@ -180,11 +238,16 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     int aid = 0, iid = 0;
     while(T_TRUE){
         sscanf(temp_once, "%d.%d", &aid, &iid);
-        DBG_vPrintln(1, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
+        DBG_vPrintln(DBG_PROFILE, "temp_once:%s,aid:%d,iid:%d\n", temp_once, aid, iid);
         if(psAccessory->u64AIDs == aid){
             for (int i = 0; i < psAccessory->u8NumServices; ++i) {
                 for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
                     if(psAccessory->psService[i].psCharacteristics[j].u64IID == iid){
+                        if(!(psAccessory->psService[i].psCharacteristics[j].u8Perms & E_PERM_PAIRED_READ)){
+                            FREE(psJsonReturn);
+                            FREE(psArrayCharacter);
+                            return NULL;
+                        }
                         psJsonCharacter = json_object_new_object();
                         json_object_object_add(psJsonCharacter, "aid", json_object_new_int64((int64_t)aid));
                         json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)iid));
@@ -195,6 +258,15 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
                             case E_TYPE_INT: {
                                 json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.iData));
                             } break;
+                            case E_TYPE_UINT8: {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u8Data));
+                            } break;
+                            case E_TYPE_UINT16: {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u16Data));
+                            } break;
+                            case E_TYPE_UINT32: {
+                                json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.u32Data));
+                            } break;
                             case E_TYPE_FLOAT:  {
                                 json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
                             } break;
@@ -203,6 +275,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
                             } break;
                             default: break;
                         }
+                        break;
                     }
                 }
             }
@@ -219,16 +292,19 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile *psProfileNew(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                        teAccessoryType eType, fpsSetCharacteristicInfo fsCallBack)
+tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer,
+                             char *psModel, teAccessoryCategories eType, fpeInitCategory fsInitCategory,
+                             fpeSetCharacteristicInfo fsCallBack)
 {
     tsProfile *psProfile = (tsProfile*)malloc(sizeof(tsProfile));
     CHECK_POINTER(psProfile, NULL);
     memset(psProfile, 0, sizeof(tsProfile));
     psProfile->psGetAccessoryInfo = psGetAccessoryInfo;
     psProfile->psGetCharacteristicInfo = psGetCharacteristicInfo;
-    psProfile->psSetCharacteristicInfo = fsCallBack;
+    psProfile->peSetCharacteristicInfo = fsCallBack;
+    psProfile->peInitCategory = fsInitCategory;
     psProfile->psAccessory = psAccessoryGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
+    psProfile->peInitCategory(psProfile->psAccessory);
     return psProfile;
 }
 

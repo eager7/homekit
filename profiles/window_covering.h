@@ -1,12 +1,12 @@
 /****************************************************************************
  *
- * MODULE:             light_bulb.h
+ * MODULE:             window_covering.h
  *
  * COMPONENT:          home kit interface
  *
  * REVISION:           $Revision:  1.0$
  *
- * DATED:              $Date: 2017-01-11 15:13:17 +0100 (Fri, 12 Dec 2016 $
+ * DATED:              $Date: 2017-03-06 15:13:17 +0100 (Fri, 12 Dec 2016 $
  *
  * AUTHOR:             PCT
  *
@@ -16,8 +16,8 @@
  *
  ***************************************************************************/
 
-#ifndef HOMEKIT_LIGHT_BULB_H
-#define HOMEKIT_LIGHT_BULB_H
+#ifndef HOMEKIT_WINDOW_COVERING_H
+#define HOMEKIT_WINDOW_COVERING_H
 
 #if defined __cplusplus
 extern "C" {
@@ -51,8 +51,8 @@ extern "C" {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile * psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel);
-teHapStatus eLightBulbProfileRelease(tsProfile *psProfile);
+tsProfile * psWindowCoveringProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel);
+teHapStatus eWindowCoveringProfileRelease(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

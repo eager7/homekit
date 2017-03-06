@@ -28,6 +28,7 @@
 #include "tlv.h"
 #include "bonjour.h"
 #include <sodium.h>
+#include <profile.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -803,51 +804,57 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     eTlvPackageRelease(psTlvInMsg);
     return E_HAP_STATUS_OK;
 }
-teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **psResp, uint16 *pu16Len)
+teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len)
 {
     CHECK_POINTER(psData, E_HAP_STATUS_ERROR);
-    CHECK_POINTER(psResp, E_HAP_STATUS_ERROR);
+    CHECK_POINTER(ppsResp, E_HAP_STATUS_ERROR);
     CHECK_POINTER(pu16Len, E_HAP_STATUS_ERROR);
 
     DBG_vPrintln(DBG_PAIR, "eHandleAccessoryPackage:%s\n", psData);
 
-    if (strstr((char*)psData, "/accessories")) {
+    if (strstr((char*)psData, "/accessories"))
+    {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_PAIR, "Ask for accessories info\n");
         json_object *psJsonRet = psProfile->psGetAccessoryInfo(psProfile->psAccessory);
         *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
-                                 (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
+                                 (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), ppsResp);
         json_object_put(psJsonRet);
-        DBG_vPrintln(DBG_PAIR, "Accessory Info:\n%s", *psResp);
-    } else if(strstr((char*)psData, "/characteristics")) {
+        DBG_vPrintln(DBG_PAIR, "Accessory Info:\n%s", *ppsResp);
+    }
+    else if(strstr((char*)psData, "/characteristics"))
+    {
         tsHttpEntry *psHttp = psHttpParser(psData, u16Len);
-        if(strstr((char*)psData, "PUT")){
+        if(strstr((char*)psData, "PUT"))
+        {
             NOT_vPrintln(DBG_PAIR, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
-            *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, "application/hap+json", NULL, 0, psResp);
-
-        } else if(strstr((char*)psData, "GET")){
+            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psHttp->acContentData, ppsResp, pu16Len);
+            DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", *ppsResp);
+        }
+        else if(strstr((char*)psData, "GET"))
+        {
             WAR_vPrintln(DBG_PAIR, "Reading Characteristics Attribute\n");
             json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory);
             *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
-                                     (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), psResp);
+                                     (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), ppsResp);
             json_object_put(psJsonRet);
+            DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", *ppsResp);
         }
         FREE(psHttp);
-    } else if(strstr((char*)psData, "/pairings")){
+    }
+    else if(strstr((char*)psData, "/pairings"))
+    {
         NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove Pairing");
-        eHandlePairingRemove(psData, u16Len, psResp, pu16Len);
+        eHandlePairingRemove(psData, u16Len, ppsResp, pu16Len);
     }
 
     return E_HAP_STATUS_OK;
 }
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
-                                    tsBonjour *psBonjour)
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile, tsBonjour *psBonjour)
 {
     DBG_vPrintln(DBG_PAIR, "Successfully Connect:[%llu][%llu]\n", psSocket->u64NumberReceive, psSocket->u64NumberSend);
 
-    uint8 auHttpData[MABF] = {0};
-    memset(auHttpData, 0, sizeof(auHttpData));
-
+    uint8 auHttpData[MMBF] = {0};
     uint16 u16MsgLen = 0;
     if(E_HAP_STATUS_OK != eDecryptedMessageWithLen(psBuffer, u16Len, psSocket->auControllerToAccessoryKey,
                                                    (uint8*)&psSocket->u64NumberReceive, auHttpData, &u16MsgLen)){
@@ -862,12 +869,12 @@ teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *ps
         WAR_vPrintln(T_TRUE, "Null psRetData");
         return E_HAP_STATUS_ERROR;
     }
-
     uint16 u16SendLen = 0;
+    memset(auHttpData, 0, sizeof(auHttpData));
     eEncryptedMessageWithLen(psRetData, u16RetLen, psSocket->auAccessoryToControllerKey,
                               (uint8_t *)&psSocket->u64NumberSend, auHttpData, &u16SendLen);
+    FREE(psRetData);
     send(psSocket->iSocketFd, auHttpData, u16SendLen, 0);
-
     psSocket->u64NumberSend++;
 
     return E_HAP_STATUS_OK;

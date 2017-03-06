@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <profile.h>
 #include "light_bulb.h"
+#include "window_covering.h"
 #include "bonjour.h"
 
 volatile sig_atomic_t bRunning = 1;
@@ -55,7 +56,7 @@ int poly1305_power_on_self_test() {
 }
 #endif
 
-#define NAME "Dimmr Light"
+#define NAME "WindowCovering"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
@@ -64,14 +65,14 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    tsProfile *psLightBulb = psLightBulbProfileInit(NAME, 0x221034235130, "12345678", "TopBand", "Light");
-    CHECK_RESULT(eBonjourInit(psLightBulb, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
+    tsProfile *psWindowCovering = psWindowCoveringProfileInit(NAME, 0x221034235131, "12345678", "TopBand", "Light");
+    CHECK_RESULT(eBonjourInit(psWindowCovering, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);
     }
-    eBonjourFinished(psLightBulb);
-    eLightBulbProfileRelease(psLightBulb);
+    eBonjourFinished(psWindowCovering);
+    eWindowCoveringProfileRelease(psWindowCovering);
 
     return 0;
 }

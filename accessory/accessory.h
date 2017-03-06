@@ -33,6 +33,9 @@ extern "C" {
 #define MAX_SERVICES_NUM 100
 #define MAX_CHARACTERISTICS_NUM 100
 #define LEN_DEVICE_ID 17
+
+#define UUID_SERVICE_CHARACTER (u64UUID_SERVICES++)
+#define UUID_ACCESSORY (u64UUID_ACCESSORY++)
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -54,7 +57,7 @@ typedef enum {
     E_UNIT_NULL,        /* no this option */
     E_UNIT_CELSIUS,     /* JsonFormat:celsius, The unit is only "degrees Celsius" */
     E_UNIT_PERCENTAGE,  /* JsonFormat:percentage, The unit is in percentage "%" */
-    E_UNIT_ARCDEGREES,  /* JsonFormat:arcdegrees, The unit is in arc degrees */
+    E_UNIT_ARC_DEGREES,  /* JsonFormat:arc degrees, The unit is in arc degrees */
     E_UNIT_LUX,         /* JsonFormat:lux, The unit is in lux. */
     E_UNIT_SECONDS,     /* JsonFormat:seconds, The unit is in seconds. */
 } teUnitType;
@@ -71,14 +74,15 @@ typedef enum {
 typedef union {
     bool_t  bData;
     int     iData;
+    uint8   u8Data;
+    uint16  u16Data;
+    uint32  u32Data;
+    uint64  u64Data;
     float   fData;
     char    *psData;
 } tuChartValue;
 
-typedef union {
-    int     iValue;
-    float   fValue;
-} tuThreshold;
+typedef tuChartValue tuThreshold;
 
 typedef struct {
     bool_t bEnable;
@@ -135,7 +139,7 @@ typedef struct _tsService{
 typedef struct{
     uint64                  u64AIDs;        //Accessory Instance Id, json-aid
     uint64                  u64DeviceID;    //The unique id of the accessory
-    teAccessoryType         eAccessoryType;
+    teAccessoryCategories   eAccessoryType;
     uint8                   u8NumServices;
     tsService               *psService;     //json-services
 } tsAccessory;
@@ -151,6 +155,8 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+extern uint64 u64UUID_SERVICES;
+extern uint64 u64UUID_ACCESSORY;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -175,7 +181,7 @@ typedef struct {
 ** Author       : PCT
 *****************************************************************************/
 tsAccessory *psAccessoryGenerate(const char *psName, uint64 u64DeviceID, const char *psSerialNumber,
-                                 const char *psManufacturer, const char *psModel, teAccessoryType eType);
+                                 const char *psManufacturer, const char *psModel, teAccessoryCategories eType);
 /*****************************************************************************
 ** Prototype    : eAccessoryRelease
 ** Description  : free the memory allocated by psAccessoryNew
@@ -188,6 +194,12 @@ tsAccessory *psAccessoryGenerate(const char *psName, uint64 u64DeviceID, const c
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
+
+teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
+
+teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
+
+teHapStatus eAccessoryGetCharacter(tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID, tsCharacteristic **ppCharacter);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

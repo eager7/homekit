@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(homekit)
+SET(TARGET window_covering)
 
 SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
@@ -18,7 +19,7 @@ link_directories(./lib)
 
 set(SOURCE_FILES  main.c
         accessory/accessory.c
-        profiles/light_bulb.c
+        profiles/light_bulb.c profiles/window_covering.c
         hap/bonjour.c hap/mthread.c hap/http_handle.c hap/ip.c hap/pairing.c hap/tlv.c hap/list.c
         rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha_m.c
         Chacha20/chacha20_simple.c
@@ -32,8 +33,8 @@ add_library(libsrp.a STATIC
         srp/t_math.c  srp/t_misc.c  srp/t_pw.c  srp/t_read.c  srp/t_truerand.c
         )
 
-add_executable(light_bulb ${SOURCE_FILES} )
-target_link_libraries(light_bulb
+add_executable(${TARGET} ${SOURCE_FILES} )
+target_link_libraries(${TARGET}
         -lpthread -ldns_sd -lssl -lcrypto -ljson-c
         -lsodium libsrp.a
         )

@@ -76,7 +76,7 @@ typedef struct {
     /* sf---Status flags, Value should be an unsigned integer. Required if non-zero */
     uint8   u8StatusFlag;
     /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory,This must have a range of 1-65535.  */
-    teAccessoryType  eAccessoryCategoryID;
+    teAccessoryCategories  eAccessoryCategoryID;
 } tsBonjourText;
 
 typedef teBonjStatus (*feBonjourUpdate)();
