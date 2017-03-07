@@ -271,8 +271,7 @@ teThreadStatus eLockunLock(pthread_mutex_t *psLock)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 teThreadStatus eQueueCreate(tsQueue *psQueue, uint32 u32Length)
 {
-    psQueue->apvBuffer = malloc(sizeof(void *) * u32Length);
-    memset(psQueue->apvBuffer, 0, sizeof(void *) * u32Length);
+    psQueue->apvBuffer = calloc(sizeof(void *), u32Length);
     if (!psQueue->apvBuffer){
         return E_THREAD_ERROR_NO_MEM;
     }

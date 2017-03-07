@@ -144,9 +144,8 @@ static teTlvStatus eTlvMessageGetData(tsTlvMessage *psTlvMsg, uint8 **psBuffer, 
 tsTlvPackage *psTlvPackageGenerate()
 {
     tsTlvPackage *psTlvPackage = NULL;
-    psTlvPackage = (tsTlvPackage*)malloc(sizeof(tsTlvPackage));
+    psTlvPackage = (tsTlvPackage*)calloc(1, sizeof(tsTlvPackage));
     CHECK_POINTER(psTlvPackage,NULL);
-    memset(psTlvPackage, 0, sizeof(tsTlvPackage));
     psTlvPackage->psTlvRecordGetData    = pu8TlvRecordGetData;
     psTlvPackage->pu16TlvRecordGetLen   = u16TlvRecordGetLen;
     psTlvPackage->efTlvMessageAddRecord = eTlvMessageAddRecord;

@@ -47,9 +47,8 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len)
 {
     INF_vPrintln(1, "--------Http Parser Package[%d]--------", u16Len);
 
-    tsHttpEntry *psHttpEntry = (tsHttpEntry*)malloc(sizeof(tsHttpEntry));
+    tsHttpEntry *psHttpEntry = (tsHttpEntry*)calloc(1, sizeof(tsHttpEntry));
     CHECK_POINTER(psHttpEntry, NULL);
-    memset(psHttpEntry, 0, sizeof(tsHttpEntry));
 
     int iNumber = 0,  iLen = 0;
     size_t offset = 0;
@@ -106,8 +105,7 @@ uint16 u16HttpFormat(teHttpCode eStatus, const char *psType, const uint8 *pBuffe
     int iLen = snprintf(temp, 256, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
     INF_vPrintln(DBG_HTTP, "Http Response:\n%s", temp);
     PrintArray(DBG_HTTP, pBuffer, u16Length);
-    uint8 *psBuffer = (uint8*)malloc((size_t)(iLen + u16Length));
-    memset(psBuffer, 0, (size_t)(iLen + u16Length));
+    uint8 *psBuffer = (uint8*)calloc(1, (size_t)(iLen + u16Length));
     snprintf((char*)psBuffer, (size_t)iLen+1, "HTTP/1.1 %d OK\r\nContent-Type: %s\r\nContent-Length: %u\r\n\r\n", eStatus, psType, u16Length);
     memcpy(&psBuffer[iLen], pBuffer, u16Length);
     *ppResponse = psBuffer;

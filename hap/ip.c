@@ -57,9 +57,8 @@ static uint16 u16IpGetBinaryData()
 /****************************************************************************/
 tsIpMessage *psIpResponseNew()
 {
-    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
+    tsIpMessage *psIpMsg = (tsIpMessage*)calloc(1, sizeof(tsIpMessage));
     CHECK_POINTER(psIpMsg, NULL);
-    memset(psIpMsg, 0, sizeof(tsIpMessage));
     psIpMsg->psTlvPackage = psTlvPackageGenerate();
     if(psIpMsg->psTlvPackage == NULL){
         FREE(psIpMsg); return NULL;
@@ -69,9 +68,8 @@ tsIpMessage *psIpResponseNew()
 
 tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len)
 {
-    tsIpMessage *psIpMsg = (tsIpMessage*)malloc(sizeof(tsIpMessage));
+    tsIpMessage *psIpMsg = (tsIpMessage*)calloc(1, sizeof(tsIpMessage));
     CHECK_POINTER(psIpMsg, NULL);
-    memset(psIpMsg, 0, sizeof(tsIpMessage));
     psIpMsg->psHttp = psHttpParser(psBuffer, u16Len);
     psIpMsg->psTlvPackage = psTlvPackageParser(psIpMsg->psHttp->acContentData, psIpMsg->psHttp->u16ContentLen);
     if(psIpMsg->psTlvPackage == NULL){

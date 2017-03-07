@@ -290,9 +290,8 @@ tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNum
                              char *psModel, teAccessoryCategories eType, fpeInitCategory fsInitCategory,
                              fpeSetCharacteristicInfo fsCallBack)
 {
-    tsProfile *psProfile = (tsProfile*)malloc(sizeof(tsProfile));
+    tsProfile *psProfile = (tsProfile*)calloc(1, sizeof(tsProfile));
     CHECK_POINTER(psProfile, NULL);
-    memset(psProfile, 0, sizeof(tsProfile));
     psProfile->psGetAccessoryInfo = psGetAccessoryInfo;
     psProfile->psGetCharacteristicInfo = psGetCharacteristicInfo;
     psProfile->peSetCharacteristicInfo = fsCallBack;
