@@ -36,5 +36,5 @@ add_library(libsrp.a STATIC
 add_executable(${TARGET} ${SOURCE_FILES} )
 target_link_libraries(${TARGET}
         -lpthread -ldns_sd -lssl -lcrypto -ljson-c
-        -lsodium libsrp.a
+        libsrp.a
         )
