@@ -8,7 +8,6 @@ SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -m32")
 include_directories(include accessory profiles hap
-        include/sodium
         rfc6234-master
         srp
         Chacha20 poly1305-opt-master ed25519-donna
