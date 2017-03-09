@@ -324,15 +324,16 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
 
     sBonjour.sBonjourThread.pvThreadData = psProfile;
-    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sBonjourThread, E_THREAD_DETACHED), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
+    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sBonjourThread, E_THREAD_JOINABLE), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
 
     return E_BONJOUR_STATUS_OK;
 }
 
 teBonjStatus eBonjourFinished(tsProfile *psProfile)
 {
-    if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     eThreadStop(&sBonjour.sBonjourThread);
+    SRP_finalize_library();
+    if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     ePairingFinished();
     return E_BONJOUR_STATUS_OK;
 }

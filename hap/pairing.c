@@ -300,7 +300,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SALT,auSaltChar,16,psTlvRespMessage);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,(uint8*)pPublicKey->data,(uint16)pPublicKey->length,psTlvRespMessage);
-
+    FREE(pPublicKey);
 Finished:
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,psTlvRespMessage);
 
@@ -352,7 +352,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
     cstr *psRespProof = NULL;
     SRP_respond(sPairSetup.pSrp, &psRespProof);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PROOF, (uint8*)psRespProof->data, (uint16)psRespProof->length, psTlvRespMessage);
-
+    FREE(psRespProof);
     /* 4. Generate the MFi challenge, MFiChallenge, from the SRP shared secret by using HKDF-SHA-512 */
     /* 5. Derive the MFi Challenge Data, MFiChallengeData, by SHA-1 hashing the MFiChallenge */
     /* 6. Generate the MFi proof, MFiProof, by performing challenge-response generation with the Apple Authentication Coprocessor */
@@ -741,6 +741,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
                 eLockunLock(&sPairSetup.mutex);
                 SRP_free(sPairSetup.pSrp);
                 psBonjour->eBonjourUpdate();
+                eIpMessageRelease(psIpMsg);
                 return E_HAP_STATUS_OK;
             }
             default:
@@ -769,6 +770,7 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, t
             case E_PAIR_VERIFY_M3_FINISHED_REQUEST:{
                 NOT_vPrintln(DBG_PAIR, "E_PAIR_VERIFY_M3_FINISHED_REQUEST\n");
                 eM4VerifyFinishResponse(psSocketFd, psIpMsg);
+                eIpMessageRelease(psIpMsg);
                 return E_HAP_STATUS_OK;
             }break;
         }
