@@ -17,7 +17,7 @@ include_directories(/usr/include/sys)
 link_directories(./lib)
 
 set(SOURCE_FILES  main.c
-        accessory/accessory.c 
+        accessory/accessory.c
         profiles/light_bulb.c profiles/window_covering.c
         hap/bonjour.c hap/mthread.c hap/http_handle.c hap/ip.c hap/pairing.c hap/tlv.c hap/list.c
         rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha_m.c
