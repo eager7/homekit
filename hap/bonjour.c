@@ -200,11 +200,11 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
         int iResult = select(iListenFD + 1, &fdTemp, NULL, NULL, NULL);
         switch(iResult) {
             case 0:
-                DBG_vPrintln(DBG_BONJOUR, "receive message time out \n");
+                WAR_vPrintln(DBG_BONJOUR, "receive message time out \n");
                 break;
 
             case -1:
-                WAR_vPrintln(T_TRUE, "receive message error:%s \n", strerror(errno));
+                WAR_vPrintln(DBG_BONJOUR, "receive message error:%s \n", strerror(errno));
                 sleep(1);
                 break;
 
