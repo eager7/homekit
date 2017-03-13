@@ -11,7 +11,16 @@ HomeKit 协议栈
 sudo apt-get install libssl-dev libjson-c-dev libavahi-compat-libdnssd-dev
 ```
 此外还需支持Bonjour服务，需要安装mDNSResponser
-这个软件包需要在苹果官网上下载，可以使用最新的98版本。
+编译方式如下。
+
+##### mDNSResponser编译
+下载软件包解压，然后编译并安装：
+```
+tar -xvf mDNSResponder-98.tar.gz
+cd mDNSResponder-98/mDNSPosix/
+make os=linux
+sudo make os=linux install
+```
 
 #### 编译
 使用CMakeList.txt进行编译，在homekit目录下创建一个编译目录，然后运行cmake：
