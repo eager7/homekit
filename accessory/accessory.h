@@ -126,7 +126,7 @@ typedef struct {
 } tsCharacteristic;
 
 typedef struct _tsService{
-    teServiceType      eType;                 //JsonFormat:type
+    teServiceType      eType;                   //JsonFormat:type
     uint64             u64IID;                  //JsonFormat:iid
     uint8              u8NumCharacteristics;
     tsCharacteristic   *psCharacteristics;      //JsonFormat:characteristics

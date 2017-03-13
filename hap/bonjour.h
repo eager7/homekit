@@ -28,12 +28,13 @@ extern "C" {
 #include "accessory.h"
 #include "mthread.h"
 #include <dns_sd.h>
+#include "list.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
 #define BONJOUR_SERVER_TYPE "_hap._tcp."
 
-#define ACCESSORY_SERVER_LISTEN 5
+#define ACCESSORY_SERVER_LISTEN 8
 #define MAX_NUMBER_CLIENT 8
 /****************************************************************************/
 /***        Type Definitions                                              ***/
@@ -104,6 +105,7 @@ typedef struct {
     uint64 u64NumberSend;
     uint8  auControllerToAccessoryKey[32];
     uint8  auAccessoryToControllerKey[32];
+    struct dl_list list;
 } tsSocket;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
