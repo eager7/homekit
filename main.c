@@ -65,7 +65,7 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    tsProfile *psWindowCovering = psWindowCoveringProfileInit(NAME, 0x221034235131, "12345678", "TopBand", "Light");
+    tsProfile *psWindowCovering = psWindowCoveringProfileInit(NAME, 0x221034235134, "12345678", "TopBand", "Light");
     CHECK_RESULT(eBonjourInit(psWindowCovering, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){

@@ -149,8 +149,8 @@ tsAccessory *psAccessoryGenerate(const char *psName, uint64 u64DeviceID, const c
     DBG_vPrintln(DBG_ACC, "New accessory:%s type:%d", psName, eType);
     tsAccessory *psAccessory = (tsAccessory*)calloc(1, sizeof(tsAccessory));
     CHECK_POINTER(psAccessory, NULL);
-    //psAccessory->u64AIDs = UUID_ACCESSORY;
-    psAccessory->u64AIDs = u64DeviceID;
+    psAccessory->u64AIDs = UUID_ACCESSORY;
+    //psAccessory->u64AIDs = u64DeviceID;
     psAccessory->u64DeviceID = u64DeviceID;
     psAccessory->eAccessoryType = eType;
     eAccessoryInformationInit(psAccessory, psName, psSerialNumber, psManufacturer, psModel);

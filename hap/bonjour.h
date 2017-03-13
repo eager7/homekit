@@ -55,28 +55,28 @@ typedef enum {
 } teStatusFlag;
 
 typedef struct {
-    /* c#---Current configuration number,
+    /* c#:Current configuration number,
      * Must update when an accessory, service, or characteristic is added or removed on the accessory server.
      * Accessories must increment the config number after a firmware update.
      * This must have a range of 1-4294967295 and wrap to 1 when it overflows.*/
     uint64  u64CurrentCfgNumber;
-    /* ff---Feature flags (e.g. "0x3" for bits 0 and 1). Required if non-zero */
+    /* ff:Feature flags (e.g. "0x3" for bits 0 and 1). Required if non-zero */
     uint8   u8FeatureFlag;
-    /* id---Device ID of the accessory.The Device ID must be formatted as XX:XX:XX:XX:XX:XX,This value is also used as the accessory's Pairing Identifier. */
+    /* id:Device ID of the accessory.The Device ID must be formatted as XX:XX:XX:XX:XX:XX,This value is also used as the accessory's Pairing Identifier. */
     uint64  u64DeviceID;
     uint8    psDeviceID[17]; /* Store XX:XX:XX:XX:XX:XX */
-    /* md---Model name of the accessory, e.g."Device1,1" */
+    /* md:Model name of the accessory, e.g."Device1,1" */
     char    *psModelName;
-    /* pv---Protocol version string <major>.<minor>, Required if value is not "1.0".
+    /* pv:Protocol version string <major>.<minor>, Required if value is not "1.0".
      * The client should check this before displaying an accessory to the user.
      * If the major version is greater than the major version the client software was built to support,
      * it should hide the accessory from the user. */
     uint8    auProtocolVersion[2];
-    /* s#---Current state number, This must have a value of "1" */
+    /* s#:Current state number, This must have a value of "1" */
     uint32  u32CurrentStaNumber;
-    /* sf---Status flags, Value should be an unsigned integer. Required if non-zero */
+    /* sf:Status flags, Value should be an unsigned integer. Required if non-zero */
     uint8   u8StatusFlag;
-    /* ci---Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory,This must have a range of 1-65535.  */
+    /* ci:Accessory Category Identifier. Required. Indicates the category that best describes the primary function of the accessory,This must have a range of 1-65535.  */
     teAccessoryCategories  eAccessoryCategoryID;
 } tsBonjourText;
 

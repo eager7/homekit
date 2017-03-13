@@ -66,8 +66,8 @@ typedef enum {
     E_TLV_ERROR_UNKNOW              = 0x01,
     E_TLV_ERROR_AUTHENTICATION      = 0x02,
     E_TLV_ERROR_BACKOFF             = 0x03,
-    E_TLV_ERROR_MAX_PEERS            = 0x04,
-    E_TLV_ERROR_MAX_TRIES            = 0x05,
+    E_TLV_ERROR_MAX_PEERS           = 0x04,
+    E_TLV_ERROR_MAX_TRIES           = 0x05,
     E_TLV_ERROR_UNAVAILABLE         = 0x06,
     E_TLV_ERROR_BUSY                = 0x07,
 } teTlvError;

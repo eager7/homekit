@@ -57,7 +57,7 @@ typedef enum {
     E_HAP_STATUS_CODE_NOT_EXIST                = -70409,
     E_HAP_STATUS_CODE_INVALID_VALUE_TO_WRITE   = -70410,
     E_HAP_STATUS_CODE_INSUFFICIENT_AUTHORIZATION = -70411,
-} teHapCode;
+} teHapCode;  /* json:status */
 
 typedef enum {
     E_HAP_TYPE_UNKNOWN              = 0,

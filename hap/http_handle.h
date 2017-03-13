@@ -28,21 +28,29 @@ extern "C" {
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define HTTP_URL_PAIR_SETUP "/pair-setup"
-#define HTTP_URL_PAIR_VERIFY "/pair-verify"
-#define HTTP_URL_PAIRINGS "/pairings"
+#define HTTP_URL_PAIR_SETUP     "/pair-setup"
+#define HTTP_URL_PAIR_VERIFY    "/pair-verify"
+#define HTTP_URL_PAIRINGS       "/pairings"
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
+    /* Successful HTTP Status Codes */
     E_HTTP_STATUS_SUCCESS_OK                        = 200,
     E_HTTP_STATUS_SUCCESS_NO_CONTENT                = 204,
     E_HTTP_STATUS_SUCCESS_MULTI_STATUS              = 207,
+
+    /* Client Error HTTP Status Codes */
     E_HTTP_STATUS_BAD_REQUEST                       = 400,
+    E_HTTP_STATUS_NOT_FOUND                         = 404,
+    E_HTTP_STATUS_UNPROCESSABLE_ENTITY              = 422,
     E_HTTP_STATUS_METHOD_NOT_ALLOWED                = 405,
     E_HTTP_STATUS_TOO_MANY_REQUESTS                 = 429,
     E_HTTP_STATUS_CONNECTION_AUTHORIZATION_REQUIRED = 470,
+
+    /* Server Error Status HTTP Codes */
     E_HTTP_STATUS_INTERNAL_SERVER_ERROR             = 500,
+    E_HTTP_STATUS_SERVER_UNAVAILABLE                = 503,
 } teHttpCode;
 
 typedef enum {

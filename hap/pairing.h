@@ -49,25 +49,25 @@ typedef enum {
 } tePairStatus;
 
 typedef enum {
-    E_PARIING_REMOVE_M1_REMOVE_PAIRING_REQUEST = 0x01,
+    E_PARIING_REMOVE_M1_REMOVE_PAIRING_REQUEST  = 0x01,
     E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE = 0x02,
 } tePairingRemove;
 
 typedef enum {
-    E_PAIR_SETUP_SRP_START_NULL         = 0x00,
-    E_PAIR_SETUP_M1_SRP_START_REQUEST      = 0x01,
-    E_PAIR_SETUP_M2_SRP_START_RESPONSE     = 0x02,
-    E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST     = 0x03,
-    E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE    = 0x04,
-    E_PAIR_SETUP_M5_EXCHANGE_REQUEST       = 0x05,
-    E_PAIR_SETUP_M6_EXCHANGE_RESPONSE      = 0x06,
+    E_PAIR_SETUP_SRP_START_NULL             = 0x00,
+    E_PAIR_SETUP_M1_SRP_START_REQUEST       = 0x01,
+    E_PAIR_SETUP_M2_SRP_START_RESPONSE      = 0x02,
+    E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST      = 0x03,
+    E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE     = 0x04,
+    E_PAIR_SETUP_M5_EXCHANGE_REQUEST        = 0x05,
+    E_PAIR_SETUP_M6_EXCHANGE_RESPONSE       = 0x06,
 } tePairSetup;
 
 typedef enum {
-    E_PAIR_VERIFY_M1_START_REQUEST  = 0x01,
-    E_PAIR_VERIFY_M2_START_RESPONSE = 0x02,
-    E_PAIR_VERIFY_M3_FINISHED_REQUEST = 0x03,
-    E_PAIR_VERIFY_M4_FINISHED_RESPONSE = 0x04,
+    E_PAIR_VERIFY_M1_START_REQUEST          = 0x01,
+    E_PAIR_VERIFY_M2_START_RESPONSE         = 0x02,
+    E_PAIR_VERIFY_M3_FINISHED_REQUEST       = 0x03,
+    E_PAIR_VERIFY_M4_FINISHED_RESPONSE      = 0x04,
 } tePairVerify;
 
 typedef struct {
@@ -97,7 +97,6 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-extern tePairSetup ePair;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -110,9 +109,7 @@ teHapStatus ePairingFinished();
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile,
-                                    tsBonjour *psBonjour);
-
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile, tsBonjour *psBonjour);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
