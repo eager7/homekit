@@ -256,7 +256,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
         ERR_vPrintln(T_TRUE, " the accessory has received more than 100 unsuccessful authentication attempts");
         sPairSetup.u8MaxTries++;
         eStatus = E_PAIRING_STATUS_ERROR;
-        value_err[0] = E_TLV_ERROR_MAXTRIES;
+        value_err[0] = E_TLV_ERROR_MAX_TRIES;
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
         goto Finished;
     }

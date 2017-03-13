@@ -63,22 +63,22 @@ typedef enum {
 } teTlvValue;
 
 typedef enum {
-    E_TLV_ERROR_UNKNOW          = 0x01,
-    E_TLV_ERROR_AUTHENTICATION  = 0x02,
-    E_TLV_ERROR_BACKOFF         = 0x03,
-    E_TLV_ERROR_MAXPEERS        = 0x04,
-    E_TLV_ERROR_MAXTRIES        = 0x05,
-    E_TLV_ERROR_UNAVAILABLE     = 0x06,
-    E_TLV_ERROR_BUSY            = 0x07,
+    E_TLV_ERROR_UNKNOW              = 0x01,
+    E_TLV_ERROR_AUTHENTICATION      = 0x02,
+    E_TLV_ERROR_BACKOFF             = 0x03,
+    E_TLV_ERROR_MAX_PEERS            = 0x04,
+    E_TLV_ERROR_MAX_TRIES            = 0x05,
+    E_TLV_ERROR_UNAVAILABLE         = 0x06,
+    E_TLV_ERROR_BUSY                = 0x07,
 } teTlvError;
 
 typedef enum {
-    E_TLV_METHOD_RESERVED = 0x00,
-    E_TLV_METHOD_PAIR_SETUP = 0x01,
-    E_TLV_METHOD_PAIR_VERIFY = 0x02,
-    E_TLV_METHOD_ADD_PAIRING = 0x03,
-    E_TLV_METHOD_REMOVE_PAIRING = 0x04,
-    E_TLV_METHOD_LIST_PAIRING = 0x05,
+    E_TLV_METHOD_RESERVED           = 0x00,
+    E_TLV_METHOD_PAIR_SETUP         = 0x01,
+    E_TLV_METHOD_PAIR_VERIFY        = 0x02,
+    E_TLV_METHOD_ADD_PAIRING        = 0x03,
+    E_TLV_METHOD_REMOVE_PAIRING     = 0x04,
+    E_TLV_METHOD_LIST_PAIRING       = 0x05,
 } teTlvMethod;
 
 typedef struct {
