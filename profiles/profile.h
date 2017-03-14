@@ -33,22 +33,11 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef enum {
-    E_PROFILE_CMD_LIGHT_BULB_ON,
-    E_PROFILE_CMD_LIGHT_BULB_OFF,
-} teProfileCmd;
-
-typedef teHapStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
 typedef teHapStatus (*feHandleRequest)(tsCharacteristic *psCharacter, json_object *psJson);
 typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleRequest fCallback);
 typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
 typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd);
-
-typedef struct {
-    teProfileCmd eProfileCmd;
-    fpeHandleFunc peHandleFunc;
-} tsProfileHandle;
 
 typedef struct {
     tsAccessory                 *psAccessory;

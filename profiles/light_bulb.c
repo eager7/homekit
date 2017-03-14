@@ -19,13 +19,12 @@
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
+#include <accessory.h>
 #include "light_bulb.h"
-#include "profile.h"
-
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_WINDOW_COVER (1)
+#define DBG_LIGHT (1)
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -33,47 +32,18 @@
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
-static teHapStatus eLightBulbOn(tsAccessory *psAccessory);
-static teHapStatus eLightBulbOff(tsAccessory *psAccessory);
-static teHapStatus eLightBulbHandle(tsAccessory *psAccessory, teProfileCmd eProfileCmd);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-
-
-tsProfileHandle sLightBulbHandle[] = {
-        {E_PROFILE_CMD_LIGHT_BULB_ON, eLightBulbOn},
-        {E_PROFILE_CMD_LIGHT_BULB_OFF, eLightBulbOff},
-};
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static teHapStatus eLightBulbHandle(tsAccessory *psAccessory, teProfileCmd eProfileCmd)
-{
-    for(int i = 0; i < sizeof(sLightBulbHandle)/sizeof(tsProfileHandle); i++){
-        if((sLightBulbHandle[i].eProfileCmd == eProfileCmd)&&(sLightBulbHandle[i].peHandleFunc != NULL)){
-            return sLightBulbHandle[i].peHandleFunc(psAccessory);
-        }
-    }
-    return E_HAP_STATUS_ERROR;
-}
-
-static teHapStatus eLightBulbOn(tsAccessory *psAccessory)
-{
-    DBG_vPrintln(DBG_WINDOW_COVER, "eLightBulbOn");
-    return E_HAP_STATUS_OK;
-}
-static teHapStatus eLightBulbOff(tsAccessory *psAccessory)
-{
-    DBG_vPrintln(DBG_WINDOW_COVER, "eLightBulbOff");
-    return E_HAP_STATUS_OK;
-}
 static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 {
-    DBG_vPrintln(DBG_WINDOW_COVER, "eAccessoryLightBulbInit");
+    DBG_vPrintln(DBG_LIGHT, "eAccessoryLightBulbInit");
     tsService *psService = NULL;
     eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID_SERVICE_CHARACTER, &psService);
 
@@ -135,6 +105,15 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
+static teHapStatus eLightBulbHandle(tsCharacteristic *psCharacter, json_object *psJson)
+{
+    if(psCharacter->eType == E_CHARACTERISTIC_ON){
+        NOT_vPrintln(DBG_LIGHT, "Turn On/Off Bulb Light:%d", json_object_get_int(psJson));
+    } else if(psCharacter->eType == E_CHARACTERISTIC_BRIGHTNESS){
+        NOT_vPrintln(DBG_LIGHT, "Set Bulb Light Level:%d", json_object_get_int(psJson));
+    }
+    return E_HAP_STATUS_OK;
+}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -142,7 +121,7 @@ static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 tsProfile *psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_LIGHT_BULB, eAccessoryLightBulbInit, NULL);
+                                             E_HAP_TYPE_LIGHT_BULB, eAccessoryLightBulbInit, eLightBulbHandle);
     return psProfile;
 }
 
