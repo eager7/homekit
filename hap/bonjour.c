@@ -216,7 +216,6 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 
             case -1:
                 WAR_vPrintln(DBG_BONJOUR, "receive message error:%s \n", strerror(errno));
-                sleep(1);
                 break;
 
             default: {
@@ -303,8 +302,9 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = psProfile->psAccessory->u64DeviceID;
-    tsCharacteristic *psCharacter = psAccessoryGetCharacterByType(psProfile->psAccessory, psProfile->psAccessory->u64AIDs, E_CHARACTERISTIC_NAME);
-    sBonjour.sBonjourText.psModelName = psCharacter->uValue.psData;
+    sBonjour.sBonjourText.psModelName = psAccessoryGetCharacterByType(psProfile->psAccessory,
+                                                                      psProfile->psAccessory->u64AIDs,
+                                                                      E_CHARACTERISTIC_NAME)->uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32CurrentStaNumber = 4;
