@@ -27,6 +27,7 @@ extern "C" {
 /****************************************************************************/
 #include "utils.h"
 #include "accessory_type.h"
+#include "mthread.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -137,6 +138,7 @@ typedef struct _tsService{
 } tsService;
 
 typedef struct{
+    pthread_mutex_t         mutex;
     uint64                  u64AIDs;        //Accessory Instance Id, json-aid
     uint64                  u64DeviceID;    //The unique id of the accessory
     teAccessoryCategories   eAccessoryType;

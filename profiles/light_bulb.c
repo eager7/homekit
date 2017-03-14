@@ -25,7 +25,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_PROFILE (1)
+#define DBG_WINDOW_COVER (1)
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -63,17 +63,17 @@ static teHapStatus eLightBulbHandle(tsAccessory *psAccessory, teProfileCmd eProf
 
 static teHapStatus eLightBulbOn(tsAccessory *psAccessory)
 {
-    DBG_vPrintln(DBG_PROFILE, "eLightBulbOn");
+    DBG_vPrintln(DBG_WINDOW_COVER, "eLightBulbOn");
     return E_HAP_STATUS_OK;
 }
 static teHapStatus eLightBulbOff(tsAccessory *psAccessory)
 {
-    DBG_vPrintln(DBG_PROFILE, "eLightBulbOff");
+    DBG_vPrintln(DBG_WINDOW_COVER, "eLightBulbOff");
     return E_HAP_STATUS_OK;
 }
 static teHapStatus eAccessoryLightBulbInit(tsAccessory *psAccessory)
 {
-    DBG_vPrintln(DBG_PROFILE, "eAccessoryLightBulbInit");
+    DBG_vPrintln(DBG_WINDOW_COVER, "eAccessoryLightBulbInit");
     tsService *psService = NULL;
     eAccessoryAddService(psAccessory, E_SERVICE_LIGHT_BULB, UUID_SERVICE_CHARACTER, &psService);
 

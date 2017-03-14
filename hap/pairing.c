@@ -19,6 +19,7 @@
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include <chacha20_simple.h>
+#include <profile.h>
 #include "pairing.h"
 #include "poly1305.h"
 #include "hkdf.h"
@@ -812,7 +813,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
 
     DBG_vPrintln(DBG_PAIR, "eHandleAccessoryPackage:%s\n", psData);
 
-    if (strstr((char*)psData, "/accessories"))
+    if (strstr((char*)psData, HTTP_URL_ACCESSORY))
     {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_PAIR, "Ask for accessories info\n");
@@ -822,13 +823,13 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         json_object_put(psJsonRet);
         DBG_vPrintln(DBG_PAIR, "Accessory Info:\n%s", *ppsResp);
     }
-    else if(strstr((char*)psData, "/characteristics"))
+    else if(strstr((char*)psData, HTTP_URL_CHARACTER))
     {
         tsHttpEntry *psHttp = psHttpParser(psData, u16Len);
         if(strstr((char*)psData, "PUT"))
         {
             NOT_vPrintln(DBG_PAIR, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
-            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psHttp->acContentData, ppsResp, pu16Len);
+            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psHttp->acContentData, ppsResp, pu16Len, psProfile->eHandleRequest);
             DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", *ppsResp);
         }
         else if(strstr((char*)psData, "GET"))
@@ -842,7 +843,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         }
         FREE(psHttp);
     }
-    else if(strstr((char*)psData, "/pairings"))
+    else if(strstr((char*)psData, HTTP_URL_PAIRINGS))
     {
         NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove Pairing");
         eHandlePairingRemove(psData, u16Len, ppsResp, pu16Len);

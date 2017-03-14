@@ -40,7 +40,8 @@ typedef enum {
 
 typedef teHapStatus (*fpeHandleFunc)(tsAccessory *psAccessory);
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
-typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len);
+typedef teHapStatus (*feHandleRequest)(tsCharacteristic *psCharacter, json_object *psJson);
+typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleRequest fCallback);
 typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
 typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd);
 
@@ -55,6 +56,7 @@ typedef struct {
     fpsGetAccessoryInfo         psGetAccessoryInfo;
     fpeSetCharacteristicInfo    peSetCharacteristicInfo;
     fpsGetCharacteristicInfo    psGetCharacteristicInfo;
+    feHandleRequest             eHandleRequest;
 } tsProfile;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -70,9 +72,8 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer,
-                             char *psModel, teAccessoryCategories eType, fpeInitCategory fsInitCategory,
-                             fpeSetCharacteristicInfo fsCallBack);
+tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
+                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleRequest eHandleRequest);
 teHapStatus eProfileRelease(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

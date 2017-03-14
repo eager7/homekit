@@ -31,6 +31,8 @@ extern "C" {
 #define HTTP_URL_PAIR_SETUP     "/pair-setup"
 #define HTTP_URL_PAIR_VERIFY    "/pair-verify"
 #define HTTP_URL_PAIRINGS       "/pairings"
+#define HTTP_URL_ACCESSORY      "/accessories"
+#define HTTP_URL_CHARACTER      "/characteristics"
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/

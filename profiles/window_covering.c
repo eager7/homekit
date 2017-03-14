@@ -26,7 +26,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_PROFILE (1)
+#define DBG_WINDOW_COVER (1)
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -47,7 +47,7 @@
 /****************************************************************************/
 static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
 {
-    DBG_vPrintln(DBG_PROFILE, "eAccessoryWindowCoveringInit");
+    DBG_vPrintln(DBG_WINDOW_COVER, "eAccessoryWindowCoveringInit");
     tsService *psService = NULL;
     eAccessoryAddService(psAccessory, E_SERVICE_WINDOW_COVERING, UUID_SERVICE_CHARACTER, &psService);
 
@@ -181,92 +181,12 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
-static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len)
+static teHapStatus eHandleRequest(tsCharacteristic *psCharacter, json_object *psJson)
 {
-    DBG_vPrintln(DBG_PROFILE, "eSetCharacteristicInfo");
-    teHttpCode eHttpCode = E_HTTP_STATUS_SUCCESS_NO_CONTENT;
-    json_object *psJsonResp = json_object_new_object();
-    json_object *psArrayResp = json_object_new_array();
-    json_object *psJsonCmd = json_tokener_parse((const char*)psCmd);
-    if(psJsonCmd == NULL || psJsonResp == NULL){
-        ERR_vPrintln(T_TRUE, "Json Format Error");
-        goto FAILED;
+    if(psCharacter->eType == E_CHARACTERISTIC_TARGET_POSITION){
+        NOT_vPrintln(DBG_WINDOW_COVER, "Set Window Position:%d", json_object_get_int(psJson));
     }
-    json_object *psArrayCmd = NULL;
-    if(!json_object_object_get_ex(psJsonCmd, "characteristics", &psArrayCmd)){
-        ERR_vPrintln(T_TRUE, "Can't Find characteristics");
-        goto FAILED;
-    }
-    int iNum = json_object_array_length(psArrayCmd);
-    for (int i = 0; i < iNum; ++i) {
-        json_object *psJsonCharacter = json_object_array_get_idx(psArrayCmd, i);
-        uint64 u64AID = 0, u64IID = 0;
-        bool_t bEvent;
-        json_object *psJsonAID = NULL, *psJsonIID = NULL, *psJsonEvent = NULL, *psJsonValue = NULL;
-        if(!json_object_object_get_ex(psJsonCharacter, "aid", &psJsonAID)){
-            ERR_vPrintln(T_TRUE, "Can't Find aid");
-            goto FAILED;
-        }
-        u64AID = (uint64)json_object_get_int64(psJsonAID);
-        if(!json_object_object_get_ex(psJsonCharacter, "iid", &psJsonIID)){
-            ERR_vPrintln(T_TRUE, "Can't Find iid");
-            goto FAILED;
-        }
-        u64IID = (uint64)json_object_get_int64(psJsonIID);
-
-        tsCharacteristic *psCharacter = NULL;
-        if(E_HAP_STATUS_ERROR == eAccessoryGetCharacter(psAccessory, u64AID, u64IID, &psCharacter)){
-            ERR_vPrintln(T_TRUE, "Can't Find Character");
-            goto FAILED;
-        }
-        if(json_object_object_get_ex(psJsonCharacter, "ev", &psJsonEvent)){
-            bEvent = (bool_t)json_object_get_boolean(psJsonEvent);
-            DBG_vPrintln(DBG_PROFILE, "event:%d", bEvent);
-        } else if(json_object_object_get_ex(psJsonCharacter, "value", &psJsonValue)){
-            json_object *psJsonRespTemp = json_object_new_object();
-            json_object_object_add(psJsonRespTemp, "aid", json_object_new_int64((int64_t)u64AID));
-            json_object_object_add(psJsonRespTemp, "iid", json_object_new_int64((int64_t)u64IID));
-            if(!(psCharacter->u8Perms & E_PERM_PAIRED_WRITE)){
-                if(iNum > 1){
-                    eHttpCode = E_HTTP_STATUS_SUCCESS_MULTI_STATUS;
-                }
-                json_object_object_add(psJsonRespTemp, "status", json_object_new_int(E_HAP_STATUS_CODE_READ_ONLY));
-                json_object_array_add(psArrayResp, psJsonRespTemp);
-                continue;
-            } else {
-                json_object_object_add(psJsonRespTemp, "status", json_object_new_int(0));
-                json_object_array_add(psArrayResp, psJsonRespTemp);
-            }
-            switch (psCharacter->eFormat){
-                case E_TYPE_INT:    psCharacter->uValue.iData   = json_object_get_int(psJsonValue);
-                case E_TYPE_BOOL:   psCharacter->uValue.bData   = (bool_t)json_object_get_boolean(psJsonValue);
-                case E_TYPE_UINT8:  psCharacter->uValue.u8Data  = (uint8)json_object_get_int(psJsonValue);
-                case E_TYPE_UINT16: psCharacter->uValue.u16Data = (uint16)json_object_get_int(psJsonValue);
-                case E_TYPE_UINT32: psCharacter->uValue.u32Data = (uint32)json_object_get_int(psJsonValue);
-                case E_TYPE_FLOAT:  psCharacter->uValue.fData   = (float)json_object_get_double(psJsonValue);
-                default:break;
-            }
-        }
-    }
-    if(eHttpCode == E_HTTP_STATUS_SUCCESS_MULTI_STATUS){
-        json_object_object_add(psJsonResp, "characteristics", psArrayResp);
-        *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_MULTI_STATUS, "application/hap+json",
-                      (uint8*)json_object_get_string(psJsonResp), (uint16) strlen(json_object_get_string(psJsonResp)), ppsBuffer);
-        json_object_put(psJsonCmd);
-        json_object_put(psJsonResp);
-        return E_HAP_STATUS_OK;
-    }
-    *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, "application/hap+json", NULL, 0, ppsBuffer);
-    json_object_put(psJsonCmd);
-    json_object_put(psArrayResp);
-    json_object_put(psJsonResp);
     return E_HAP_STATUS_OK;
-
-FAILED:
-    json_object_put(psJsonCmd);
-    json_object_put(psArrayResp);
-    json_object_put(psJsonResp);
-    return E_HAP_STATUS_ERROR;
 }
 /****************************************************************************/
 /***        Exported Functions                                            ***/
@@ -275,7 +195,7 @@ FAILED:
 tsProfile *psWindowCoveringProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_WINDOW_COVERING, eAccessoryWindowCoveringInit, eSetCharacteristicInfo);
+                                             E_HAP_TYPE_WINDOW_COVERING, eAccessoryWindowCoveringInit, eHandleRequest);
     return psProfile;
 }
 
