@@ -196,12 +196,62 @@ tsAccessory *psAccessoryGenerate(const char *psName, uint64 u64DeviceID, const c
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eAccessoryRelease(tsAccessory *psAccessory);
+/*****************************************************************************
+** Prototype    : eServiceAddCharacter
+** Description  : add a new character into a service
+** Input        : psService, the service will be operated
+ *                sCharaIn, the character will be inserted
+** Output       : ppCharaOut, the character been inserted
+** Return Value : if success, return E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR
+ * if the character existed, return E_HAP_STATUS_DUPLICATE
 
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn, tsCharacteristic **ppCharaOut);
+/*****************************************************************************
+** Prototype    : eAccessoryAddService
+** Description  : add a new service into a accessory
+** Input        : psAccessory, the accessory will be operated
+ *                eType, the type of service
+ *                u64IID, the uuid of service
+** Output       : ppsService, the service been inserted
+** Return Value : if success, return E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR
+ * if the character existed, return E_HAP_STATUS_DUPLICATE
 
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, uint64 u64IID, tsService **ppsService);
+/*****************************************************************************
+** Prototype    : psAccessoryGetCharacterByIID
+** Description  : search a character by iid
+** Input        : psAccessory, the accessory will be operated
+ *                u64AID, the uuid of accessory
+ *                u64IID, the uuid of service
+** Output       : none
+** Return Value : if success, return the object's pointer, else return NULL
 
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 tsCharacteristic * psAccessoryGetCharacterByIID(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID);
+/*****************************************************************************
+** Prototype    : psAccessoryGetCharacterByType
+** Description  : search a character by type
+** Input        : psAccessory, the accessory will be operated
+ *                u64AID, the uuid of accessory
+ *                u64IID, the uuid of service
+** Output       : none
+** Return Value : if success, return the object's pointer, else return NULL
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 tsCharacteristic *psAccessoryGetCharacterByType(const tsAccessory *psAccessory, uint64 u64AID, teCharacteristicType eType);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

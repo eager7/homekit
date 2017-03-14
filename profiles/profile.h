@@ -61,6 +61,17 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+/*****************************************************************************
+** Prototype    : psProfileGenerate
+** Description  : malloc a new profile object
+** Input        :
+** Output       : none
+** Return Value : if success, return the object's pointer, else return NULL
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
                              teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleRequest eHandleRequest);
 teHapStatus eProfileRelease(tsProfile *psProfile);

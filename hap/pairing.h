@@ -104,9 +104,53 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+/*****************************************************************************
+** Prototype    : ePairingInit
+** Description  : Initialize pair's structer, create a mutex, initialize the
+ * status of paired
+** Input        : none
+** Output       : none
+** Return Value : none
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus ePairingInit();
 teHapStatus ePairingFinished();
+/*****************************************************************************
+** Prototype    : eHandlePairSetup
+** Description  : Handle the pair setup process, in this function, will read
+ * socket and store a secret key
+** Input        : psBuffer, the first socket buffer read by bonjour program
+ *                iLen, the first socket buffer len read by bonjour program
+ *                iSocketFd, the socket fd
+ *                psBonjour, the bonjour structure
+** Output       : none
+** Return Value : if success, return E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR,
+ * if socket disconnected, return E_HAP_STATUS_SOCKET_ERROR
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour);
+/*****************************************************************************
+** Prototype    : eHandlePairVerify
+** Description  : Handle the pair verify process, in this function, will read
+ * socket and store a session key
+** Input        : psBuffer, the first socket buffer read by bonjour program
+ *                iLen, the first socket buffer len read by bonjour program
+ *                psSocketFd, the socket structure
+ *                psBonjour, the bonjour structure
+** Output       : none
+** Return Value : if success, return E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR,
+ * if socket disconnected, return E_HAP_STATUS_SOCKET_ERROR
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
 teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile, tsBonjour *psBonjour);

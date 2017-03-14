@@ -121,7 +121,33 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
+/*****************************************************************************
+** Prototype    : eBonjourInit
+** Description  : Initialize the bonjour server, pair setup srp, and start a
+ * thread of handle http communication, include pair setup, pair verify,
+ * pairing and so on
+** Input        :
+** Output       : none
+** Return Value : if success, return E_BONJOUR_STATUS_OK, else return
+ * E_BONJOUR_STATUS_ERROR
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
+/*****************************************************************************
+** Prototype    : eBonjourInit
+** Description  : Initialize the bonjour server, and start a thread of handle
+ * http communication
+** Input        :
+** Output       : none
+** Return Value : if success, return E_BONJOUR_STATUS_OK, else return E_BONJOUR_STATUS_ERROR
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teBonjStatus eBonjourFinished();
 /****************************************************************************/
 /***        Local    Functions                                            ***/
