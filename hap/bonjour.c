@@ -21,6 +21,7 @@
 /****************************************************************************/
 #include <time.h>
 #include <profile.h>
+#include <accessory.h>
 #include "bonjour.h"
 #include "pairing.h"
 /****************************************************************************/
@@ -288,7 +289,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel)
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
@@ -302,7 +303,8 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = psProfile->psAccessory->u64DeviceID;
-    sBonjour.sBonjourText.psModelName = psModel;
+    tsCharacteristic *psCharacter = psAccessoryGetCharacterByType(psProfile->psAccessory, psProfile->psAccessory->u64AIDs, E_CHARACTERISTIC_NAME);
+    sBonjour.sBonjourText.psModelName = psCharacter->uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32CurrentStaNumber = 4;

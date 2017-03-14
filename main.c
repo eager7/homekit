@@ -5,6 +5,7 @@
 #include <profile.h>
 #include "light_bulb.h"
 #include "window_covering.h"
+#include "speaker.h"
 #include "bonjour.h"
 
 volatile sig_atomic_t bRunning = 1;
@@ -57,6 +58,7 @@ int poly1305_power_on_self_test() {
 #endif
 
 #define NAME "WindowCovering"
+#define SPEAKER "Speaker"
 int main(void)
 {
     DBG_vPrintln(T_TRUE, "home kit light bulb test");
@@ -65,14 +67,16 @@ int main(void)
     signal(SIGINT,  vQuitSignalHandler);/* Install signal handlers */
     signal(SIGTERM, vQuitSignalHandler);
 
-    tsProfile *psWindowCovering = psWindowCoveringProfileInit(NAME, 0x221034235134, "12345678", "TopBand", "Light");
-    CHECK_RESULT(eBonjourInit(psWindowCovering, "119-76-391", NAME), E_BONJOUR_STATUS_OK, -1);
+    //tsProfile *psProfileDevice = psWindowCoveringProfileInit(NAME, 0x221034235134, "12345678", "TopBand", "Model1.0");
+    tsProfile *psProfileDevice = psSpeakerProfileInit(SPEAKER, 0x221034235134, "12345678", "TopBand", "Model1.0");
+    CHECK_RESULT(eBonjourInit(psProfileDevice, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);
     }
     eBonjourFinished();
-    eWindowCoveringProfileRelease(psWindowCovering);
+    //eWindowCoveringProfileRelease(psProfileDevice);
+    eSpeakerProfileRelease(psProfileDevice);
 
     return 0;
 }

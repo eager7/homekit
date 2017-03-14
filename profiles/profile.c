@@ -239,8 +239,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     while(T_TRUE){
         sscanf(temp_once, "%llu.%llu", &u64AID, &u64IID);
         DBG_vPrintln(DBG_WINDOW_COVER, "temp_once:%s,aid:%llu,iid:%llu\n", temp_once, u64AID, u64IID);
-        tsCharacteristic *psCharacter = NULL;
-        eAccessoryGetCharacter(psAccessory, u64AID, u64IID, &psCharacter);
+        tsCharacteristic *psCharacter = psAccessoryGetCharacterByIID(psAccessory, u64AID, u64IID);
         if((NULL == psCharacter) || !(psCharacter->u8Perms & E_PERM_PAIRED_READ)){
             FREE(psJsonReturn);
             FREE(psArrayCharacter);
@@ -316,8 +315,8 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
         }
         u64IID = (uint64)json_object_get_int64(psJsonIID);
 
-        tsCharacteristic *psCharacter = NULL;
-        if(E_HAP_STATUS_ERROR == eAccessoryGetCharacter(psAccessory, u64AID, u64IID, &psCharacter)){
+        tsCharacteristic *psCharacter = psAccessoryGetCharacterByIID(psAccessory, u64AID, u64IID);
+        if(NULL == psCharacter){
             ERR_vPrintln(T_TRUE, "Can't Find Character");
             goto FAILED;
         }

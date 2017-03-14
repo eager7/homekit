@@ -121,7 +121,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode, char *psModel);
+teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
 teBonjStatus eBonjourFinished();
 /****************************************************************************/
 /***        Local    Functions                                            ***/

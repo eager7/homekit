@@ -43,8 +43,6 @@ static teHapStatus eAccessoryInformationInit(tsAccessory *psAccessory, const cha
 /****************************************************************************/
 uint64 u64UUID_SERVICES = 1;
 uint64 u64UUID_ACCESSORY = 1;
-
-
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -216,16 +214,26 @@ teHapStatus eServiceAddCharacter(tsService *psService, tsCharacteristic sCharaIn
     return E_HAP_STATUS_OK;
 }
 
-teHapStatus eAccessoryGetCharacter(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID,
-                                   tsCharacteristic **ppCharacter)
+tsCharacteristic * psAccessoryGetCharacterByIID(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID)
 {
     for (int i = 0; i < psAccessory->u8NumServices; ++i) {
         for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
             if(psAccessory->psService[i].psCharacteristics[j].u64IID == u64IID){
-                *ppCharacter = &psAccessory->psService[i].psCharacteristics[j];
-                return E_HAP_STATUS_OK;
+                return  &psAccessory->psService[i].psCharacteristics[j];
             }
         }
     }
-    return E_HAP_STATUS_ERROR;
+    return NULL;
+}
+
+tsCharacteristic *psAccessoryGetCharacterByType(const tsAccessory *psAccessory, uint64 u64AID, teCharacteristicType eType)
+{
+    for (int i = 0; i < psAccessory->u8NumServices; ++i) {
+        for (int j = 0; j < psAccessory->psService[i].u8NumCharacteristics; ++j) {
+            if(psAccessory->psService[i].psCharacteristics[j].eType == eType){
+                return &psAccessory->psService[i].psCharacteristics[j];
+            }
+        }
+    }
+    return NULL;
 }
