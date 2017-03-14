@@ -283,7 +283,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     return psJsonReturn;
 }
 
-static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback)
+static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psSocket, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback)
 {
     DBG_vPrintln(DBG_WINDOW_COVER, "eSetCharacteristicInfo");
     teHttpCode eHttpCode = E_HTTP_STATUS_SUCCESS_NO_CONTENT;
@@ -322,8 +322,18 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
             goto FAILED;
         }
         if(json_object_object_get_ex(psJsonCharacter, "ev", &psJsonEvent)){
+            json_object *psJsonRespTemp = json_object_new_object();
+            json_object_object_add(psJsonRespTemp, "aid", json_object_new_int64((int64_t)u64AID));
+            json_object_object_add(psJsonRespTemp, "iid", json_object_new_int64((int64_t)u64IID));
             bEvent = (bool_t)json_object_get_boolean(psJsonEvent);
-            DBG_vPrintln(DBG_WINDOW_COVER, "event:%d", bEvent);
+            if(psCharacter->bEventNot != bEvent){
+                if(iNum > 1){
+                    eHttpCode = E_HTTP_STATUS_SUCCESS_MULTI_STATUS;
+                }
+                json_object_object_add(psJsonRespTemp, "status", json_object_new_int(E_HAP_STATUS_CODE_READ_ONLY));
+                json_object_array_add(psArrayResp, psJsonRespTemp);
+                continue;
+            }
         } else if(json_object_object_get_ex(psJsonCharacter, "value", &psJsonValue)){
             json_object *psJsonRespTemp = json_object_new_object();
             json_object_object_add(psJsonRespTemp, "aid", json_object_new_int64((int64_t)u64AID));
@@ -339,7 +349,8 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
                 json_object_object_add(psJsonRespTemp, "status", json_object_new_int(0));
                 json_object_array_add(psArrayResp, psJsonRespTemp);
             }
-            fCallback(psCharacter, psJsonValue);
+            fCallback(psCharacter, psJsonValue, psSocket);
+
             switch (psCharacter->eFormat){
                 case E_TYPE_INT:    psCharacter->uValue.iData   = json_object_get_int(psJsonValue);
                 case E_TYPE_BOOL:   psCharacter->uValue.bData   = (bool_t)json_object_get_boolean(psJsonValue);
@@ -353,13 +364,14 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
     }
     if(eHttpCode == E_HTTP_STATUS_SUCCESS_MULTI_STATUS){
         json_object_object_add(psJsonResp, "characteristics", psArrayResp);
-        *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_MULTI_STATUS, "application/hap+json",
-                                 (uint8*)json_object_get_string(psJsonResp), (uint16) strlen(json_object_get_string(psJsonResp)), ppsBuffer);
+        *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_MULTI_STATUS, HTTP_PROTOCOL_HTTP, "application/hap+json",
+                                 (uint8 *) json_object_get_string(psJsonResp),
+                                 (uint16) strlen(json_object_get_string(psJsonResp)), ppsBuffer);
         json_object_put(psJsonCmd);
         json_object_put(psJsonResp);
         return E_HAP_STATUS_OK;
     }
-    *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, "application/hap+json", NULL, 0, ppsBuffer);
+    *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_NO_CONTENT, HTTP_PROTOCOL_HTTP, "application/hap+json", NULL, 0, ppsBuffer);
     json_object_put(psJsonCmd);
     json_object_put(psArrayResp);
     json_object_put(psJsonResp);

@@ -99,14 +99,6 @@ typedef struct {
     feBonjourUpdate     eBonjourUpdate;
 } tsBonjour;
 
-typedef struct {
-    int iSocketFd;
-    uint64 u64NumberReceive;
-    uint64 u64NumberSend;
-    uint8  auControllerToAccessoryKey[32];
-    uint8  auAccessoryToControllerKey[32];
-    struct dl_list list;
-} tsSocket;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/

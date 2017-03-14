@@ -151,9 +151,19 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, tsBonjour *psBonjour);
+teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsSocket *psSocket, tsProfile *psProfile, tsBonjour *psBonjour);
+teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsController *psController, tsProfile *psProfile);
+teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
+                                     uint16 *pu16LenOut);
+teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
+                                     uint16 *pu16LenOut);
+teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                   const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut);
+teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
+                                   const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData);
+teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len,
+                                    tsController *psController);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

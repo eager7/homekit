@@ -28,8 +28,14 @@ extern "C" {
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
+#define HTTP_PROTOCOL_HTTP      "HTTP/1.1"
+#define HTTP_PROTOCOL_EVENT     "EVENT/1.0"
+
+#define HTTP_TYPE_JSON          "application/hap+json"
+
 #define HTTP_URL_PAIR_SETUP     "/pair-setup"
 #define HTTP_URL_PAIR_VERIFY    "/pair-verify"
+#define HTTP_URL_IDENTIFY       "/identify"
 #define HTTP_URL_PAIRINGS       "/pairings"
 #define HTTP_URL_ACCESSORY      "/accessories"
 #define HTTP_URL_CHARACTER      "/characteristics"
@@ -112,7 +118,8 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-uint16 u16HttpFormat(teHttpCode eStatus, const char *psType, const uint8 *pBuffer, uint16 u16Length, uint8 **ppResponse);
+uint16 u16HttpFormat(teHttpCode eStatus, const char *psProtocol, const char *psType, const uint8 *pBuffer, uint16 u16Length,
+                     uint8 **ppResponse);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

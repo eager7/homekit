@@ -22,7 +22,7 @@
 #include <accessory.h>
 #include "window_covering.h"
 #include "http_handle.h"
-
+#include "pairing.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -42,6 +42,8 @@
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
+static tsQueue sQueue;
+static tsThread sThread;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -181,10 +183,15 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
-static teHapStatus eHandleSetCmd(tsCharacteristic *psCharacter, json_object *psJson)
+static teHapStatus eHandleSetCmd(tsCharacteristic *psCharacter, json_object *psJson, tsController *psSocket)
 {
     if(psCharacter->eType == E_CHARACTERISTIC_TARGET_POSITION){
         NOT_vPrintln(DBG_WINDOW_COVER, "Set Window Position:%d", json_object_get_int(psJson));
+        //tsQueueData *psQueueData = (tsQueueData*)calloc(1, sizeof(tsQueueData));
+        //memcpy(&psQueueData->sCharacter, psCharacter, sizeof(tsCharacteristic));
+        //psQueueData->sCharacter.uValue.u8Data = (uint8)json_object_get_int(psJson);
+        //memcpy(&psQueueData->sController, psSocket, sizeof(tsController));
+        //eQueueEnqueue(&sQueue, psQueueData);
     }
     return E_HAP_STATUS_OK;
 }
@@ -196,6 +203,48 @@ static teHapStatus eHandleGetCmd(tsCharacteristic *psCharacter)
     }
     return E_HAP_STATUS_OK;
 }
+static void *pvWindowCoveringThreadHandle(void *psThreadInfoVoid)
+{
+    tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
+    psThreadInfo->eState = E_THREAD_RUNNING;
+
+    while(psThreadInfo->eState == E_THREAD_RUNNING){
+        tsQueueData *psQueueData = NULL;
+        eQueueDequeue(&sQueue, (void**)&psQueueData);
+        if(psQueueData->sCharacter.eType == E_CHARACTERISTIC_TARGET_POSITION){
+            WAR_vPrintln(1, "E_CHARACTERISTIC_TARGET_POSITION");
+#if 0
+            sleep(5);
+            json_object *psJsonResp = json_object_new_object();
+            json_object *psJsonCharacter = json_object_new_object();
+            json_object *psArrayCharacter = json_object_new_array();
+            json_object_object_add(psJsonCharacter, "aid", json_object_new_int(1));
+            json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)psQueueData->sCharacter.u64IID));
+            json_object_object_add(psJsonCharacter, "value", json_object_new_int(psQueueData->sCharacter.uValue.u8Data));
+            json_object_array_add(psArrayCharacter, psJsonCharacter);
+            json_object_object_add(psJsonResp, "characteristics", psArrayCharacter);
+            uint8 *psBuffer = NULL;
+            uint16 u16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_EVENT, HTTP_TYPE_JSON,
+                                          (uint8 *) json_object_get_string(psJsonResp),
+                                          (uint16) strlen(json_object_get_string(psJsonResp)), &psBuffer);
+
+
+            WAR_vPrintln(1, "%d\n%s", u16Len, psBuffer);
+            uint8 auHttpData[MMBF] = {0};
+            uint16 u16SendLen = 0;
+            memset(auHttpData, 0, sizeof(auHttpData));
+            eEncryptedMessageWithLen(psBuffer, u16Len, &psQueueData->sController, auHttpData, &u16SendLen);
+            FREE(psBuffer);
+            send(psQueueData->sController.iSocketFd, auHttpData, u16SendLen, 0);
+            psQueueData->sController.u64NumberSend++;
+            FREE(psQueueData);
+#endif
+        }
+    }
+    DBG_vPrintln(DBG_WINDOW_COVER, "pvWindowCoveringThreadHandle Exit");
+    vThreadFinish(psThreadInfo);
+    return NULL;
+}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -205,11 +254,15 @@ tsProfile *psWindowCoveringProfileInit(char *psName, uint64 u64DeviceID, char *p
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
                                              E_HAP_TYPE_WINDOW_COVERING, eAccessoryWindowCoveringInit, eHandleSetCmd,
                                              eHandleGetCmd);
+    eQueueCreate(&sQueue, 5);
+    eThreadStart(pvWindowCoveringThreadHandle, &sThread, E_THREAD_DETACHED);
     return psProfile;
 }
 
 teHapStatus eWindowCoveringProfileRelease(tsProfile *psProfile)
 {
+    eThreadStop(&sThread);
+    eQueueDestroy(&sQueue);
     eProfileRelease(psProfile);
     return E_HAP_STATUS_OK;
 }

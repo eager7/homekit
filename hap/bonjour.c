@@ -43,18 +43,18 @@
 /***        Local Variables                                               ***/
 /****************************************************************************/
 static tsBonjour sBonjour;
-tsSocket sSocketHead;
+tsController sSocketHead;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tsSocket *psSocketListAdd(tsSocket *psSocketList)
+static tsController *psSocketListAdd(tsController *psSocketList)
 {
-    tsSocket *psSocket = (tsSocket*)calloc(1, sizeof(tsSocket));
+    tsController *psSocket = (tsController*)calloc(1, sizeof(tsController));
     psSocket->iSocketFd = -1;
     dl_list_add_tail(&psSocketList->list, &psSocket->list);
     return psSocket;
 }
-static teHapStatus eSocketListDel(tsSocket *psSocketItem)
+static teHapStatus eSocketListDel(tsController *psSocketItem)
 {
     dl_list_del(&psSocketItem->list);
     FREE(psSocketItem);
@@ -62,7 +62,7 @@ static teHapStatus eSocketListDel(tsSocket *psSocketItem)
 }
 static teBonjStatus eBonjourSocketInit(void)
 {
-    memset(&sSocketHead, 0, sizeof(tsSocket));
+    memset(&sSocketHead, 0, sizeof(tsController));
     dl_list_init(&sSocketHead.list);
 
     sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -228,7 +228,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                     if(-1 == iSockFd){
                         ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
                     } else {
-                        tsSocket *psSocket = psSocketListAdd(&sSocketHead);
+                        tsController *psSocket = psSocketListAdd(&sSocketHead);
                         DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
                         psSocket->iSocketFd = iSockFd;
                         FD_SET(psSocket->iSocketFd, &fdSelect);
@@ -238,40 +238,46 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                         sBonjour.u8NumberController ++;
                     }
                 } else {    /* Client Communication */
-                    tsSocket *psSocketTemp = NULL, *psSocketClient = NULL;
-                    dl_list_for_each_safe(psSocketClient, psSocketTemp, &sSocketHead.list, tsSocket, list)
+                    tsController *psControllerTemp = NULL, *psController = NULL;
+                    dl_list_for_each_safe(psController, psControllerTemp, &sSocketHead.list, tsController, list)
                     {
-                        if(FD_ISSET(psSocketClient->iSocketFd, &fdTemp)){
+                        if(FD_ISSET(psController->iSocketFd, &fdTemp)){
                             DBG_vPrintln(DBG_BONJOUR, "A client receive data");
                             bool_t bDisconnected = T_FALSE;
-                            iLen = (int)recv(psSocketClient->iSocketFd, auBuffer, sizeof(auBuffer), 0);
+                            iLen = (int)recv(psController->iSocketFd, auBuffer, sizeof(auBuffer), 0);
                             if(0 == iLen){
                                 bDisconnected = T_TRUE;
                             } else {
                                 tsHttpEntry *psHttpEntry = psHttpParser(auBuffer, (uint16)iLen);
                                 if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_PAIR_SETUP)) {
                                     DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
-                                    if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairSetup(auBuffer, iLen, psSocketClient->iSocketFd, &sBonjour)){
+                                    if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairSetup(auBuffer, iLen, psController->iSocketFd, &sBonjour)){
                                         bDisconnected = T_TRUE;
                                     }
                                 } else if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_PAIR_VERIFY)) {
                                     DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Verify");
-                                    if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairVerify(auBuffer, iLen, psSocketClient, &sBonjour)){
+                                    if(E_HAP_STATUS_SOCKET_ERROR == eHandlePairVerify(auBuffer, iLen, psController, &sBonjour)){
                                         bDisconnected = T_TRUE;
                                     }
-                                } else if(strstr((char*)psHttpEntry->acDirectory, "/identify")) {
+                                } else if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_IDENTIFY)) {
                                     //close(psSocket);
                                 } else {
                                     DBG_vPrintln(DBG_BONJOUR, "Handle Controller Request");
-                                    eHandleAccessoryRequest(auBuffer, (uint16)iLen, psSocketClient, psProfile, &sBonjour);
+                                    uint8 auHttpData[MMBF] = {0};
+                                    uint16 u16MsgLen = 0;
+                                    eDecryptedMessageWithLen(auBuffer, (uint16)iLen, psController, auHttpData, &u16MsgLen);
+                                    psController->u64NumberReceive++;
+                                    uint8 *psRetData = NULL;
+                                    uint16 u16RetLen = 0;
+                                    eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen, psController);
                                 }
                                 FREE(psHttpEntry);
                             }
                             if(bDisconnected == T_TRUE){
-                                ERR_vPrintln(T_TRUE, "Close Client:%d\n", psSocketClient->iSocketFd);
-                                close(psSocketClient->iSocketFd);
-                                FD_CLR(psSocketClient->iSocketFd, &fdSelect);//delete this client from select set
-                                eSocketListDel(psSocketClient);
+                                ERR_vPrintln(T_TRUE, "Close Client:%d\n", psController->iSocketFd);
+                                close(psController->iSocketFd);
+                                FD_CLR(psController->iSocketFd, &fdSelect);//delete this client from select set
+                                eSocketListDel(psController);
                                 sBonjour.u8NumberController --;
                             }
                             break; /* dl_list_for_each */

@@ -25,7 +25,7 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "accessory.h"
-
+#include "list.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -33,10 +33,20 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
+
+typedef struct {
+    int iSocketFd;
+    uint64 u64NumberReceive;
+    uint64 u64NumberSend;
+    uint8  auControllerToAccessoryKey[32];
+    uint8  auAccessoryToControllerKey[32];
+    struct dl_list list;
+} tsController;
+
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
-typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson);
+typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson, tsController *psSocket);
 typedef teHapStatus (*feHandleGetCmd)(tsCharacteristic *psCharacter);
-typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
+typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, tsController *psSocket, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
 typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
 typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback);
 

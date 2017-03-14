@@ -32,7 +32,7 @@ int main(void)
         sleep(1);
     }
     eBonjourFinished();
-    eProfileRelease(psProfileDevice);
+    eWindowCoveringProfileRelease(psProfileDevice);
 
     return 0;
 }
