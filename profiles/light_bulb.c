@@ -114,6 +114,15 @@ static teHapStatus eLightBulbHandle(tsCharacteristic *psCharacter, json_object *
     }
     return E_HAP_STATUS_OK;
 }
+static teHapStatus eLightBulbGetInfo(tsCharacteristic *psCharacter)
+{
+    if(psCharacter->eType == E_CHARACTERISTIC_ON){
+        NOT_vPrintln(DBG_LIGHT, "Get Bulb Light On/Off");
+    } else if(psCharacter->eType == E_CHARACTERISTIC_BRIGHTNESS){
+        NOT_vPrintln(DBG_LIGHT, "Get Bulb Light Level");
+    }
+    return E_HAP_STATUS_OK;
+}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -121,7 +130,7 @@ static teHapStatus eLightBulbHandle(tsCharacteristic *psCharacter, json_object *
 tsProfile *psLightBulbProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_LIGHT_BULB, eAccessoryLightBulbInit, eLightBulbHandle);
+                                             E_HAP_TYPE_LIGHT_BULB, eAccessoryLightBulbInit, eLightBulbHandle, eLightBulbGetInfo);
     return psProfile;
 }
 

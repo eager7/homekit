@@ -181,10 +181,18 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
-static teHapStatus eHandleRequest(tsCharacteristic *psCharacter, json_object *psJson)
+static teHapStatus eHandleSetCmd(tsCharacteristic *psCharacter, json_object *psJson)
 {
     if(psCharacter->eType == E_CHARACTERISTIC_TARGET_POSITION){
         NOT_vPrintln(DBG_WINDOW_COVER, "Set Window Position:%d", json_object_get_int(psJson));
+    }
+    return E_HAP_STATUS_OK;
+}
+
+static teHapStatus eHandleGetCmd(tsCharacteristic *psCharacter)
+{
+    if(psCharacter->eType == E_CHARACTERISTIC_TARGET_POSITION){
+        NOT_vPrintln(DBG_WINDOW_COVER, "Get Window Position");
     }
     return E_HAP_STATUS_OK;
 }
@@ -195,7 +203,8 @@ static teHapStatus eHandleRequest(tsCharacteristic *psCharacter, json_object *ps
 tsProfile *psWindowCoveringProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_WINDOW_COVERING, eAccessoryWindowCoveringInit, eHandleRequest);
+                                             E_HAP_TYPE_WINDOW_COVERING, eAccessoryWindowCoveringInit, eHandleSetCmd,
+                                             eHandleGetCmd);
     return psProfile;
 }
 

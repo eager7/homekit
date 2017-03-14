@@ -34,10 +34,11 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
-typedef teHapStatus (*feHandleRequest)(tsCharacteristic *psCharacter, json_object *psJson);
-typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleRequest fCallback);
+typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson);
+typedef teHapStatus (*feHandleGetCmd)(tsCharacteristic *psCharacter);
+typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
 typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
-typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd);
+typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback);
 
 typedef struct {
     tsAccessory                 *psAccessory;
@@ -45,7 +46,8 @@ typedef struct {
     fpsGetAccessoryInfo         psGetAccessoryInfo;
     fpeSetCharacteristicInfo    peSetCharacteristicInfo;
     fpsGetCharacteristicInfo    psGetCharacteristicInfo;
-    feHandleRequest             eHandleRequest;
+    feHandleSetCmd              eHandleSetCmd;
+    feHandleGetCmd              eHandleGetCmd;
 } tsProfile;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -73,7 +75,8 @@ typedef struct {
 ** Author       : PCT
 *****************************************************************************/
 tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleRequest eHandleRequest);
+                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
+                             feHandleGetCmd eHandleGetCmd);
 teHapStatus eProfileRelease(tsProfile *psProfile);
 /****************************************************************************/
 /***        Local    Functions                                            ***/

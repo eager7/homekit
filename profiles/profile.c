@@ -226,7 +226,7 @@ static json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
     return NULL;
 }
 
-static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd)
+static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback)
 {
     json_object *psJsonCharacter = NULL;
     json_object *psJsonReturn = json_object_new_object();
@@ -248,6 +248,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
         psJsonCharacter = json_object_new_object();
         json_object_object_add(psJsonCharacter, "aid", json_object_new_int64((int64_t)u64AID));
         json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)u64IID));
+        fCallback(psCharacter);
         switch (psCharacter->eFormat){
             case E_TYPE_BOOL:{
                 json_object_object_add(psJsonCharacter, "value", json_object_new_boolean(psCharacter->uValue.bData));
@@ -282,7 +283,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     return psJsonReturn;
 }
 
-static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleRequest fCallback)
+static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback)
 {
     DBG_vPrintln(DBG_WINDOW_COVER, "eSetCharacteristicInfo");
     teHttpCode eHttpCode = E_HTTP_STATUS_SUCCESS_NO_CONTENT;
@@ -374,7 +375,8 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
 /***        Exported Functions                                            ***/
 /****************************************************************************/
 tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleRequest eHandleRequest)
+                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
+                             feHandleGetCmd eHandleGetCmd)
 {
     tsProfile *psProfile = (tsProfile*)calloc(1, sizeof(tsProfile));
     CHECK_POINTER(psProfile, NULL);
@@ -382,7 +384,8 @@ tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNum
     psProfile->psGetCharacteristicInfo = psGetCharacteristicInfo;
     psProfile->peSetCharacteristicInfo = eSetCharacteristicInfo;
     psProfile->peInitCategory = fsInitCategory;
-    psProfile->eHandleRequest = eHandleRequest;
+    psProfile->eHandleSetCmd = eHandleSetCmd;
+    psProfile->eHandleGetCmd = eHandleGetCmd;
     psProfile->psAccessory = psAccessoryGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
     psProfile->peInitCategory(psProfile->psAccessory);
     return psProfile;

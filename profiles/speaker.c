@@ -84,6 +84,16 @@ static teHapStatus eSpeakerHandle(tsCharacteristic *psCharacter, json_object *ps
     }
     return E_HAP_STATUS_OK;
 }
+
+static teHapStatus eSpeakerGetState(tsCharacteristic *psCharacter)
+{
+    if(psCharacter->eType == E_CHARACTERISTIC_MUTE){
+        NOT_vPrintln(DBG_SPEAKER, "Get Audio On/Off");
+    } else if(psCharacter->eType == E_CHARACTERISTIC_VOLUME){
+        NOT_vPrintln(DBG_SPEAKER, "Get Volume Level");
+    }
+    return E_HAP_STATUS_OK;
+}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -91,7 +101,7 @@ static teHapStatus eSpeakerHandle(tsCharacteristic *psCharacter, json_object *ps
 tsProfile *psSpeakerProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_LIGHT_BULB, eAccessorySpeakerInit, eSpeakerHandle);
+                                             E_HAP_TYPE_LIGHT_BULB, eAccessorySpeakerInit, eSpeakerHandle, eSpeakerGetState);
     return psProfile;
 }
 

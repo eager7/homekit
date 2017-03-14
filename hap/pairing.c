@@ -829,13 +829,13 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         if(strstr((char*)psData, "PUT"))
         {
             NOT_vPrintln(DBG_PAIR, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
-            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psHttp->acContentData, ppsResp, pu16Len, psProfile->eHandleRequest);
+            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psHttp->acContentData, ppsResp, pu16Len, psProfile->eHandleSetCmd);
             DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", *ppsResp);
         }
         else if(strstr((char*)psData, "GET"))
         {
             WAR_vPrintln(DBG_PAIR, "Reading Characteristics Attribute\n");
-            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory);
+            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory, psProfile->eHandleGetCmd);
             *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, "application/hap+json",
                                      (uint8*)json_object_get_string(psJsonRet), (uint16) strlen(json_object_get_string(psJsonRet)), ppsResp);
             json_object_put(psJsonRet);
