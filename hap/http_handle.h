@@ -25,6 +25,7 @@ extern "C" {
 /****************************************************************************/
 #include "utils.h"
 #include "accessory_type.h"
+#include "profile.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -120,6 +121,7 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
 *****************************************************************************/
 uint16 u16HttpFormat(teHttpCode eStatus, const char *psProtocol, const char *psType, const uint8 *pBuffer, uint16 u16Length,
                      uint8 **ppResponse);
+teHapStatus eHttpEncryptedSend(const uint8 *pBuf, uint16 u16Len, tsController *psController);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

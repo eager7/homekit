@@ -755,12 +755,8 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
                                  (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
         json_object_put(psJsonRet);
         DBG_vPrintln(DBG_PAIR, "Accessory Info:\n%s", psBufHttp);
-        uint16 u16SendLen = 0;
-        uint8 auSendBuffer[MMBF] = {0};
-        eEncryptedMessageWithLen(psBufHttp, u16LenHttp, psController, auSendBuffer, &u16SendLen);
+        eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
         FREE(psBufHttp);
-        send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
-        psController->u64NumberSend++;
     }
     else if(strstr((char*)psData, HTTP_URL_CHARACTER))
     {
@@ -770,12 +766,8 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
             NOT_vPrintln(DBG_PAIR, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
             psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psController, psHttp->acContentData, &psBufHttp, &u16LenHttp, psProfile->eHandleSetCmd);
             DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", psBufHttp);
-            uint16 u16SendLen = 0;
-            uint8 auSendBuffer[MMBF] = {0};
-            eEncryptedMessageWithLen(psBufHttp, u16LenHttp, psController, auSendBuffer, &u16SendLen);
+            eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
             FREE(psBufHttp);
-            send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
-            psController->u64NumberSend++;
         }
         else if(strstr((char*)psData, "GET"))
         {
@@ -786,12 +778,8 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
                                      (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
             json_object_put(psJsonRet);
             DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", psBufHttp);
-            uint16 u16SendLen = 0;
-            uint8 auSendBuffer[MMBF] = {0};
-            eEncryptedMessageWithLen(psBufHttp, u16LenHttp, psController, auSendBuffer, &u16SendLen);
+            eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
             FREE(psBufHttp);
-            send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
-            psController->u64NumberSend++;
         }
         FREE(psHttp);
     }
@@ -799,12 +787,8 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
     {
         NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove Pairing");
         eHandlePairingRemove(psData, u16Len, &psBufHttp, &u16LenHttp);
-        uint16 u16SendLen = 0;
-        uint8 auSendBuffer[MMBF] = {0};
-        eEncryptedMessageWithLen(psBufHttp, u16LenHttp, psController, auSendBuffer, &u16SendLen);
+        eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
         FREE(psBufHttp);
-        send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
-        psController->u64NumberSend++;
     }
 
     return E_HAP_STATUS_OK;

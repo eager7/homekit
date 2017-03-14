@@ -19,8 +19,9 @@
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include <accessory_type.h>
+#include <profile.h>
 #include "http_handle.h"
-
+#include "pairing.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -114,6 +115,15 @@ uint16 u16HttpFormat(teHttpCode eStatus, const char *psProtocol, const char *psT
     return u16Len;
 }
 
+teHapStatus eHttpEncryptedSend(const uint8 *pBuf, uint16 u16Len, tsController *psController)
+{
+    uint16 u16SendLen = 0;
+    uint8 auSendBuffer[MMBF] = {0};
+    eEncryptedMessageWithLen(pBuf, u16Len, psController, auSendBuffer, &u16SendLen);
+    send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
+    psController->u64NumberSend++;
+    return E_HAP_STATUS_OK;
+}
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
