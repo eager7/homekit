@@ -71,7 +71,7 @@ int main(void)
     while(bRunning){
         sleep(1);
     }
-    eBonjourFinished(psWindowCovering);
+    eBonjourFinished();
     eWindowCoveringProfileRelease(psWindowCovering);
 
     return 0;

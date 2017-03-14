@@ -50,7 +50,7 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len)
     tsHttpEntry *psHttpEntry = (tsHttpEntry*)calloc(1, sizeof(tsHttpEntry));
     CHECK_POINTER(psHttpEntry, NULL);
 
-    int iNumber = 0,  iLen = 0;
+    int iNumber = 0;
     size_t offset = 0;
     char auHeader[MIBF] = {0}, auHost[MIBF] = {0}, auContentLen[MIBF] = {0}, auContentType[MIBF] = {0};
     for (size_t i = 0; i < u16Len; ++i) {

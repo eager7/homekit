@@ -21,7 +21,6 @@
 /****************************************************************************/
 #include <accessory.h>
 #include "window_covering.h"
-#include "profile.h"
 #include "http_handle.h"
 
 /****************************************************************************/
@@ -202,8 +201,7 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, const uint8 
     for (int i = 0; i < iNum; ++i) {
         json_object *psJsonCharacter = json_object_array_get_idx(psArrayCmd, i);
         uint64 u64AID = 0, u64IID = 0;
-        bool_t bEvent = T_FALSE;
-        tuChartValue uValue;
+        bool_t bEvent;
         json_object *psJsonAID = NULL, *psJsonIID = NULL, *psJsonEvent = NULL, *psJsonValue = NULL;
         if(!json_object_object_get_ex(psJsonCharacter, "aid", &psJsonAID)){
             ERR_vPrintln(T_TRUE, "Can't Find aid");

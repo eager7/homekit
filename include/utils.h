@@ -54,15 +54,15 @@ extern "C" {
 #define UI_BLUE(x)      "\e[34;1m"x"\e[0m"
 #define UI_PURPLE(x)    "\e[35;1m"x"\e[0m"
 #define DBG_vPrintln(a,b,ARGS...)  \
-    do {if (a) {printf(UI_BLUE   ("[%d]" b "\n"), __LINE__, ## ARGS);}} while(0)
+    do {if (a) {printf(("\e[34;1m""[%d]" b "\n""\e[0m"), __LINE__, ## ARGS);}} while(0)
 #define INF_vPrintln(a,b,ARGS...)  \
-    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_YELLOW ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(("\e[33;1m""[%d]" b "\n""\e[0m"), __LINE__, ## ARGS);}}} while(0)
 #define NOT_vPrintln(a,b,ARGS...)  \
-    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_GREEN  ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(("\e[32;1m""[%d]" b "\n""\e[0m"), __LINE__, ## ARGS);}}} while(0)
 #define WAR_vPrintln(a,b,ARGS...)  \
-    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_PURPLE ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(("\e[35;1m""[%d]" b "\n""\e[0m"), __LINE__, ## ARGS);}}} while(0)
 #define ERR_vPrintln(a,b,ARGS...)  \
-    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(UI_RED    ("[%d]" b "\n"), __LINE__, ## ARGS);}}} while(0)
+    do {if (a) {if(0){syslog(LOG_DEBUG|LOG_USER, "[%d]" b "\n", __LINE__, ## ARGS);} else {printf(("\e[31;1m""[%d]" b "\n""\e[0m"), __LINE__, ## ARGS);}}} while(0)
 #define PERR_vPrintln(x) ERR_vPrintf(1,x ":%s\n", strerror(errno))
 
 #define MIBF    256

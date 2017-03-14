@@ -22,9 +22,6 @@
 
 #include <profile.h>
 #include "ip.h"
-#include "http_handle.h"
-#include "light_bulb.h"
-#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/

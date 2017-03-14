@@ -23,12 +23,6 @@
 #include "poly1305.h"
 #include "hkdf.h"
 #include "ip.h"
-#include "mthread.h"
-#include "http_handle.h"
-#include "tlv.h"
-#include "bonjour.h"
-#include <sodium.h>
-#include <profile.h>
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -183,7 +177,7 @@ static teHapStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
     CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
     FILE *fp = fopen("IOSDevicePairingID.txt", "w");
     CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
-    if(len != fwrite(buf,1,len,fp)){
+    if(len != fwrite(buf, 1, (size_t)len, fp)){
         fclose(fp);
         return E_HAP_STATUS_ERROR;
     }
@@ -195,7 +189,7 @@ static teHapStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
     CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
     FILE *fp = fopen("IOSDevicePairingID.txt", "r");
     CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
-    if(len != fread(buf,1,len,fp)){
+    if(len != fread(buf, 1, (size_t)len, fp)){
         fclose(fp);
         return E_HAP_STATUS_ERROR;
     }
@@ -207,7 +201,7 @@ static teHapStatus eIOSDeviceLTPKSave(uint8 *buf, int len)
     CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
     FILE *fp = fopen("IOSDeviceLTPK.txt", "w");
     CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
-    if(len != fwrite(buf,1,len,fp)){
+    if(len != fwrite(buf, 1, (size_t)len, fp)){
         fclose(fp);
         return E_HAP_STATUS_ERROR;
     }
@@ -219,7 +213,7 @@ static teHapStatus eIOSDeviceLTPKRead(uint8 *buf, int len)
     CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
     FILE *fp = fopen("IOSDeviceLTPK.txt", "r");
     CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
-    if(len != fread(buf,1,len,fp)){
+    if(len != fread(buf, 1, (size_t)len, fp)){
         fclose(fp);
         return E_HAP_STATUS_ERROR;
     }
@@ -233,7 +227,7 @@ static teHapStatus eIOSDeviceRemovePairing()
     return E_HAP_STATUS_OK;
 }
 
-static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessage *psIpMsg)
+static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode)
 {
     tePairStatus eStatus = E_PAIRING_STATUS_OK;
     uint8 value_err[1] = {0};
@@ -276,17 +270,18 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
 
     /* 5. Set SRP username */
     SRP_RESULT Ret = SRP_set_username(sPairSetup.pSrp, "Pair-Setup");
-
+    CHECK_RESULT(Ret, SRP_SUCCESS, E_HAP_STATUS_ERROR);
     /* 6. Generate 16 bytes of random salt and set it with SRP_set_params() */
     uint8 auSaltChar[16];
     for (int i = 0; i < 16; i++) {
-        auSaltChar[i] = rand();
+        auSaltChar[i] = (uint8)rand();
     }
-    int modulusSize = sizeof(modulusStr) / sizeof(modulusStr[0]);
     Ret = SRP_set_params(sPairSetup.pSrp, modulusStr, sizeof(modulusStr), generator, sizeof(generator), auSaltChar, sizeof(auSaltChar));
+    CHECK_RESULT(Ret, SRP_SUCCESS, E_HAP_STATUS_ERROR);
 
     /* 7. generate a random setup code and set it with SRP_set_auth_password() */
     Ret = SRP_set_auth_password(sPairSetup.pSrp, pSetupCode);
+    CHECK_RESULT(Ret, SRP_SUCCESS, E_HAP_STATUS_ERROR);
 
     /* 8. Present the Setup Code to the user */
     NOT_vPrintln(T_TRUE, "Setup Code:%s", pSetupCode);
@@ -294,6 +289,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode, tsIpMessa
     /* 9. Generate an SRP public key */
     cstr *pPublicKey = NULL;
     Ret = SRP_gen_pub(sPairSetup.pSrp, &pPublicKey);
+    CHECK_RESULT(Ret, SRP_SUCCESS, E_HAP_STATUS_ERROR);
 
     /* 10. Respond to the iOS device's request with the following TLV */
     uint8 value_rep[1] = {E_PAIR_SETUP_M2_SRP_START_RESPONSE};
@@ -406,7 +402,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     chacha20_ctx context;
     memset(&context, 0, sizeof(context));
     chacha20_setup(&context, sPairSetup.auSessionKey, 32, (uint8*)"PS-Msg05");
-    char auInKey[64] = {0}, auOutKey[64] = {0}, auVerify[16] = {0};
+    uint8 auInKey[64] = {0}, auOutKey[64] = {0}, auVerify[16] = {0};
     chacha20_encrypt(&context, (const uint8*)auInKey, (uint8*)auOutKey, 64);
     ePoly1305_GenKey((const uint8*)auOutKey, psEncryptedData, (uint16) (u16EncryptedLen - LEN_AUTH_TAG), T_FALSE, auVerify);
     if(memcmp(auVerify, auAuthTag, LEN_AUTH_TAG)) {
@@ -471,9 +467,9 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     DBG_vPrintln(DBG_PAIR, "M5 Verify Success");
 
     /* 1. Generate its Ed25519 long-term public key, AccessoryLTPK, and long-term secret key, AccessoryLTSK */
-    ed25519_secret_key edAccessoryLTSK;
+    ed25519_secret_key edAccessoryLTSK = {0};
     memcpy(edAccessoryLTSK, accessorySecretKey, sizeof(edAccessoryLTSK));
-    ed25519_public_key edAccessoryLTPK;
+    ed25519_public_key edAccessoryLTPK = {0};
     ed25519_publickey(edAccessoryLTSK, edAccessoryLTPK);
 
     /* 2. Derive AccessoryX from the SRP shared secret by using HKDF-SHA-512 with the following parameters */
@@ -515,8 +511,8 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     eTlvPackageRelease(pReturnTlvPackage);
 
     uint8 verify[16] = {0};
-    ePoly1305_GenKey(key, tlv8Recorddata, tlv8Len, T_FALSE, auVerify);
-    memcpy(&tlv8Recorddata[tlv8Len], auVerify, 16);
+    ePoly1305_GenKey(key, tlv8Recorddata, tlv8Len, T_FALSE, verify);
+    memcpy(&tlv8Recorddata[tlv8Len], verify, 16);
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8Recorddata,(uint16)tlv8Recordlength,psTlvRespMessage);
 
     /* 7. Send the response to the iOS device with the following TLV items */
@@ -542,7 +538,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     uint8 *psRepBuffer = 0;
     uint16 u16RepLen = 0;
     uint8 value_rep[1] = {E_PAIR_VERIFY_M2_START_RESPONSE};
-    uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
+    //uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     tsIpMessage *psResponse = psIpResponseNew();
     tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
     tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
@@ -729,7 +725,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
         switch (sPairSetup.eState) {
             case E_PAIR_SETUP_M1_SRP_START_REQUEST: {
                 INF_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M1_SRP_START_REQUEST");
-                eM2SrpStartResponse(iSocketFd, psBonjour->pcSetupCode, psIpMsg);
+                eM2SrpStartResponse(iSocketFd, psBonjour->pcSetupCode);
             }break;
             case E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST: {
                 DBG_vPrintln(DBG_PAIR, "E_PAIR_SETUP_M3_SRP_VERIFY_REQUEST");
@@ -773,6 +769,8 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsSocket *psSocketFd, t
                 eIpMessageRelease(psIpMsg);
                 return E_HAP_STATUS_OK;
             }break;
+            default:
+                break;
         }
         eIpMessageRelease(psIpMsg);
     }while (0 < (iLen = (int)read(psSocketFd->iSocketFd, psBuffer, MABF)));

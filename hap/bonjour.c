@@ -21,10 +21,8 @@
 /****************************************************************************/
 #include <time.h>
 #include <profile.h>
-#include <accessory.h>
 #include "bonjour.h"
 #include "pairing.h"
-#include "ip.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -321,7 +319,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode, char *psModel
     return E_BONJOUR_STATUS_OK;
 }
 
-teBonjStatus eBonjourFinished(tsProfile *psProfile)
+teBonjStatus eBonjourFinished()
 {
     eThreadStop(&sBonjour.sBonjourThread);
     SRP_finalize_library();

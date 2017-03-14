@@ -156,10 +156,10 @@ static json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
                 } break;
                 case E_TYPE_FLOAT:  {
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.fData));
+                        json_object_object_add(psJsonCharacter, "minValue", json_object_new_double(psAccessory->psService[i].psCharacteristics[j].sMinimumValue.uData.fData));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.bEnable){
-                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.fData));
+                        json_object_object_add(psJsonCharacter, "maxValue", json_object_new_double(psAccessory->psService[i].psCharacteristics[j].sMaximumValue.uData.fData));
                     }
                     if(psAccessory->psService[i].psCharacteristics[j].sSetupValue.bEnable){
                         switch (psAccessory->psService[i].psCharacteristics[j].eUnit){
@@ -167,9 +167,9 @@ static json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
                             case E_UNIT_ARC_DEGREES:json_object_object_add(psJsonCharacter, "unit", json_object_new_string("arcdegrees"));break;
                             default: break;
                         }
-                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fData));
+                        json_object_object_add(psJsonCharacter, "minStep", json_object_new_double(psAccessory->psService[i].psCharacteristics[j].sSetupValue.uData.fData));
                     }
-                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_double(psAccessory->psService[i].psCharacteristics[j].uValue.fData));
                     json_object_object_add(psJsonCharacter, "format", json_object_new_string("float"));
                 } break;
                 case E_TYPE_STRING: {
