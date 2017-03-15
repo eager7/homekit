@@ -47,17 +47,19 @@ tsController sSocketHead;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tsController *psSocketListAdd(tsController *psSocketList)
+static tsController *psSocketListAdd(tsController *psControllerList)
 {
-    tsController *psSocket = (tsController*)calloc(1, sizeof(tsController));
-    psSocket->iSocketFd = -1;
-    dl_list_add_tail(&psSocketList->list, &psSocket->list);
-    return psSocket;
+    tsController *psController = (tsController*)calloc(1, sizeof(tsController));
+    psController->iSocketFd = -1;
+    eLockCreate(&psController->mutex);
+    dl_list_add_tail(&psControllerList->list, &psController->list);
+    return psController;
 }
-static teHapStatus eSocketListDel(tsController *psSocketItem)
+static teHapStatus eSocketListDel(tsController *psController)
 {
-    dl_list_del(&psSocketItem->list);
-    FREE(psSocketItem);
+    dl_list_del(&psController->list);
+    eLockDestroy(&psController->mutex);
+    FREE(psController);
     return E_HAP_STATUS_OK;
 }
 static teBonjStatus eBonjourSocketInit(void)
@@ -248,6 +250,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             if(0 == iLen){
                                 bDisconnected = T_TRUE;
                             } else {
+                                eLockLock(&psController->mutex);
                                 tsHttpEntry *psHttpEntry = psHttpParser(auBuffer, (uint16)iLen);
                                 if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_PAIR_SETUP)) {
                                     DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
@@ -272,6 +275,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                     eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen, psController);
                                 }
                                 FREE(psHttpEntry);
+                                eLockunLock(&psController->mutex);
                             }
                             if(bDisconnected == T_TRUE){
                                 ERR_vPrintln(T_TRUE, "Close Client:%d\n", psController->iSocketFd);

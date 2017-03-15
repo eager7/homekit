@@ -52,7 +52,7 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
+tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
         return E_PAIRING_STATUS_ERROR;
@@ -750,7 +750,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_PAIR, "Ask for accessories info\n");
         json_object *psJsonRet = psProfile->psGetAccessoryInfo(psProfile->psAccessory);
-        u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, "application/hap+json",
+        u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_JSON,
                                  (uint8 *) json_object_get_string(psJsonRet),
                                  (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
         json_object_put(psJsonRet);
@@ -773,7 +773,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         {
             WAR_vPrintln(DBG_PAIR, "Reading Characteristics Attribute\n");
             json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory, psProfile->eHandleGetCmd);
-            u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, "application/hap+json",
+            u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_JSON,
                                      (uint8 *) json_object_get_string(psJsonRet),
                                      (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
             json_object_put(psJsonRet);
@@ -856,6 +856,7 @@ teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsC
 
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
+    DBG_vPrintln(DBG_PAIR, "Encrypted Send Num:%llu\n", psController->u64NumberSend);
     chacha20_setup(&ctx, psController->auAccessoryToControllerKey, 32, (uint8*)&psController->u64NumberSend);
     uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
     chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);

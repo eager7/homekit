@@ -22,10 +22,12 @@
 #include <accessory.h>
 #include "profile.h"
 #include "http_handle.h"
+#include "chacha20_simple.h"
+#include "poly1305.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define DBG_WINDOW_COVER 1
+#define DBG_PROFILE 1
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -37,11 +39,12 @@
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+extern tsController sSocketHead;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
-
-
+static tsQueue sQueueNotify;
+static tsThread sThreadNotify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -238,7 +241,7 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     uint64 u64AID = 0, u64IID = 0;
     while(T_TRUE){
         sscanf(temp_once, "%llu.%llu", &u64AID, &u64IID);
-        DBG_vPrintln(DBG_WINDOW_COVER, "temp_once:%s,aid:%llu,iid:%llu\n", temp_once, u64AID, u64IID);
+        DBG_vPrintln(DBG_PROFILE, "temp_once:%s,aid:%llu,iid:%llu\n", temp_once, u64AID, u64IID);
         tsCharacteristic *psCharacter = psAccessoryGetCharacterByIID(psAccessory, u64AID, u64IID);
         if((NULL == psCharacter) || !(psCharacter->u8Perms & E_PERM_PAIRED_READ)){
             FREE(psJsonReturn);
@@ -283,9 +286,9 @@ static json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, cons
     return psJsonReturn;
 }
 
-static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psSocket, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback)
+static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psController, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback)
 {
-    DBG_vPrintln(DBG_WINDOW_COVER, "eSetCharacteristicInfo");
+    DBG_vPrintln(DBG_PROFILE, "eSetCharacteristicInfo");
     teHttpCode eHttpCode = E_HTTP_STATUS_SUCCESS_NO_CONTENT;
     json_object *psJsonResp = json_object_new_object();
     json_object *psArrayResp = json_object_new_array();
@@ -349,7 +352,8 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController
                 json_object_object_add(psJsonRespTemp, "status", json_object_new_int(0));
                 json_object_array_add(psArrayResp, psJsonRespTemp);
             }
-            fCallback(psCharacter, psJsonValue, psSocket);
+            fCallback(psCharacter, psJsonValue, psController);
+            eNotifyEnQueue(psCharacter, psController);
 
             switch (psCharacter->eFormat){
                 case E_TYPE_INT:    psCharacter->uValue.iData   = json_object_get_int(psJsonValue);
@@ -383,6 +387,100 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController
     json_object_put(psJsonResp);
     return E_HAP_STATUS_ERROR;
 }
+
+static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
+{
+    tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
+    psThreadInfo->eState = E_THREAD_RUNNING;
+
+    while(psThreadInfo->eState == E_THREAD_RUNNING){
+        tsCharacteristic *psCharacter = NULL;
+        eQueueDequeue(&sQueueNotify, (void**)&psCharacter);
+
+        NOT_vPrintln(DBG_PROFILE, "Notify the character %llu changed", psCharacter->u64IID);
+        if(psCharacter->u8Perms & E_PERM_EVENT_NOT){
+            json_object *psJsonResp = json_object_new_object();
+            json_object *psJsonCharacter = json_object_new_object();
+            json_object *psArrayCharacter = json_object_new_array();
+            json_object_object_add(psJsonCharacter, "aid", json_object_new_int(1));
+            json_object_object_add(psJsonCharacter, "iid", json_object_new_int64((int64_t)psCharacter->u64IID));
+            switch (psCharacter->eFormat){
+                case E_TYPE_UINT8:
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.u8Data));break;
+                case E_TYPE_INT:
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.iData));break;
+                case E_TYPE_FLOAT:
+                    json_object_object_add(psJsonCharacter, "value", json_object_new_double(psCharacter->uValue.fData));break;
+
+                default:
+                    break;
+            }
+            json_object_array_add(psArrayCharacter, psJsonCharacter);
+            json_object_object_add(psJsonResp, "characteristics", psArrayCharacter);
+            uint8 *resultData = NULL;
+            uint16 resultLen = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_EVENT, HTTP_TYPE_JSON,
+                                             (uint8 *) json_object_get_string(psJsonResp),
+                                             (uint16) strlen(json_object_get_string(psJsonResp)), &resultData);
+            WAR_vPrintln(1, "%d\n%s", resultLen, resultData);
+
+
+            uint8 auHttpData[MMBF] = {0};
+            tsController *psController = NULL;
+            dl_list_for_each(psController, &sSocketHead.list, tsController, list)
+            {
+                eLockLock(&psController->mutex);
+                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
+
+                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+
+                char *reply = malloc(resultLen+18);
+                reply[0] = resultLen%256;
+                reply[1] = (resultLen-(uint8_t)reply[0])/256;
+
+                DBG_vPrintln(DBG_PROFILE, "Encrypted Send Num:%llu\n", psController->u64NumberSend);
+                chacha20_setup(&chacha20, (const uint8_t *)psController->auAccessoryToControllerKey, 32,
+                               (uint8_t *)&psController->u64NumberSend);
+                //connection[i].numberOfMsgSend++;
+                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+                chacha20_encrypt(&chacha20, (const uint8_t*)resultData, (uint8_t*)&reply[2], resultLen);
+
+
+                //ePoly1305_GenKey(auKeyOut, auHttpData, u16Len, T_TRUE, auVerify);
+
+                poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
+                poly1305_init(&verifyContext, (const unsigned char*)temp2);
+                {
+                    char waste[16];
+                    bzero(waste, 16);
+
+                    poly1305_update(&verifyContext, (const unsigned char *)reply, 2);
+                    poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
+
+                    poly1305_update(&verifyContext, (const unsigned char *)&reply[2], resultLen);
+                    poly1305_update(&verifyContext, (const unsigned char *)waste, 16-resultLen%16);
+                    unsigned long long _len;
+                    _len = 2;
+                    poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
+                    _len = resultLen;
+                    poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
+                }
+                poly1305_finish(&verifyContext, (unsigned char*)&reply[resultLen+2]);
+
+
+                DBG_vPrintln(DBG_PROFILE, "Encrypted Send:%d\n", psController->iSocketFd);
+
+                write(psController->iSocketFd, auHttpData, resultLen + (uint16)18);
+                //psQueueData->sController.u64NumberSend++;
+                eLockunLock(&psController->mutex);
+            }
+
+            FREE(psCharacter);
+        }
+    }
+    DBG_vPrintln(DBG_PROFILE, "pvNotifyThreadHandle Exit");
+    vThreadFinish(psThreadInfo);
+    return NULL;
+}
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -400,12 +498,26 @@ tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNum
     psProfile->eHandleGetCmd = eHandleGetCmd;
     psProfile->psAccessory = psAccessoryGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
     psProfile->peInitCategory(psProfile->psAccessory);
+    eQueueCreate(&sQueueNotify, 5);
+    eThreadStart(pvNotifyThreadHandle, &sThreadNotify, E_THREAD_DETACHED);
+
     return psProfile;
 }
 
 teHapStatus eProfileRelease(tsProfile *psProfile)
 {
+    eThreadStop(&sThreadNotify);
+    eQueueDestroy(&sQueueNotify);
     eAccessoryRelease(psProfile->psAccessory);
     FREE(psProfile);
+    return E_HAP_STATUS_OK;
+}
+
+teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter, tsController *psController)
+{
+    DBG_vPrintln(DBG_PROFILE, "eNotifyEnQueue:%llu", psCharacter->u64IID);
+    tsCharacteristic *psCharacterItem = (tsCharacteristic*)calloc(1, sizeof(tsCharacteristic));
+    memcpy(psCharacterItem, psCharacter, sizeof(tsCharacteristic));
+    eQueueEnqueue(&sQueueNotify, psCharacterItem);
     return E_HAP_STATUS_OK;
 }

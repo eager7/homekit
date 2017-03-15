@@ -120,6 +120,7 @@ teHapStatus eHttpEncryptedSend(const uint8 *pBuf, uint16 u16Len, tsController *p
     uint16 u16SendLen = 0;
     uint8 auSendBuffer[MMBF] = {0};
     eEncryptedMessageWithLen(pBuf, u16Len, psController, auSendBuffer, &u16SendLen);
+    DBG_vPrintln(DBG_HTTP, "Encrypted Send:%d\n", psController->iSocketFd);
     send(psController->iSocketFd, auSendBuffer, u16SendLen, 0);
     psController->u64NumberSend++;
     return E_HAP_STATUS_OK;

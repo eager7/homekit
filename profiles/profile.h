@@ -35,6 +35,7 @@ extern "C" {
 /****************************************************************************/
 
 typedef struct {
+    pthread_mutex_t mutex;
     int iSocketFd;
     uint64 u64NumberReceive;
     uint64 u64NumberSend;
@@ -42,6 +43,11 @@ typedef struct {
     uint8  auAccessoryToControllerKey[32];
     struct dl_list list;
 } tsController;
+
+typedef struct {
+    tsCharacteristic sCharacter;
+    tsController sController;
+} tsQueueData;
 
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
 typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson, tsController *psSocket);
@@ -88,6 +94,7 @@ tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNum
                              teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
                              feHandleGetCmd eHandleGetCmd);
 teHapStatus eProfileRelease(tsProfile *psProfile);
+teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter, tsController *psController);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
