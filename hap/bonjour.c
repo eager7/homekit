@@ -250,7 +250,6 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             if(0 == iLen){
                                 bDisconnected = T_TRUE;
                             } else {
-                                eLockLock(&psController->mutex);
                                 tsHttpEntry *psHttpEntry = psHttpParser(auBuffer, (uint16)iLen);
                                 if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_PAIR_SETUP)) {
                                     DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
@@ -266,6 +265,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                     //close(psSocket);
                                 } else {
                                     DBG_vPrintln(DBG_BONJOUR, "Handle Controller Request");
+                                    eLockLock(&psController->mutex);
                                     uint8 auHttpData[MMBF] = {0};
                                     uint16 u16MsgLen = 0;
                                     eDecryptedMessageWithLen(auBuffer, (uint16)iLen, psController, auHttpData, &u16MsgLen);
@@ -273,9 +273,9 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                     uint8 *psRetData = NULL;
                                     uint16 u16RetLen = 0;
                                     eHandleAccessoryPackage(psProfile, auHttpData, u16MsgLen, &psRetData, &u16RetLen, psController);
+                                    eLockunLock(&psController->mutex);
                                 }
                                 FREE(psHttpEntry);
-                                eLockunLock(&psController->mutex);
                             }
                             if(bDisconnected == T_TRUE){
                                 ERR_vPrintln(T_TRUE, "Close Client:%d\n", psController->iSocketFd);
@@ -312,9 +312,7 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.u64CurrentCfgNumber = 1;
     sBonjour.sBonjourText.u8FeatureFlag = 0x00; /* Supports HAP Pairing. This flag is required for all HomeKit accessories */
     sBonjour.sBonjourText.u64DeviceID = psProfile->psAccessory->u64DeviceID;
-    sBonjour.sBonjourText.psModelName = psAccessoryGetCharacterByType(psProfile->psAccessory,
-                                                                      psProfile->psAccessory->u64AIDs,
-                                                                      E_CHARACTERISTIC_NAME)->uValue.psData;
+    sBonjour.sBonjourText.psModelName = psAccessoryGetCharacterByType(psProfile->psAccessory, E_CHARACTERISTIC_NAME)->uValue.psData;
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32CurrentStaNumber = 4;

@@ -857,6 +857,7 @@ teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsC
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
     DBG_vPrintln(DBG_PAIR, "Encrypted Send Num:%llu\n", psController->u64NumberSend);
+    PrintArray(DBG_PAIR, psController->auAccessoryToControllerKey, 32);
     chacha20_setup(&ctx, psController->auAccessoryToControllerKey, 32, (uint8*)&psController->u64NumberSend);
     uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
     chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);

@@ -238,7 +238,7 @@ teHapStatus eAccessoryAddService(tsAccessory *psAccessory, teServiceType eType, 
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-tsCharacteristic * psAccessoryGetCharacterByIID(const tsAccessory *psAccessory, uint64 u64AID, uint64 u64IID);
+tsCharacteristic *psAccessoryGetCharacterByIID(const tsAccessory *psAccessory, uint64 u64IID);
 /*****************************************************************************
 ** Prototype    : psAccessoryGetCharacterByType
 ** Description  : search a character by type
@@ -252,7 +252,7 @@ tsCharacteristic * psAccessoryGetCharacterByIID(const tsAccessory *psAccessory, 
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-tsCharacteristic *psAccessoryGetCharacterByType(const tsAccessory *psAccessory, uint64 u64AID, teCharacteristicType eType);
+tsCharacteristic *psAccessoryGetCharacterByType(const tsAccessory *psAccessory, teCharacteristicType eType);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
