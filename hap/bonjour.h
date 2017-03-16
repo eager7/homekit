@@ -40,11 +40,6 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_BONJOUR_STATUS_OK,
-    E_BONJOUR_STATUS_ERROR,
-} teBonjStatus;
-
-typedef enum {
     E_BONJOUR_FEATURE_FLAG_PAIRING = 0x01,  /* Supports HAP Pairing. This flag is required for all HomeKit accessories. */
 } teFeatureFlag;
 
@@ -80,8 +75,8 @@ typedef struct {
     teAccessoryCategories  eAccessoryCategoryID;
 } tsBonjourText;
 
-typedef teBonjStatus (*feBonjourUpdate)();
-typedef teBonjStatus (*feBonjourRegister)();
+typedef teHapStatus (*feBonjourUpdate)();
+typedef teHapStatus (*feBonjourRegister)();
 typedef struct {
     char                *psServiceName;             /* homekit bonjour server name, _hap._tcp. */
     char                *psHostName;                /* accessory host name, can be NULL */
@@ -121,27 +116,27 @@ typedef struct {
  * pairing and so on
 ** Input        :
 ** Output       : none
-** Return Value : if success, return E_BONJOUR_STATUS_OK, else return
- * E_BONJOUR_STATUS_ERROR
+** Return Value : if success, return E_HAP_STATUS_OK, else return
+ * E_HAP_STATUS_ERROR
 
 ** History      :
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
+teHapStatus eBonjourInit(tsProfile *psProfile, char *pcSetupCode);
 /*****************************************************************************
 ** Prototype    : eBonjourInit
 ** Description  : Initialize the bonjour server, and start a thread of handle
  * http communication
 ** Input        :
 ** Output       : none
-** Return Value : if success, return E_BONJOUR_STATUS_OK, else return E_BONJOUR_STATUS_ERROR
+** Return Value : if success, return E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR
 
 ** History      :
 ** Date         : 2017/2/27
 ** Author       : PCT
 *****************************************************************************/
-teBonjStatus eBonjourFinished();
+teHapStatus eBonjourFinished();
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

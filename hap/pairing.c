@@ -52,10 +52,10 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
+teHapStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
 {
     if (key == NULL || buf == NULL || len < 2 || verify == NULL)
-        return E_PAIRING_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
 
     poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
     poly1305_init(&verifyContext, key);
@@ -71,8 +71,8 @@ tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bo
         poly1305_update(&verifyContext, buf, len);
     }
     if (len%16 > 0)
-        poly1305_update(&verifyContext, (const unsigned char *)waste, 16-(len%16));
-    unsigned char _len;
+        poly1305_update(&verifyContext, (const unsigned char *)waste, (size_t)(16-(len%16)));
+    uint8 _len;
     if (bWithLen) {
         _len = 2;
     } else {
@@ -81,18 +81,18 @@ tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bo
 
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 7);
-    _len = len;
+    _len = (uint8)len;
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
-    _len = len/256;
+    _len = (uint8)(len/256);
     poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
     poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
-    poly1305_finish(&verifyContext, (unsigned char*)verify);
-    return E_PAIRING_STATUS_OK;
+    poly1305_finish(&verifyContext, verify);
+    return E_HAP_STATUS_OK;
 }
-static tePairStatus eAccessoryPairedFinished()
+static teHapStatus eAccessoryPairedFinished()
 {
     system("touch PairingFinished.txt");
-    return E_PAIRING_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 static bool_t bAccessoryIsPaired()
 {
@@ -155,20 +155,19 @@ static teHapStatus eIOSDeviceRemovePairing()
     sPairSetup.bPaired = T_FALSE;
     return E_HAP_STATUS_OK;
 }
-
-static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode)
+static teHapStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode)
 {
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    teHapStatus eStatus = E_HAP_STATUS_OK;
     uint8 value_err[1] = {0};
     tsIpMessage *psResponse = psIpResponseNew();
-    CHECK_POINTER(psResponse, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psResponse, E_HAP_STATUS_ERROR);
     tsTlvMessage *psTlvRespMessage = &psResponse->psTlvPackage->sMessage;
 
     /* 1. check if the accessory is already paired */
     if(sPairSetup.bPaired){
         ERR_vPrintln(T_TRUE, " the accessory is already paired");
         sPairSetup.u8MaxTries++;
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_UNAVAILABLE;
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
         goto Finished;
@@ -178,7 +177,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode)
     if(sPairSetup.u8MaxTries >= MAX_TRIES_PAIR){
         ERR_vPrintln(T_TRUE, " the accessory has received more than 100 unsuccessful authentication attempts");
         sPairSetup.u8MaxTries++;
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_MAX_TRIES;
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
         goto Finished;
@@ -188,7 +187,7 @@ static tePairStatus eM2SrpStartResponse(int iSockFd, char *pSetupCode)
     if(E_THREAD_OK != eLockLockTimed(&sPairSetup.mutex, 100)){
         ERR_vPrintln(T_TRUE, "the accessory is currently performing a Pair Setup operation with a different controller");
         sPairSetup.u8MaxTries++;
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         value_err[0] = E_TLV_ERROR_BUSY;
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,1,psTlvRespMessage);
         goto Finished;
@@ -244,22 +243,22 @@ Finished:
     DBG_vPrintln(DBG_PAIR, "Send Success:%d", (int)iSend);
     return eStatus;
 }
-static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
+static teHapStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
 {
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     uint8 value_rep[] = {E_PAIR_SETUP_M4_SRP_VERIFY_RESPONSE};
     tsIpMessage *psResponse = psIpResponseNew();
-    CHECK_POINTER(psResponse, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psResponse, E_HAP_STATUS_ERROR);
     tsTlvMessage *psTlvRespMessage = &psResponse->psTlvPackage->sMessage;
     tsTlvMessage *psTlvInMessage = &psIpMsg->psTlvPackage->sMessage;
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    teHapStatus eStatus = E_HAP_STATUS_OK;
 
     uint16 u16PublicKeyLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMessage, E_TLV_VALUE_TYPE_PUBLIC_KEY);
     uint8 *psPublicKeyBuf  = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_PUBLIC_KEY);
-    CHECK_POINTER(psPublicKeyBuf, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psPublicKeyBuf, E_HAP_STATUS_ERROR);
     uint16 u16ProofLen     = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMessage, E_TLV_VALUE_TYPE_PROOF);
     uint8 *psProofBuf      = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_PROOF);
-    CHECK_POINTER(psProofBuf, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psProofBuf, E_HAP_STATUS_ERROR);
 
     /* 1. Use the iOS device's SRP public key to compute the SRP shared secret key with SRP_compute_key() */
     SRP_RESULT Ret = SRP_compute_key(sPairSetup.pSrp, &sPairSetup.pSecretKey, psPublicKeyBuf, u16PublicKeyLen);
@@ -268,7 +267,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
     Ret = SRP_verify(sPairSetup.pSrp, psProofBuf, u16ProofLen);
     if (!SRP_OK(Ret)) {
         ERR_vPrintln(T_TRUE, "Verify the iOS device's SRP proof Failed");
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
         goto Finished;
     }
@@ -289,7 +288,7 @@ static tePairStatus eM4SrpVerifyResponse(int iSockFd, tsIpMessage *psIpMsg)
     if (0 != hkdf((const unsigned char*)salt, (int)strlen(salt), (const unsigned char*)sPairSetup.pSecretKey->data,
                   sPairSetup.pSecretKey->length, (const unsigned char*)info, (int)strlen(info), sPairSetup.auSessionKey, LEN_HKDF_LEN)) {
         ERR_vPrintln(T_TRUE, "HKDF Failed");
-        return E_PAIRING_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
     /* 10. Encrypt the sub-TLV, encryptedData, and generate the 16 byte auth tag, authTag. This uses the ChaCha20-Poly1305 AEAD algorithm */
     /* 11. Construct the response with the following TLV items */
@@ -310,15 +309,15 @@ Finished:
 
     return eStatus;
 }
-static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
+static teHapStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
 {
     uint8 value_err[] = {E_TLV_ERROR_AUTHENTICATION};
     uint8 value_rep[] = {E_PAIR_SETUP_M6_EXCHANGE_RESPONSE};
     tsIpMessage *psResponse = psIpResponseNew();
-    CHECK_POINTER(psResponse, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psResponse, E_HAP_STATUS_ERROR);
     tsTlvMessage *psTlvRespMessage = &psResponse->psTlvPackage->sMessage;
     tsTlvMessage *psTlvInMessage = &psIpMsg->psTlvPackage->sMessage;
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    teHapStatus eStatus = E_HAP_STATUS_OK;
 
     uint8 *psEncryptedPackage = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
     uint16 u16EncryptedLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMessage, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
@@ -337,7 +336,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     if(memcmp(auVerify, auAuthTag, LEN_AUTH_TAG)) {
         FREE(psEncryptedData);
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -356,7 +355,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
         ERR_vPrintln(T_TRUE, "Decrypted Failed");
         eTlvPackageRelease(psSubTlvPackage);
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -368,7 +367,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
                   (const uint8*)info, (int)strlen(info), (uint8_t*)auIOSDeviceInfo, 32)) {
         eTlvPackageRelease(psSubTlvPackage);
         ERR_vPrintln(T_TRUE, "HKDF Failed");
-        return E_PAIRING_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
 
     /* 4. Construct iOSDeviceInfo by concatenating iOSDeviceX with the iOSDevicePairingID, and the iOSDeviceLTPK  */
@@ -381,7 +380,7 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
         ERR_vPrintln(T_TRUE, "ed25519_sign_open error");
         eTlvPackageRelease(psSubTlvPackage);
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -428,21 +427,21 @@ static tePairStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMess
     pReturnTlvPackage->eTlvMessageGetData(&pReturnTlvPackage->sMessage, &tlvEncryptedData, &tlv8Len);
 
     /* 6. Encrypt the sub-TLV, encryptedData, and generate the 16 byte auth tag, authTag. */
-    uint8 *tlv8Recorddata = malloc(tlv8Len+16);
-    int tlv8Recordlength = tlv8Len+16;
-    memset(tlv8Recorddata, 0, (size_t)tlv8Recordlength);
+    uint8 *tlv8RecordData = malloc(tlv8Len+16);
+    int tlv8RecordLength = tlv8Len+16;
+    memset(tlv8RecordData, 0, (size_t)tlv8RecordLength);
 
     chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
     chacha20_setup(&ctx, sPairSetup.auSessionKey, 32, (uint8 *)"PS-Msg06");
     uint8 buffer[64] = {0}, key[64] = {0};
     chacha20_encrypt(&ctx, buffer, key, 64);
-    chacha20_encrypt(&ctx, tlvEncryptedData, tlv8Recorddata, tlv8Len);
+    chacha20_encrypt(&ctx, tlvEncryptedData, tlv8RecordData, tlv8Len);
     eTlvPackageRelease(pReturnTlvPackage);
 
     uint8 verify[16] = {0};
-    ePoly1305_GenKey(key, tlv8Recorddata, tlv8Len, T_FALSE, verify);
-    memcpy(&tlv8Recorddata[tlv8Len], verify, 16);
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8Recorddata,(uint16)tlv8Recordlength,psTlvRespMessage);
+    ePoly1305_GenKey(key, tlv8RecordData, tlv8Len, T_FALSE, verify);
+    memcpy(&tlv8RecordData[tlv8Len], verify, 16);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8RecordData,(uint16)tlv8RecordLength,psTlvRespMessage);
 
     /* 7. Send the response to the iOS device with the following TLV items */
     eAccessoryPairedFinished();
@@ -462,7 +461,7 @@ Finished:
 
     return eStatus;
 }
-static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
+static teHapStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpMessage *psIpMsg)
 {
     uint8 *psRepBuffer = 0;
     uint16 u16RepLen = 0;
@@ -471,7 +470,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     tsIpMessage *psResponse = psIpResponseNew();
     tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
     tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    teHapStatus eStatus = E_HAP_STATUS_OK;
 
     /* 1. Generate new, random Curve25519 key pair */
     curved25519_key auSecretKey = {0};
@@ -542,7 +541,7 @@ static tePairStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpM
     DBG_vPrintln(DBG_PAIR, "Send Success:%d", (int)iSend);
     return eStatus;
 }
-static tePairStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage *psIpMsg)
+static teHapStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage *psIpMsg)
 {
     uint8 *psRepBuffer = 0;
     uint16 u16RepLen = 0;
@@ -551,7 +550,7 @@ static tePairStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage 
     tsIpMessage *psResponse = psIpResponseNew();
     tsTlvMessage *psTlvRespMsg = &psResponse->psTlvPackage->sMessage;
     tsTlvMessage *psTlvInMsg = &psIpMsg->psTlvPackage->sMessage;
-    tePairStatus eStatus = E_PAIRING_STATUS_OK;
+    teHapStatus eStatus = E_HAP_STATUS_OK;
 
     uint8 *psEncryptedPackData = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
     uint16 u16EncryptedPackLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMsg,E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
@@ -561,7 +560,7 @@ static tePairStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage 
     uint8 *psDecryptedData = (uint8*)malloc(u16DecryptedLen);
     if(E_HAP_STATUS_OK != eDecryptedMessageNoLen(psEncryptedPackData, u16DecryptedLen, sPairVerify.auSessionKey, (uint8*)"PV-Msg03", psDecryptedData)){
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -572,7 +571,7 @@ static tePairStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage 
     if(NULL == controllerID){
         ERR_vPrintln(T_TRUE, "Decrypted Failed");
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -585,7 +584,7 @@ static tePairStatus eM4VerifyFinishResponse(tsController *psSockFd, tsIpMessage 
     } else {
         ERR_vPrintln(T_TRUE, "controllerID verify failed");
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMsg);
-        eStatus = E_PAIRING_STATUS_ERROR;
+        eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
 
@@ -624,7 +623,6 @@ Finished:
     FREE(psHttpResp);
     return eStatus;
 }
-
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
@@ -680,8 +678,8 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 }
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketFd, tsBonjour *psBonjour)
 {
-    CHECK_POINTER(psBuffer, E_PAIRING_STATUS_ERROR);
-    CHECK_POINTER(psBonjour, E_PAIRING_STATUS_ERROR);
+    CHECK_POINTER(psBuffer, E_HAP_STATUS_ERROR);
+    CHECK_POINTER(psBonjour, E_HAP_STATUS_ERROR);
 
     tsIpMessage *psIpMsg = NULL;
     do {
@@ -735,8 +733,7 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     eTlvPackageRelease(psTlvInMsg);
     return E_HAP_STATUS_OK;
 }
-teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len,
-                                    tsController *psController)
+teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len, tsController *psController)
 {
     CHECK_POINTER(psData, E_HAP_STATUS_ERROR);
     CHECK_POINTER(ppsResp, E_HAP_STATUS_ERROR);
@@ -791,79 +788,5 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         FREE(psBufHttp);
     }
 
-    return E_HAP_STATUS_OK;
-}
-
-teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
-                                   const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData)
-{
-    chacha20_ctx ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
-
-    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-
-    ePoly1305_GenKey(auKeyOut, psBuffer, u16LenIn, T_FALSE, auVerify);
-    if(memcmp(auVerify, &psBuffer[u16LenIn], LEN_AUTH_TAG)){
-        ERR_vPrintln(T_TRUE, "ChaCha20-Poly1305 Verify Failed");
-        return E_HAP_STATUS_VERIFY_ERROR;
-    }
-    chacha20_decrypt(&ctx, psBuffer, psDecryptedData, (size_t)u16LenIn);
-    return E_HAP_STATUS_OK;
-}
-teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
-                                   const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut)
-{
-    chacha20_ctx ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    chacha20_setup(&ctx, psKey, 32, (uint8*)psNonce);
-
-    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-    chacha20_encrypt(&ctx, psBuffer, psEncryptedData, u16LenIn);
-
-    ePoly1305_GenKey(auKeyOut, psEncryptedData, u16LenIn, T_FALSE, auVerify);
-    memcpy(&psEncryptedData[u16LenIn], auVerify, 16);
-    if(pu16LenOut) *pu16LenOut = u16LenIn + (uint16)LEN_AUTH_TAG;
-    return E_HAP_STATUS_OK;
-}
-teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
-                                     uint16 *pu16LenOut)
-{
-    uint16 u16MsgLen = (psBuffer[0] | ((uint16)psBuffer[1] << 8));
-    *pu16LenOut = u16MsgLen;
-    chacha20_ctx ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    chacha20_setup(&ctx, psController->auControllerToAccessoryKey, 32, (uint8*)&psController->u64NumberReceive);
-
-    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-    ePoly1305_GenKey(auKeyOut, psBuffer, u16MsgLen, T_TRUE, auVerify);
-    if(u16LenIn >= (2 + u16MsgLen + 16) && memcmp(auVerify, &psBuffer[2 + u16MsgLen], 16) == 0) {
-        chacha20_decrypt(&ctx, &psBuffer[2], psDecryptedData, u16MsgLen);
-        NOT_vPrintln(DBG_PAIR, "Verify Successfully!\n");
-        return E_HAP_STATUS_OK;
-    }
-    ERR_vPrintln(T_TRUE, "ChaCha20-Poly1305 Verify Failed");
-    return E_HAP_STATUS_VERIFY_ERROR;
-}
-teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
-                                     uint16 *pu16LenOut)
-{
-    psDecryptedData[0] = (uint8)(u16LenIn % 256);
-    psDecryptedData[1] = (uint8)((u16LenIn - psDecryptedData[0]) / 256);
-
-    chacha20_ctx ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    DBG_vPrintln(DBG_PAIR, "Encrypted Send Num:%llu\n", psController->u64NumberSend);
-    PrintArray(DBG_PAIR, psController->auAccessoryToControllerKey, 32);
-    chacha20_setup(&ctx, psController->auAccessoryToControllerKey, 32, (uint8*)&psController->u64NumberSend);
-    uint8 auKeyIn[64] = {0}, auKeyOut[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&ctx, auKeyIn, auKeyOut, 64);
-    chacha20_encrypt(&ctx, psBuffer, &psDecryptedData[2], u16LenIn);
-    ePoly1305_GenKey(auKeyOut, psDecryptedData, u16LenIn, T_TRUE, auVerify);
-    memcpy(&psDecryptedData[u16LenIn+2], auVerify, 16);
-    *pu16LenOut = u16LenIn + (uint16)18;
     return E_HAP_STATUS_OK;
 }

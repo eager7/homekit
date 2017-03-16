@@ -31,24 +31,14 @@ extern "C" {
 #include "curve25519-donna.h"
 #include "ed25519.h"
 #include "controller.h"
+#include "ChaCha20-Poly1305.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
-#define LEN_SALT 16
-#define LEN_AUTH_TAG 16
-#define LEN_CHA20_KEY 32
-#define LEN_HKDF_LEN 32
-
 #define MAX_TRIES_PAIR 100
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef enum {
-    E_PAIRING_STATUS_OK = 0x00,
-    E_PAIRING_STATUS_ERROR,
-} tePairStatus;
-
 typedef enum {
     E_PARIING_REMOVE_M1_REMOVE_PAIRING_REQUEST  = 0x01,
     E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE = 0x02,
@@ -154,18 +144,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 *****************************************************************************/
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketFd, tsBonjour *psBonjour);
 teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-teHapStatus eHandleAccessoryRequest(uint8 *psBuffer, uint16 u16Len, tsController *psController, tsProfile *psProfile);
-tePairStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify);
-teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
-                                     uint16 *pu16LenOut);
-teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData,
-                                     uint16 *pu16LenOut);
-teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
-                                   const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut);
-teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn,
-                                   const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData);
-teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len,
-                                    tsController *psController);
+
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

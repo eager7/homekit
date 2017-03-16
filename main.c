@@ -26,7 +26,7 @@ int main(void)
 
     tsProfile *psProfileDevice = psWindowCoveringProfileInit("WindowCovering", 0x221034235134, "12345678", "TopBand", "Model1.0");
     //tsProfile *psProfileDevice = psSpeakerProfileInit("Speaker", 0x221034235134, "12345678", "TopBand", "Model1.0");
-    CHECK_RESULT(eBonjourInit(psProfileDevice, "119-76-391"), E_BONJOUR_STATUS_OK, -1);
+    CHECK_RESULT(eBonjourInit(psProfileDevice, "119-76-391"), E_HAP_STATUS_OK, -1);
 
     while(bRunning){
         sleep(1);

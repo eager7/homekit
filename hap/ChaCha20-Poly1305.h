@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             ip.h
+ * MODULE:             ChaCha20-Poly1305.h
  *
  * COMPONENT:          home kit interface
  *
@@ -15,8 +15,8 @@
  * Copyright panchangtao@gmail.com 2017. All rights reserved
  *
  ***************************************************************************/
-#ifndef HOMEKIT_IP_H
-#define HOMEKIT_IP_H
+#ifndef HOMEKIT_CHACHA20_POLY1305_H
+#define HOMEKIT_CHACHA20_POLY1305_H
 #if defined __cplusplus
 extern "C" {
 #endif
@@ -24,25 +24,20 @@ extern "C" {
 /***        Include files                                                 ***/
 /****************************************************************************/
 #include "utils.h"
-#include "pairing.h"
-#include "http_handle.h"
-#include "bonjour.h"
-#include "tlv.h"
+#include "accessory_type.h"
+#include "controller.h"
+#include "profile.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-
+#define LEN_SALT 16
+#define LEN_AUTH_TAG 16
+#define LEN_CHA20_KEY 32
+#define LEN_HKDF_LEN 32
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-typedef uint8* (*tpfIpGetBinaryData)(tsTlvMessage *psTlv);
-typedef teHapStatus (*tefIpSend)(tsTlvMessage *psTlv);
-typedef struct {
-    tsHttpEntry *psHttp;
-    tsTlvPackage *psTlvPackage;
-    tefIpSend efIpSend;
-    tpfIpGetBinaryData pfIpGetBinaryData;
-} tsIpMessage;
+
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -50,7 +45,6 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
-
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -58,47 +52,16 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-/*****************************************************************************
-** Prototype    : psIpResponseNew
-** Description  : 创建一个消息数据，用来向里面添加TLV格式数据
-** Input        : none
-** Output       : none
-** Return Value : return the object's pointer, else return NULL
-
-** History      :
-** Date         : 2017/2/27
-** Author       : PCT
-*****************************************************************************/
-tsIpMessage *psIpResponseNew();
-/*****************************************************************************
-** Prototype    : psIpMessageFormat
-** Description  : 格式化tlv8形式的http协议包，可以直接通过返回的结构体依次取出tlv格式的数据包
-** Input        : psBuffer, the data received by socket
- *                u16Len, the length of buffer
-** Output       : none
-** Return Value : return the object's pointer, else return NULL
-
-** History      :
-** Date         : 2017/2/27
-** Author       : PCT
-*****************************************************************************/
-tsIpMessage *psIpMessageFormat(const uint8 *psBuffer, uint16 u16Len);
-/*****************************************************************************
-** Prototype    : eIpMessageRelease
-** Description  : 释放上面两个函数分配的内存
-** Input        : psIpMsg, the pointer of Ip message
-** Output       : none
-** Return Value : return the E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR
-
-** History      :
-** Date         : 2017/2/27
-** Author       : PCT
-*****************************************************************************/
-teHapStatus eIpMessageRelease(tsIpMessage *psIpMsg);
+teHapStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify);
+teHapStatus eEncryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData, uint16 *pu16LenOut);
+teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData, uint16 *pu16LenOut);
+teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut);
+teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const uint8 *psKey, const uint8* psNonce, uint8 *psDecryptedData);
+teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len, tsController *psController);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 #if defined __cplusplus
 }
 #endif
-#endif //HOMEKIT_IP_H
+#endif //HOMEKIT_CHACHA20_POLY1305_H

@@ -57,40 +57,6 @@ static teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter)
     eQueueEnqueue(&sQueueNotify, psCharacterItem);
     return E_HAP_STATUS_OK;
 }
-
-void vBroadcastMessage(tsController *psController, uint8 *psBuffer, size_t sLength) {
-    chacha20_ctx ctx;    bzero(&ctx, sizeof(ctx));
-    char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
-    uint8 *reply = malloc(sLength+18);
-    reply[0] = (uint8)(sLength%256);
-    reply[1] = (uint8)((sLength-(uint8_t)reply[0])/256);
-    chacha20_setup(&ctx, (const uint8_t *)psController->auAccessoryToControllerKey, 32, (uint8_t *)&psController->u64NumberSend);
-    psController->u64NumberSend++;
-    chacha20_encrypt(&ctx, (const uint8_t*)temp, (uint8_t *)temp2, 64);
-    chacha20_encrypt(&ctx, (const uint8_t*)psBuffer, &reply[2], sLength);
-
-    poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
-    poly1305_init(&verifyContext, (const unsigned char*)temp2);
-    {
-        char waste[16];
-        bzero(waste, 16);
-        poly1305_update(&verifyContext, (const unsigned char *)reply, 2);
-        poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
-        poly1305_update(&verifyContext, (const unsigned char *)&reply[2], sLength);
-        poly1305_update(&verifyContext, (const unsigned char *)waste, 16-sLength%16);
-        unsigned long long _len;
-        _len = 2;
-        poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
-        _len = sLength;
-        poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
-    }
-    poly1305_finish(&verifyContext, &reply[sLength+2]);
-    if(-1 == send(psController->iSocketFd, reply, sLength+18, 0)){
-        ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
-    }
-    FREE(reply);
-}
-
 static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
 {
     tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
@@ -171,7 +137,6 @@ teHapStatus eProfileRelease(tsProfile *psProfile)
     FREE(psProfile);
     return E_HAP_STATUS_OK;
 }
-
 
 json_object *psGetAccessoryInfo(const tsAccessory *psAccessory)
 {

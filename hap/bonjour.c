@@ -21,7 +21,6 @@
 /****************************************************************************/
 #include <time.h>
 #include <profile.h>
-#include <accessory.h>
 #include "bonjour.h"
 #include "pairing.h"
 /****************************************************************************/
@@ -47,14 +46,14 @@ static tsBonjour sBonjour;
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 
-static teBonjStatus eBonjourSocketInit(void)
+static teHapStatus eBonjourSocketInit(void)
 {
     eControllerInit();
 
     sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sBonjour.iSocketFd == -1){
         ERR_vPrintln(T_TRUE, "socket create failed:[%s]", strerror(errno));
-        return E_BONJOUR_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
 
     int re = 1;
@@ -69,7 +68,7 @@ static teBonjStatus eBonjourSocketInit(void)
     if(ret == -1){
         ERR_vPrintln(T_TRUE, "bind address failed:[%s]", strerror(errno));
         close(sBonjour.iSocketFd);
-        return E_BONJOUR_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
     listen(sBonjour.iSocketFd, ACCESSORY_SERVER_LISTEN);
 
@@ -78,7 +77,7 @@ static teBonjStatus eBonjourSocketInit(void)
     sBonjour.u16Port = addr_t.sin_port;
     printf("port:%d\n", sBonjour.u16Port);
 
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
 static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
@@ -95,7 +94,7 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
     }
 }
 
-static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
+static teHapStatus eTextRecordFormat(tsBonjour *psBonjour)
 {
     TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
 
@@ -138,10 +137,10 @@ static teBonjStatus eTextRecordFormat(tsBonjour *psBonjour)
     sprintf(temp_ci, "%d", psBonjour->sBonjourText.eAccessoryCategoryID);
     TXTRecordSetValue(&psBonjour->txtRecord, "ci", (uint8)strlen(temp_ci), temp_ci);
 
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
-static teBonjStatus eBonjourRegister()
+static teHapStatus eBonjourRegister()
 {
     tsBonjour *psBonjour = &sBonjour;
     eTextRecordFormat(psBonjour);
@@ -152,13 +151,13 @@ static teBonjStatus eBonjourRegister()
     TXTRecordDeallocate(&psBonjour->txtRecord);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceRegister Failed:%d", ret);
-        return E_BONJOUR_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
 
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
-static teBonjStatus eBonjourUpdate()
+static teHapStatus eBonjourUpdate()
 {
     tsBonjour *psBonjour = &sBonjour;
     psBonjour->sBonjourText.u64CurrentCfgNumber++;
@@ -169,9 +168,9 @@ static teBonjStatus eBonjourUpdate()
     TXTRecordDeallocate(&psBonjour->txtRecord);
     if(ret){
         ERR_vPrintln(DBG_BONJOUR, "DNSServiceUpdateRecord Failed:%d", ret);
-        return E_BONJOUR_STATUS_ERROR;
+        return E_HAP_STATUS_ERROR;
     }
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
@@ -282,7 +281,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
+teHapStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
 {
     SRP_initialize_library();
     srand((unsigned int)time(NULL));
@@ -303,24 +302,24 @@ teBonjStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.u8StatusFlag = 0x01;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->psAccessory->eAccessoryType;
 
-    CHECK_RESULT(eBonjourSocketInit(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
-    CHECK_RESULT(sBonjour.eBonjourRegister(), E_BONJOUR_STATUS_OK, E_BONJOUR_STATUS_ERROR);
+    CHECK_RESULT(eBonjourSocketInit(), E_HAP_STATUS_OK, E_HAP_STATUS_ERROR);
+    CHECK_RESULT(sBonjour.eBonjourRegister(), E_HAP_STATUS_OK, E_HAP_STATUS_ERROR);
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
 
     sBonjour.sBonjourThread.pvThreadData = psProfile;
-    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sBonjourThread, E_THREAD_JOINABLE), E_THREAD_OK, E_BONJOUR_STATUS_ERROR);
+    CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sBonjourThread, E_THREAD_JOINABLE), E_THREAD_OK, E_HAP_STATUS_ERROR);
 
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
-teBonjStatus eBonjourFinished()
+teHapStatus eBonjourFinished()
 {
     eThreadStop(&sBonjour.sBonjourThread);
     SRP_finalize_library();
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     ePairingFinished();
     eControllerFinished();
-    return E_BONJOUR_STATUS_OK;
+    return E_HAP_STATUS_OK;
 }
 
 

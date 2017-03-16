@@ -121,6 +121,19 @@ tsHttpEntry *psHttpParser(const uint8 *pBuf, uint16 u16Len);
 *****************************************************************************/
 uint16 u16HttpFormat(teHttpCode eStatus, const char *psProtocol, const char *psType, const uint8 *pBuffer, uint16 u16Length,
                      uint8 **ppResponse);
+/*****************************************************************************
+** Prototype    : eHttpEncryptedSend
+** Description  : 将数据进行加密后发送
+** Input        : pBuf, the data will be sent
+ *                u16Len, the length of buffer
+ *                psController, the IOS device's structure
+** Output       : none
+** Return Value : return the E_HAP_STATUS_OK, else return E_HAP_STATUS_ERROR
+
+** History      :
+** Date         : 2017/2/27
+** Author       : PCT
+*****************************************************************************/
 teHapStatus eHttpEncryptedSend(const uint8 *pBuf, uint16 u16Len, tsController *psController);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
