@@ -52,43 +52,6 @@ static tsPairVerify sPairVerify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-teHapStatus ePoly1305_GenKey(const uint8 *key, const uint8 *buf, uint16 len, bool_t bWithLen, uint8 *verify)
-{
-    if (key == NULL || buf == NULL || len < 2 || verify == NULL)
-        return E_HAP_STATUS_ERROR;
-
-    poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
-    poly1305_init(&verifyContext, key);
-
-    char waste[16];
-    bzero(waste, 16);
-    if (bWithLen) {
-        poly1305_update(&verifyContext, &buf[0], 1);
-        poly1305_update(&verifyContext, &buf[1], 1);
-        poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
-        poly1305_update(&verifyContext, &buf[2], len);
-    } else {
-        poly1305_update(&verifyContext, buf, len);
-    }
-    if (len%16 > 0)
-        poly1305_update(&verifyContext, (const unsigned char *)waste, (size_t)(16-(len%16)));
-    uint8 _len;
-    if (bWithLen) {
-        _len = 2;
-    } else {
-        _len = 0;
-    }
-
-    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
-    poly1305_update(&verifyContext, (const unsigned char *)&waste, 7);
-    _len = (uint8)len;
-    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
-    _len = (uint8)(len/256);
-    poly1305_update(&verifyContext, (const unsigned char *)&_len, 1);
-    poly1305_update(&verifyContext, (const unsigned char *)&waste, 6);
-    poly1305_finish(&verifyContext, verify);
-    return E_HAP_STATUS_OK;
-}
 static teHapStatus eAccessoryPairedFinished()
 {
     system("touch PairingFinished.txt");
