@@ -13,7 +13,6 @@ static void vQuitSignalHandler (int sig)
 {
     DBG_vPrintln(T_TRUE, "Got signal %d", sig);
     bRunning = 0;
-
     return;
 }
 

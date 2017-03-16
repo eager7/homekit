@@ -103,7 +103,7 @@ teHapStatus eDecryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const
     chacha20_decrypt(&ctx, psBuffer, psDecryptedData, (size_t)u16LenIn);
     return E_HAP_STATUS_OK;
 }
-teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const uint8 *psKey, const uint8* psNonce, uint8 *psEncryptedData, uint16 *pu16LenOut)
+teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const uint8 *psKey, const uint8 *psNonce, uint8 *psEncryptedData)
 {
     chacha20_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
@@ -115,7 +115,6 @@ teHapStatus eEncryptedMessageNoLen(const uint8 *psBuffer, uint16 u16LenIn, const
 
     ePoly1305_GenKey(auKeyOut, psEncryptedData, u16LenIn, T_FALSE, auVerify);
     memcpy(&psEncryptedData[u16LenIn], auVerify, 16);
-    if(pu16LenOut) *pu16LenOut = u16LenIn + (uint16)LEN_AUTH_TAG;
     return E_HAP_STATUS_OK;
 }
 teHapStatus eDecryptedMessageWithLen(const uint8 *psBuffer, uint16 u16LenIn, tsController *psController, uint8 *psDecryptedData, uint16 *pu16LenOut)

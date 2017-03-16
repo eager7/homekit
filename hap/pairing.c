@@ -284,30 +284,16 @@ static teHapStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMessa
 
     uint8 *psEncryptedPackage = psIpMsg->psTlvPackage->psTlvRecordGetData(psTlvInMessage, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
     uint16 u16EncryptedLen = psIpMsg->psTlvPackage->pu16TlvRecordGetLen(psTlvInMessage, E_TLV_VALUE_TYPE_ENCRYPTED_DATA);
-    uint8 *psEncryptedData = malloc(u16EncryptedLen);
-    memcpy(psEncryptedData, psEncryptedPackage, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
-    uint8 auAuthTag[LEN_AUTH_TAG];
-    memcpy(auAuthTag, &psEncryptedPackage[u16EncryptedLen - LEN_AUTH_TAG], sizeof(auAuthTag));
 
     /* 1. Verify the iOS device's authTag */
-    chacha20_ctx context;
-    memset(&context, 0, sizeof(context));
-    chacha20_setup(&context, sPairSetup.auSessionKey, 32, (uint8*)"PS-Msg05");
-    uint8 auInKey[64] = {0}, auOutKey[64] = {0}, auVerify[16] = {0};
-    chacha20_encrypt(&context, (const uint8*)auInKey, (uint8*)auOutKey, 64);
-    ePoly1305_GenKey((const uint8*)auOutKey, psEncryptedData, (uint16) (u16EncryptedLen - LEN_AUTH_TAG), T_FALSE, auVerify);
-    if(memcmp(auVerify, auAuthTag, LEN_AUTH_TAG)) {
-        FREE(psEncryptedData);
+    /* 2. Decrypt the sub-TLV in encryptedData. */
+    uint8 *psDecryptedData = (uint8*)calloc(1, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
+    if(E_HAP_STATUS_ERROR == eDecryptedMessageNoLen(psEncryptedPackage, (uint16) (u16EncryptedLen - LEN_AUTH_TAG),
+                                                    sPairSetup.auSessionKey, (uint8*)"PS-Msg05", psDecryptedData)){
         psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),psTlvRespMessage);
         eStatus = E_HAP_STATUS_ERROR;
         goto Finished;
     }
-
-    /* 2. Decrypt the sub-TLV in encryptedData.  */
-    uint8 *psDecryptedData = (uint8*)malloc((size_t)(u16EncryptedLen - LEN_AUTH_TAG));
-    memset(psDecryptedData, 0, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
-    chacha20_decrypt(&context, (const uint8*)psEncryptedData, psDecryptedData, (size_t)(u16EncryptedLen - LEN_AUTH_TAG));
-    FREE(psEncryptedData);
 
     tsTlvPackage *psSubTlvPackage = psTlvPackageParser(psDecryptedData, (uint16) (u16EncryptedLen - LEN_AUTH_TAG));
     FREE(psDecryptedData);
@@ -385,26 +371,16 @@ static teHapStatus eM6ExchangeResponse(int iSockFd, uint8 *psDeviceID, tsIpMessa
     pReturnTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_SIGNATURE,auAcceoosrySignature,64,&pReturnTlvPackage->sMessage);
     pReturnTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY,edAccessoryLTPK,32,&pReturnTlvPackage->sMessage);
 
-    uint8 *tlvEncryptedData = NULL;
-    uint16 tlv8Len = 0;
-    pReturnTlvPackage->eTlvMessageGetData(&pReturnTlvPackage->sMessage, &tlvEncryptedData, &tlv8Len);
+    uint8 *psSubTlvData = NULL;
+    uint16 u16SubTlvLength = 0;
+    pReturnTlvPackage->eTlvMessageGetData(&pReturnTlvPackage->sMessage, &psSubTlvData, &u16SubTlvLength);
 
     /* 6. Encrypt the sub-TLV, encryptedData, and generate the 16 byte auth tag, authTag. */
-    uint8 *tlv8RecordData = malloc(tlv8Len+16);
-    int tlv8RecordLength = tlv8Len+16;
-    memset(tlv8RecordData, 0, (size_t)tlv8RecordLength);
-
-    chacha20_ctx ctx;   bzero(&ctx, sizeof(ctx));
-    chacha20_setup(&ctx, sPairSetup.auSessionKey, 32, (uint8 *)"PS-Msg06");
-    uint8 buffer[64] = {0}, key[64] = {0};
-    chacha20_encrypt(&ctx, buffer, key, 64);
-    chacha20_encrypt(&ctx, tlvEncryptedData, tlv8RecordData, tlv8Len);
+    uint8 *psEncryptedData = calloc(1, u16SubTlvLength + LEN_AUTH_TAG);
+    eEncryptedMessageNoLen(psSubTlvData, u16SubTlvLength, sPairSetup.auSessionKey, (uint8*)"PS-Msg06", psEncryptedData);
     eTlvPackageRelease(pReturnTlvPackage);
-
-    uint8 verify[16] = {0};
-    ePoly1305_GenKey(key, tlv8RecordData, tlv8Len, T_FALSE, verify);
-    memcpy(&tlv8RecordData[tlv8Len], verify, 16);
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,tlv8RecordData,(uint16)tlv8RecordLength,psTlvRespMessage);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,u16SubTlvLength + (uint16)LEN_AUTH_TAG,psTlvRespMessage);
+    FREE(psEncryptedData);
 
     /* 7. Send the response to the iOS device with the following TLV items */
     eAccessoryPairedFinished();
@@ -477,14 +453,13 @@ static teHapStatus eM2VerifyStartResponse(int iSockFd, uint8 *psDeviceID, tsIpMe
     uint8 *psSubMsgData = NULL;
     uint16 u16SubMsgLen = 0;
     psSubTlvPackage->eTlvMessageGetData(&psSubTlvPackage->sMessage,&psSubMsgData, &u16SubMsgLen);
-    uint16 u16EncryptedLen = 0;
-    uint8 *psEncryptedData = (uint8*)malloc(u16SubMsgLen + 16);
-    eEncryptedMessageNoLen(psSubMsgData, u16SubMsgLen, sPairVerify.auSessionKey, (uint8*)"PV-Msg02", psEncryptedData, &u16EncryptedLen);
+    uint8 *psEncryptedData = (uint8*)malloc(u16SubMsgLen + LEN_AUTH_TAG);
+    eEncryptedMessageNoLen(psSubMsgData, u16SubMsgLen, sPairVerify.auSessionKey, (uint8 *) "PV-Msg02", psEncryptedData);
     eTlvPackageRelease(psSubTlvPackage);
 
     /* 8. Construct the response with the following TLV items */
     psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_PUBLIC_KEY, sPairVerify.auPublicKey, 32, psTlvRespMsg);
-    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,u16EncryptedLen,psTlvRespMsg);
+    psResponse->psTlvPackage->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ENCRYPTED_DATA,psEncryptedData,u16SubMsgLen + (uint16)LEN_AUTH_TAG,psTlvRespMsg);
     FREE(psEncryptedData);
 
     /* 9. Send the response to the iOS device */
