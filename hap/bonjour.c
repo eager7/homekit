@@ -43,29 +43,13 @@
 /***        Local Variables                                               ***/
 /****************************************************************************/
 static tsBonjour sBonjour;
-tsController sSocketHead;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static tsController *psSocketListAdd(tsController *psControllerList)
-{
-    tsController *psController = (tsController*)calloc(1, sizeof(tsController));
-    psController->iSocketFd = -1;
-    eLockCreate(&psController->mutex);
-    dl_list_add_tail(&psControllerList->list, &psController->list);
-    return psController;
-}
-static teHapStatus eSocketListDel(tsController *psController)
-{
-    dl_list_del(&psController->list);
-    eLockDestroy(&psController->mutex);
-    FREE(psController);
-    return E_HAP_STATUS_OK;
-}
+
 static teBonjStatus eBonjourSocketInit(void)
 {
-    memset(&sSocketHead, 0, sizeof(tsController));
-    dl_list_init(&sSocketHead.list);
+    eControllerInit();
 
     sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sBonjour.iSocketFd == -1){
@@ -230,18 +214,18 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                     if(-1 == iSockFd){
                         ERR_vPrintln(T_TRUE, "Accept client failed:%s", strerror(errno));
                     } else {
-                        tsController *psSocket = psSocketListAdd(&sSocketHead);
+                        tsController *psControllerClient = psControllerListAdd(&sControllerHead);
                         DBG_vPrintln(DBG_BONJOUR, "A client connected[%s]", inet_ntoa(client_addr.sin_addr));
-                        psSocket->iSocketFd = iSockFd;
-                        FD_SET(psSocket->iSocketFd, &fdSelect);
-                        if(psSocket->iSocketFd > iListenFD){
-                            iListenFD = psSocket->iSocketFd;
+                        psControllerClient->iSocketFd = iSockFd;
+                        FD_SET(psControllerClient->iSocketFd, &fdSelect);
+                        if(psControllerClient->iSocketFd > iListenFD){
+                            iListenFD = psControllerClient->iSocketFd;
                         }
                         sBonjour.u8NumberController ++;
                     }
                 } else {    /* Client Communication */
                     tsController *psControllerTemp = NULL, *psController = NULL;
-                    dl_list_for_each_safe(psController, psControllerTemp, &sSocketHead.list, tsController, list)
+                    dl_list_for_each_safe(psController, psControllerTemp, &sControllerHead.list, tsController, list)
                     {
                         if(FD_ISSET(psController->iSocketFd, &fdTemp)){
                             DBG_vPrintln(DBG_BONJOUR, "A client receive data");
@@ -281,7 +265,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 ERR_vPrintln(T_TRUE, "Close Client:%d\n", psController->iSocketFd);
                                 close(psController->iSocketFd);
                                 FD_CLR(psController->iSocketFd, &fdSelect);//delete this client from select set
-                                eSocketListDel(psController);
+                                eControllerListDel(psController);
                                 sBonjour.u8NumberController --;
                             }
                             break; /* dl_list_for_each */
@@ -335,6 +319,7 @@ teBonjStatus eBonjourFinished()
     SRP_finalize_library();
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     ePairingFinished();
+    eControllerFinished();
     return E_BONJOUR_STATUS_OK;
 }
 

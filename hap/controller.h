@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * MODULE:             profile.h
+ * MODULE:             controller.h
  *
  * COMPONENT:          home kit interface
  *
@@ -15,18 +15,16 @@
  * Copyright panchangtao@gmail.com 2017. All rights reserved
  *
  ***************************************************************************/
-
-#ifndef HOMEKIT_PROFILE_H
-#define HOMEKIT_PROFILE_H
+#ifndef HOMEKIT_CONTROLLER_H
+#define HOMEKIT_CONTROLLER_H
 #if defined __cplusplus
 extern "C" {
 #endif
 /****************************************************************************/
 /***        Include files                                                 ***/
 /****************************************************************************/
-#include "accessory.h"
+#include "utils.h"
 #include "list.h"
-#include "controller.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -34,23 +32,21 @@ extern "C" {
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
-
-typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
-typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson, tsController *psSocket);
-typedef teHapStatus (*feHandleGetCmd)(tsCharacteristic *psCharacter);
-typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, tsController *psSocket, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
-typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
-typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback);
+typedef struct {
+    tsCharacteristic sCharacter;
+    struct dl_list list;
+} tsEventNotify;
 
 typedef struct {
-    tsAccessory                 *psAccessory;
-    fpeInitCategory             peInitCategory;
-    fpsGetAccessoryInfo         psGetAccessoryInfo;
-    fpeSetCharacteristicInfo    peSetCharacteristicInfo;
-    fpsGetCharacteristicInfo    psGetCharacteristicInfo;
-    feHandleSetCmd              eHandleSetCmd;
-    feHandleGetCmd              eHandleGetCmd;
-} tsProfile;
+    pthread_mutex_t mutex;
+    int iSocketFd;
+    uint64 u64NumberReceive;
+    uint64 u64NumberSend;
+    uint8  auControllerToAccessoryKey[32];
+    uint8  auAccessoryToControllerKey[32];
+    tsEventNotify sEventNotify;
+    struct dl_list list;
+} tsController;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
@@ -58,6 +54,7 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
+extern tsController sControllerHead;
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -65,25 +62,16 @@ typedef struct {
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-/*****************************************************************************
-** Prototype    : psProfileGenerate
-** Description  : malloc a new profile object
-** Input        :
-** Output       : none
-** Return Value : if success, return the object's pointer, else return NULL
-
-** History      :
-** Date         : 2017/2/27
-** Author       : PCT
-*****************************************************************************/
-tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
-                             teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
-                             feHandleGetCmd eHandleGetCmd);
-teHapStatus eProfileRelease(tsProfile *psProfile);
+teHapStatus  eControllerInit();
+tsController *psControllerListAdd(tsController *psControllerList);
+teHapStatus  eControllerListDel(tsController *psController);
+teHapStatus eControllerFinished();
+teHapStatus eControllerListAddNotify(tsController *psController, tsCharacteristic *psCharacter);
+bool_t bIsControllerNotify(tsController *psController, tsCharacteristic *psCharacter);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
 #if defined __cplusplus
 }
 #endif
-#endif //HOMEKIT_PROFILE_H
+#endif //HOMEKIT_CONTROLLER_H
