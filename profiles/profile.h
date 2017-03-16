@@ -45,9 +45,6 @@ typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory,
 typedef struct {
     tsAccessory                 *psAccessory;
     fpeInitCategory             peInitCategory;
-    fpsGetAccessoryInfo         psGetAccessoryInfo;
-    fpeSetCharacteristicInfo    peSetCharacteristicInfo;
-    fpsGetCharacteristicInfo    psGetCharacteristicInfo;
     feHandleSetCmd              eHandleSetCmd;
     feHandleGetCmd              eHandleGetCmd;
 } tsProfile;
@@ -80,6 +77,10 @@ tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNum
                              teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
                              feHandleGetCmd eHandleGetCmd);
 teHapStatus eProfileRelease(tsProfile *psProfile);
+json_object *psGetAccessoryInfo(const tsAccessory *psAccessory);
+json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback);
+teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psController, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
+
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

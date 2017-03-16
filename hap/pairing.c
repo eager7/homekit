@@ -749,7 +749,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
     {
         //Publish the characteristics of the accessories
         NOT_vPrintln(DBG_PAIR, "Ask for accessories info\n");
-        json_object *psJsonRet = psProfile->psGetAccessoryInfo(psProfile->psAccessory);
+        json_object *psJsonRet = psGetAccessoryInfo(psProfile->psAccessory);
         u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_JSON,
                                  (uint8 *) json_object_get_string(psJsonRet),
                                  (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
@@ -764,7 +764,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         if(strstr((char*)psData, "PUT"))
         {
             NOT_vPrintln(DBG_PAIR, "Writing Characteristics Attribute:%s\n", psHttp->acContentData);
-            psProfile->peSetCharacteristicInfo(psProfile->psAccessory, psController, psHttp->acContentData, &psBufHttp, &u16LenHttp, psProfile->eHandleSetCmd);
+            eSetCharacteristicInfo(psProfile->psAccessory, psController, psHttp->acContentData, &psBufHttp, &u16LenHttp, psProfile->eHandleSetCmd);
             DBG_vPrintln(DBG_PAIR, "Return Http:\n%s", psBufHttp);
             eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
             FREE(psBufHttp);
@@ -772,7 +772,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
         else if(strstr((char*)psData, "GET"))
         {
             WAR_vPrintln(DBG_PAIR, "Reading Characteristics Attribute\n");
-            json_object *psJsonRet = psProfile->psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory, psProfile->eHandleGetCmd);
+            json_object *psJsonRet = psGetCharacteristicInfo(psProfile->psAccessory, (char*)psHttp->acDirectory, psProfile->eHandleGetCmd);
             u16LenHttp = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_JSON,
                                      (uint8 *) json_object_get_string(psJsonRet),
                                      (uint16) strlen(json_object_get_string(psJsonRet)), &psBufHttp);
