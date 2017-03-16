@@ -344,7 +344,8 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController
                 json_object_array_add(psArrayResp, psJsonRespTemp);
             }
             fCallback(psCharacter, psJsonValue, psController);
-            eNotifyEnQueue(psCharacter, psController);
+            if(psCharacter->bEventNot)
+                eNotifyEnQueue(psCharacter, psController);
 
             switch (psCharacter->eFormat){
                 case E_TYPE_INT:    psCharacter->uValue.iData   = json_object_get_int(psJsonValue);
@@ -378,6 +379,48 @@ static teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController
     json_object_put(psJsonResp);
     return E_HAP_STATUS_ERROR;
 }
+void broadcastMessage(uint8 *resultData, size_t resultLen) {
+    tsController *psController = NULL;
+    dl_list_for_each(psController, &sSocketHead.list, tsController, list){
+        int socketNumber = psController->iSocketFd;
+        if (socketNumber >= 0) {
+            DBG_vPrintln(DBG_PROFILE, "psController:%d", socketNumber);
+            eLockLock(&psController->mutex);
+
+            chacha20_ctx ctx;    bzero(&ctx, sizeof(ctx));
+            char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
+            uint8 *reply = malloc(resultLen+18);
+            reply[0] = (uint8)(resultLen%256);
+            reply[1] = (uint8)((resultLen-(uint8_t)reply[0])/256);
+            chacha20_setup(&ctx, (const uint8_t *)psController->auAccessoryToControllerKey, 32, (uint8_t *)&psController->u64NumberSend);
+            psController->u64NumberSend++;
+            chacha20_encrypt(&ctx, (const uint8_t*)temp, (uint8_t *)temp2, 64);
+            chacha20_encrypt(&ctx, (const uint8_t*)resultData, &reply[2], resultLen);
+
+            poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
+            poly1305_init(&verifyContext, (const unsigned char*)temp2);
+            {
+                char waste[16];
+                bzero(waste, 16);
+                poly1305_update(&verifyContext, (const unsigned char *)reply, 2);
+                poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
+                poly1305_update(&verifyContext, (const unsigned char *)&reply[2], resultLen);
+                poly1305_update(&verifyContext, (const unsigned char *)waste, 16-resultLen%16);
+                unsigned long long _len;
+                _len = 2;
+                poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
+                _len = resultLen;
+                poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
+            }
+            poly1305_finish(&verifyContext, &reply[resultLen+2]);
+            if(-1 == send(socketNumber, reply, resultLen+18, 0)){
+                ERR_vPrintln(T_TRUE, "Send Error:%s", strerror(errno));
+            }
+            FREE(reply);
+            eLockunLock(&psController->mutex);
+        }
+    }
+}
 
 static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
 {
@@ -387,6 +430,7 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
     while(psThreadInfo->eState == E_THREAD_RUNNING){
         tsCharacteristic *psCharacter = NULL;
         eQueueDequeue(&sQueueNotify, (void**)&psCharacter);
+        sleep(2);
 
         NOT_vPrintln(DBG_PROFILE, "Notify the character %llu changed", psCharacter->u64IID);
         if(psCharacter->bEventNot){
@@ -413,60 +457,7 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
                                              (uint8 *) json_object_get_string(psJsonResp),
                                              (uint16) strlen(json_object_get_string(psJsonResp)), &resultData);
             json_object_put(psJsonResp);
-            WAR_vPrintln(1, "%d\n%s", resultLen, resultData);
-
-
-            uint8 auHttpData[MMBF] = {0};
-            tsController *psController = NULL;
-            dl_list_for_each(psController, &sSocketHead.list, tsController, list)
-            {
-                eLockLock(&psController->mutex);
-
-                chacha20_ctx chacha20;    bzero(&chacha20, sizeof(chacha20));
-                char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
-                char *reply = malloc(resultLen+18);
-                reply[0] = resultLen%256;
-                reply[1] = (resultLen-(uint8_t)reply[0])/256;
-                DBG_vPrintln(1, "Encrypted Send Num:%llu\n", psController->u64NumberSend);
-                PrintArray(1, psController->auAccessoryToControllerKey, 32);
-                chacha20_setup(&chacha20, (const uint8_t *)psController->auAccessoryToControllerKey, 32, (uint8_t *)&psController->u64NumberSend);
-                //connection[i].numberOfMsgSend++;
-                chacha20_encrypt(&chacha20, (const uint8_t*)temp, (uint8_t *)temp2, 64);
-                chacha20_encrypt(&chacha20, (const uint8_t*)resultData, (uint8_t*)&reply[2], resultLen);
-
-#if 1
-                poly1305_context verifyContext; bzero(&verifyContext, sizeof(verifyContext));
-                poly1305_init(&verifyContext, (const unsigned char*)temp2);
-                {
-                    char waste[16];
-                    bzero(waste, 16);
-
-                    poly1305_update(&verifyContext, (const unsigned char *)reply, 2);
-                    poly1305_update(&verifyContext, (const unsigned char *)waste, 14);
-
-                    poly1305_update(&verifyContext, (const unsigned char *)&reply[2], resultLen);
-                    poly1305_update(&verifyContext, (const unsigned char *)waste, 16-resultLen%16);
-                    unsigned long long _len;
-                    _len = 2;
-                    poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
-                    _len = resultLen;
-                    poly1305_update(&verifyContext, (const unsigned char *)&_len, 8);
-                }
-                poly1305_finish(&verifyContext, (unsigned char*)&reply[resultLen+2]);
-#else
-                char verify[16];
-            memset(verify, 0, 16);
-            Poly1305_GenKey((const unsigned char *)temp2, (uint8_t *)reply, resultLen, Type_Data_With_Length, verify);
-            memcpy((unsigned char*)&reply[resultLen+2], verify, 16);
-#endif
-
-
-                DBG_vPrintln(DBG_PROFILE, "Encrypted Send:%d\n", psController->iSocketFd);
-
-                write(psController->iSocketFd, auHttpData, resultLen + (uint16)18);
-                //psQueueData->sController.u64NumberSend++;
-                eLockunLock(&psController->mutex);
-            }
+            broadcastMessage(resultData, resultLen);
             FREE(resultData);
             FREE(psCharacter);
         }else {
