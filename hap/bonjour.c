@@ -45,11 +45,8 @@ static tsBonjour sBonjour;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-
 static teHapStatus eBonjourSocketInit(void)
 {
-    eControllerInit();
-
     sBonjour.iSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sBonjour.iSocketFd == -1){
         ERR_vPrintln(T_TRUE, "socket create failed:[%s]", strerror(errno));
@@ -79,9 +76,7 @@ static teHapStatus eBonjourSocketInit(void)
 
     return E_HAP_STATUS_OK;
 }
-
-static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode,
-                                const char *name, const char *regtype, const char *domain, void *context)
+static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNSServiceErrorType errorCode, const char *name, const char *regtype, const char *domain, void *context)
 {
     (void)client;   // Unused
     (void)flags;    // Unused
@@ -93,7 +88,6 @@ static void DNSSD_API reg_reply(DNSServiceRef client, DNSServiceFlags flags, DNS
         default:                          printf("Error %d\n", errorCode); return;
     }
 }
-
 static teHapStatus eTextRecordFormat(tsBonjour *psBonjour)
 {
     TXTRecordCreate(&psBonjour->txtRecord, 0, NULL);
@@ -139,7 +133,6 @@ static teHapStatus eTextRecordFormat(tsBonjour *psBonjour)
 
     return E_HAP_STATUS_OK;
 }
-
 static teHapStatus eBonjourRegister()
 {
     tsBonjour *psBonjour = &sBonjour;
@@ -156,7 +149,6 @@ static teHapStatus eBonjourRegister()
 
     return E_HAP_STATUS_OK;
 }
-
 static teHapStatus eBonjourUpdate()
 {
     tsBonjour *psBonjour = &sBonjour;
@@ -172,7 +164,6 @@ static teHapStatus eBonjourUpdate()
     }
     return E_HAP_STATUS_OK;
 }
-
 static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
 {
     tsThread *psThreadInfo = (tsThread *)psThreadInfoVoid;
@@ -198,11 +189,9 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
             case 0:
                 WAR_vPrintln(DBG_BONJOUR, "receive message time out \n");
                 break;
-
             case -1:
                 WAR_vPrintln(DBG_BONJOUR, "receive message error:%s \n", strerror(errno));
                 break;
-
             default: {
                 if( FD_ISSET(sBonjour.iSocketFd, &fdTemp) ){//there is client accept
                     DBG_vPrintln(DBG_BONJOUR, "A client connecting... \n");
@@ -224,6 +213,7 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                     }
                 } else {    /* Client Communication */
                     tsController *psControllerTemp = NULL, *psController = NULL;
+                    eLockLock(&sControllerHead.mutex);
                     dl_list_for_each_safe(psController, psControllerTemp, &sControllerHead.list, tsController, list)
                     {
                         if(FD_ISSET(psController->iSocketFd, &fdTemp)){
@@ -267,9 +257,10 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                 eControllerListDel(psController);
                                 sBonjour.u8NumberController --;
                             }
-                            break; /* dl_list_for_each */
+                            break; /* dl_list_for_each_safe */
                         }
                     }
+                    eLockunLock(&sControllerHead.mutex);
                 }
             }   break; /* default */
         }
@@ -289,6 +280,7 @@ teHapStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.eBonjourUpdate = eBonjourUpdate;
     sBonjour.eBonjourRegister = eBonjourRegister;
     ePairingInit();
+    eControllerInit();
 
     sBonjour.psServiceName = BONJOUR_SERVER_TYPE;
     sBonjour.pcSetupCode = psSetupCode;
@@ -316,9 +308,9 @@ teHapStatus eBonjourFinished()
 {
     eThreadStop(&sBonjour.sBonjourThread);
     SRP_finalize_library();
+    eControllerFinished();
     if(sBonjour.psDnsRef) DNSServiceRefDeallocate(sBonjour.psDnsRef);
     ePairingFinished();
-    eControllerFinished();
     return E_HAP_STATUS_OK;
 }
 

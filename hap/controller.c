@@ -55,6 +55,7 @@ tsController sControllerHead;
 teHapStatus eControllerInit()
 {
     memset(&sControllerHead, 0, sizeof(tsController));
+    eLockCreate(&sControllerHead.mutex);
     dl_list_init(&sControllerHead.list);
     dl_list_init(&sControllerHead.sEventNotify.list);
     return E_HAP_STATUS_OK;
@@ -62,20 +63,25 @@ teHapStatus eControllerInit()
 
 teHapStatus eControllerFinished()
 {
+    eLockLock(&sControllerHead.mutex);
     tsController *psController = NULL, *psControllerTemp = NULL;
-    dl_list_for_each_safe(psController, psControllerTemp, &psController->list, tsController, list){
+    dl_list_for_each_safe(psController, psControllerTemp, &sControllerHead.list, tsController, list){
         eControllerListDel(psController);
     }
+    eLockunLock(&sControllerHead.mutex);
+    eLockDestroy(&sControllerHead.mutex);
     return E_HAP_STATUS_OK;
 }
 
 tsController *psControllerListAdd(tsController *psControllerList)
 {
+    eLockLock(&sControllerHead.mutex);
     tsController *psController = (tsController*)calloc(1, sizeof(tsController));
     psController->iSocketFd = -1;
     eLockCreate(&psController->mutex);
     dl_list_init(&psController->sEventNotify.list);
     dl_list_add_tail(&psControllerList->list, &psController->list);
+    eLockunLock(&sControllerHead.mutex);
     return psController;
 }
 

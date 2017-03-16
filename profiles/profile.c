@@ -434,7 +434,7 @@ teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psCon
                 json_object_object_add(psJsonRespTemp, "status", json_object_new_int(0));
                 json_object_array_add(psArrayResp, psJsonRespTemp);
             }
-            fCallback(psCharacter, psJsonValue, psController);
+            fCallback(psCharacter, psJsonValue);
             eNotifyEnQueue(psCharacter);
 
             switch (psCharacter->eFormat){

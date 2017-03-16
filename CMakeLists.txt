@@ -18,7 +18,7 @@ link_directories(./lib)
 
 set(SOURCE_FILES  main.c
         accessory/accessory.c
-        profiles/window_covering.c
+        profiles/window_covering.c profiles/speaker.c
         hap/bonjour.c hap/mthread.c hap/http_handle.c hap/ip.c hap/pairing.c hap/tlv.c hap/list.c hap/controller.c hap/ChaCha20-Poly1305.c
         rfc6234-master/hkdf.c  rfc6234-master/hmac.c  rfc6234-master/sha_m.c
         Chacha20/chacha20_simple.c

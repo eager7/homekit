@@ -185,7 +185,7 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     return E_HAP_STATUS_OK;
 }
 
-static teHapStatus eHandleSetCmd(tsCharacteristic *psCharacter, json_object *psJson, tsController *psController)
+static teHapStatus eHandleSetCmd(tsCharacteristic *psCharacter, json_object *psJson)
 {
     if(psCharacter->eType == E_CHARACTERISTIC_TARGET_POSITION){
         NOT_vPrintln(DBG_WINDOW_COVER, "Set Window Position:%d", json_object_get_int(psJson));

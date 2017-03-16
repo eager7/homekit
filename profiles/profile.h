@@ -36,11 +36,8 @@ extern "C" {
 /****************************************************************************/
 
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
-typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson, tsController *psSocket);
+typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson);
 typedef teHapStatus (*feHandleGetCmd)(tsCharacteristic *psCharacter);
-typedef teHapStatus (*fpeSetCharacteristicInfo)(tsAccessory *psAccessory, tsController *psSocket, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
-typedef json_object* (*fpsGetAccessoryInfo)(const tsAccessory *psAccessory);
-typedef json_object* (*fpsGetCharacteristicInfo)(const tsAccessory *psAccessory, const char *psCmd, feHandleGetCmd fCallback);
 
 typedef struct {
     tsAccessory                 *psAccessory;
