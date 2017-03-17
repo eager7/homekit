@@ -24,6 +24,7 @@
 #include "poly1305.h"
 #include "hkdf.h"
 #include "ip.h"
+#include "tlv.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -57,13 +58,6 @@ static teHapStatus eAccessoryPairedFinished()
     system("touch PairingFinished.txt");
     return E_HAP_STATUS_OK;
 }
-static bool_t bAccessoryIsPaired()
-{
-    if(access("PairingFinished.txt", F_OK)){
-        return T_FALSE;
-    }
-    return T_TRUE;
-}
 static teHapStatus eIOSDevicePairingIDSave(uint8 *buf, int len)
 {
     CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
@@ -82,6 +76,18 @@ static teHapStatus eIOSDevicePairingIDRead(uint8 *buf, int len)
     FILE *fp = fopen("IOSDevicePairingID.txt", "r");
     CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
     if(len != fread(buf, 1, (size_t)len, fp)){
+        fclose(fp);
+        return E_HAP_STATUS_ERROR;
+    }
+    fclose(fp);
+    return E_HAP_STATUS_OK;
+}
+static teHapStatus eIOSDevicePermissionSave(uint8 *buf, int len)
+{
+    CHECK_POINTER(buf, E_HAP_STATUS_ERROR);
+    FILE *fp = fopen("IOSDevicePermission.txt", "w");
+    CHECK_POINTER(fp, E_HAP_STATUS_ERROR);
+    if(len != fwrite(buf, 1, (size_t)len, fp)){
         fclose(fp);
         return E_HAP_STATUS_ERROR;
     }
@@ -577,6 +583,13 @@ teHapStatus ePairingFinished()
     eLockDestroy(&sPairSetup.mutex);
     return E_HAP_STATUS_OK;
 }
+bool_t bAccessoryIsPaired()
+{
+    if(access("PairingFinished.txt", F_OK)){
+        return T_FALSE;
+    }
+    return T_TRUE;
+}
 teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour *psBonjour)
 {
     CHECK_POINTER(psBuffer, E_HAP_STATUS_ERROR);
@@ -643,8 +656,9 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketF
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
-teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len)
+teHapStatus eHandlePairing(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len)
 {
+    teHapStatus eStatus = E_HAP_STATUS_OK;
     uint8 *psRepBuffer = NULL;
     uint16 u16RepLen = 0;
     tsHttpEntry *psHttp = psHttpParser(psBuffer, u16Len);
@@ -656,20 +670,46 @@ teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **p
     switch (eMethod){
         case E_TLV_METHOD_REMOVE_PAIRING:{
             NOT_vPrintln(DBG_PAIR, "E_TLV_METHOD_REMOVE_PAIRING");
-            uint8 value_rep[] = {E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE};
+            uint8 value_rep[] = {E_PAIRING_REMOVE_M2_REMOVE_PAIRING_RESPONSE};
             psTlvResp->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psTlvResp->sMessage);
             psTlvResp->eTlvMessageGetData(&psTlvResp->sMessage,&psRepBuffer,&u16RepLen);
-            *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, "application/pairing+tlv8", psRepBuffer, u16RepLen,
+            *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_TLV8, psRepBuffer, u16RepLen,
                                      ppResp);
             eTlvPackageRelease(psTlvResp);
             eIOSDeviceRemovePairing();
+        }
+            break;
+        case E_TLV_METHOD_ADD_PAIRING:{
+            NOT_vPrintln(DBG_PAIR, "E_TLV_METHOD_ADD_PAIRING");
+            uint8 value_rep[] = {E_PAIRING_ADD_M2_ADD_PAIRING_RESPONSE};
+            psTlvResp->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_STATE,value_rep,1,&psTlvResp->sMessage);
+
+            uint8 *psIdentifier = psTlvInMsg->psTlvRecordGetData(&psTlvInMsg->sMessage, E_TLV_VALUE_TYPE_IDENTIFIER);
+            uint8 *psPublicKey = psTlvInMsg->psTlvRecordGetData(&psTlvInMsg->sMessage, E_TLV_VALUE_TYPE_PUBLIC_KEY);
+            uint8 *psPermissions = psTlvInMsg->psTlvRecordGetData(&psTlvInMsg->sMessage, E_TLV_VALUE_TYPE_PERMISSIONS);
+            //TODO:Verify that the controller sending the request has the admin bit set in the local pairings list
+
+            uint8 auIOSDevicePairingID[36] = {0};
+            eIOSDevicePairingIDRead(auIOSDevicePairingID, 36);
+            if(bcmp(auIOSDevicePairingID, psIdentifier, 36) == 0){
+                eIOSDevicePermissionSave(psPermissions, psTlvInMsg->pu16TlvRecordGetLen(&psTlvInMsg->sMessage, E_TLV_VALUE_TYPE_PERMISSIONS));
+            } else {
+                ERR_vPrintln(T_TRUE, "controllerID verify failed");
+                uint8 value_err[] = {E_TLV_ERROR_UNKNOW};
+                psTlvResp->efTlvMessageAddRecord(E_TLV_VALUE_TYPE_ERROR,value_err,sizeof(value_err),&psTlvResp->sMessage);
+                eStatus = E_HAP_STATUS_ERROR;
+            }
+            psTlvResp->eTlvMessageGetData(&psTlvResp->sMessage,&psRepBuffer,&u16RepLen);
+            *pu16Len = u16HttpFormat(E_HTTP_STATUS_SUCCESS_OK, HTTP_PROTOCOL_HTTP, HTTP_TYPE_TLV8, psRepBuffer, u16RepLen,
+                                     ppResp);
+            eTlvPackageRelease(psTlvResp);
         }
             break;
         default:
             break;
     }
     eTlvPackageRelease(psTlvInMsg);
-    return E_HAP_STATUS_OK;
+    return eStatus;
 }
 teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, uint16 u16Len, uint8 **ppsResp, uint16 *pu16Len, tsController *psController)
 {
@@ -720,8 +760,8 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
     }
     else if(strstr((char*)psData, HTTP_URL_PAIRINGS))
     {
-        NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove Pairing");
-        eHandlePairingRemove(psData, u16Len, &psBufHttp, &u16LenHttp);
+        NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove/List Pairing");
+        eHandlePairing(psData, u16Len, &psBufHttp, &u16LenHttp);
         eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
         FREE(psBufHttp);
     }

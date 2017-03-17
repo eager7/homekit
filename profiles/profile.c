@@ -65,7 +65,6 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
     while(psThreadInfo->eState == E_THREAD_RUNNING){
         tsCharacteristic *psCharacter = NULL;
         eQueueDequeue(&sQueueNotify, (void**)&psCharacter);
-        sleep(2);
 
         NOT_vPrintln(DBG_PROFILE, "Notify the character %llu changed", psCharacter->u64IID);
         json_object *psJsonResp = json_object_new_object();
@@ -114,13 +113,14 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
 /****************************************************************************/
 tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
                              teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
-                             feHandleGetCmd eHandleGetCmd)
+                             feHandleGetCmd eHandleGetCmd, feIdentify eIdentify)
 {
     tsProfile *psProfile = (tsProfile*)calloc(1, sizeof(tsProfile));
     CHECK_POINTER(psProfile, NULL);
     psProfile->peInitCategory = fsInitCategory;
     psProfile->eHandleSetCmd = eHandleSetCmd;
     psProfile->eHandleGetCmd = eHandleGetCmd;
+    psProfile->eIdentify = eIdentify;
     psProfile->psAccessory = psAccessoryGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel, eType);
     psProfile->peInitCategory(psProfile->psAccessory);
     eQueueCreate(&sQueueNotify, 5);

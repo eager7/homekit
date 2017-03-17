@@ -101,7 +101,8 @@ static teHapStatus eSpeakerGetState(tsCharacteristic *psCharacter)
 tsProfile *psSpeakerProfileInit(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel)
 {
     tsProfile *psProfile = psProfileGenerate(psName, u64DeviceID, psSerialNumber, psManufacturer, psModel,
-                                             E_HAP_TYPE_LIGHT_BULB, eAccessorySpeakerInit, eSpeakerHandle, eSpeakerGetState);
+                                             E_HAP_TYPE_LIGHT_BULB, eAccessorySpeakerInit, eSpeakerHandle,
+                                             eSpeakerGetState, NULL);
     return psProfile;
 }
 

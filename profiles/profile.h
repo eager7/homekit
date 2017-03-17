@@ -38,12 +38,14 @@ extern "C" {
 typedef teHapStatus (*fpeInitCategory)(tsAccessory *psAccessory);
 typedef teHapStatus (*feHandleSetCmd)(tsCharacteristic *psCharacter, json_object *psJson);
 typedef teHapStatus (*feHandleGetCmd)(tsCharacteristic *psCharacter);
+typedef teHapStatus (*feIdentify)();
 
 typedef struct {
     tsAccessory                 *psAccessory;
     fpeInitCategory             peInitCategory;
     feHandleSetCmd              eHandleSetCmd;
     feHandleGetCmd              eHandleGetCmd;
+    feIdentify                  eIdentify;
 } tsProfile;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
@@ -72,7 +74,7 @@ typedef struct {
 *****************************************************************************/
 tsProfile *psProfileGenerate(char *psName, uint64 u64DeviceID, char *psSerialNumber, char *psManufacturer, char *psModel,
                              teAccessoryCategories eType, fpeInitCategory fsInitCategory, feHandleSetCmd eHandleSetCmd,
-                             feHandleGetCmd eHandleGetCmd);
+                             feHandleGetCmd eHandleGetCmd, feIdentify eIdentify);
 teHapStatus eProfileRelease(tsProfile *psProfile);
 /*****************************************************************************
 ** Prototype    : psGetAccessoryInfo

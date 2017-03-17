@@ -33,6 +33,7 @@ extern "C" {
 #define HTTP_PROTOCOL_EVENT     "EVENT/1.0"
 
 #define HTTP_TYPE_JSON          "application/hap+json"
+#define HTTP_TYPE_TLV8          "application/pairing+tlv8"
 
 #define HTTP_URL_PAIR_SETUP     "/pair-setup"
 #define HTTP_URL_PAIR_VERIFY    "/pair-verify"

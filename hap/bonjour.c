@@ -23,6 +23,7 @@
 #include <profile.h>
 #include "bonjour.h"
 #include "pairing.h"
+#include "controller.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -235,7 +236,19 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                                         bDisconnected = T_TRUE;
                                     }
                                 } else if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_IDENTIFY)) {
-                                    //close(psSocket);
+                                    if(bAccessoryIsPaired()){
+                                        char *psHttpResp = "HTTP/1.1 400 Bad Request\r\n"
+                                                "Content-Type: application/hap+json\r\n"
+                                                "Content-Length: 21\r\n\r\n"
+                                                "{\"status\" : -70401}";
+                                        send(psController->iSocketFd, psHttpResp, strlen(psHttpResp), 0);
+                                    } else {
+                                        psProfile->eIdentify();
+                                        char *psHttpResp = "HTTP/1.1 204 OK\r\n"
+                                        "Content-Type: application/hap+json\r\n"
+                                        "Content-Length: 0\r\n\r\n";
+                                        send(psController->iSocketFd, psHttpResp, strlen(psHttpResp), 0);
+                                    }
                                 } else {
                                     DBG_vPrintln(DBG_BONJOUR, "Handle Controller Request");
                                     eLockLock(&psController->mutex);

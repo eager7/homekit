@@ -40,9 +40,14 @@ extern "C" {
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 typedef enum {
-    E_PARIING_REMOVE_M1_REMOVE_PAIRING_REQUEST  = 0x01,
-    E_PARIING_REMOVE_M2_REMOVE_PAIRING_RESPONSE = 0x02,
+    E_PAIRING_REMOVE_M1_REMOVE_PAIRING_REQUEST  = 0x01,
+    E_PAIRING_REMOVE_M2_REMOVE_PAIRING_RESPONSE = 0x02,
 } tePairingRemove;
+
+typedef enum {
+    E_PAIRING_ADD_M1_ADD_PAIRING_REQUEST = 0x01,
+    E_PAIRING_ADD_M2_ADD_PAIRING_RESPONSE = 0x02,
+} tePairingAdd;
 
 typedef enum {
     E_PAIR_SETUP_SRP_START_NULL             = 0x00,
@@ -143,8 +148,8 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketFd, tsBonjour *psBonjour);
-teHapStatus eHandlePairingRemove(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
-
+teHapStatus eHandlePairing(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
+bool_t bAccessoryIsPaired();
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
