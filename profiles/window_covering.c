@@ -92,7 +92,7 @@ static teHapStatus eAccessoryWindowCoveringInit(tsAccessory *psAccessory)
     sCharaTemp.u64IID = UUID_SERVICE_CHARACTER;
     sCharaTemp.eType = E_CHARACTERISTIC_POSITION_STATE;
     sCharaTemp.eFormat = E_TYPE_UINT8;
-    sCharaTemp.uValue.u8Data = 0;
+    sCharaTemp.uValue.u8Data = E_POSITION_STATE_STOP;
     sCharaTemp.sSetupValue.bEnable = T_TRUE;
     sCharaTemp.sSetupValue.uData.u8Data = 1;
     //sCharaTemp.eUnit = E_UNIT_PERCENTAGE;
