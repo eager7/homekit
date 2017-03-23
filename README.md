@@ -10,7 +10,8 @@ HomeKit 协议栈
 ```
 sudo apt-get install libssl-dev libjson-c-dev libavahi-compat-libdnssd-dev
 ```
-此外还需支持Bonjour服务，需要安装mDNSResponser
+在某些系统下，如Ubuntu16.04，上面的包会自动安装Bonjour服务，
+如果还不支持Bonjour服务，需要安装mDNSResponser
 编译方式如下。
 
 ##### mDNSResponser编译
