@@ -118,7 +118,7 @@ json_object *psGetCharacteristicInfo(const tsAccessory *psAccessory, const char 
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eSetCharacteristicInfo(tsAccessory *psAccessory, tsController *psController, const uint8 *psCmd, uint8 **ppsBuffer, uint16 *pu16Len, feHandleSetCmd fCallback);
-
+teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter);
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/

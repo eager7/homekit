@@ -49,7 +49,7 @@ static tsThread sThreadNotify;
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
-static teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter)
+teHapStatus eNotifyEnQueue(tsCharacteristic *psCharacter)
 {
     DBG_vPrintln(DBG_PROFILE, "eNotifyEnQueue[IID:%llu][Type:%d]", psCharacter->u64IID, psCharacter->eType);
     tsCharacteristic *psCharacterItem = (tsCharacteristic*)calloc(1, sizeof(tsCharacteristic));

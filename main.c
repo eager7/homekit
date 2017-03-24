@@ -3,6 +3,7 @@
 //
 #include <signal.h>
 #include <profile.h>
+#include <accessory.h>
 #include "light_bulb.h"
 #include "window_covering.h"
 #include "speaker.h"
@@ -28,7 +29,11 @@ int main(void)
     CHECK_RESULT(eBonjourInit(psProfileDevice, "119-76-391"), E_HAP_STATUS_OK, -1);
 
     while(bRunning){
-        sleep(1);
+        sleep(10);
+        //TODO:在此处理设备的当前状态，然后上报
+        //tsCharacteristic *psCharacter = psAccessoryGetCharacterByType(psProfileDevice->psAccessory, E_CHARACTERISTIC_CURRENT_POSITION);
+        //psCharacter->uValue.u8Data = 100;
+        //eNotifyEnQueue(psCharacter);
     }
     eBonjourFinished();
     eWindowCoveringProfileRelease(psProfileDevice);
