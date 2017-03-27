@@ -1,0 +1,1401 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>Wireless Accessory Configuration (WAC) POSIX Source Release</title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install(2);
+/*]]>*/
+</script>
+</head>
+<body class="article">
+<div id="header">
+<h1>Wireless Accessory Configuration (WAC) POSIX Source Release</h1>
+<span id="author">WAC_POSIX_Server_1.20</span><br />
+<div id="toc">
+  <div id="toctitle">Table of Contents</div>
+  <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph"><p><strong>APPLE CONFIDENTIAL</strong></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Abstract">Abstract</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>This document describes the Apple Wireless Accessory Configuration (WAC) POSIX source code release.
+It is intended for developers who are planning to port the Wireless Accessory Configuration project to their platform.
+This document covers the project contents, an overview of the porting procedure,
+relevant API details and sample implementations.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Glossary">Glossary</h2>
+<div class="sectionbody">
+<div class="tableblock">
+<table rules="all"
+width="80%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="18%" />
+<col width="81%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>WAC</strong></p></td>
+<td align="left" valign="top"><p class="table">Apple Wireless Accessory Configuration</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>Accessory</strong></p></td>
+<td align="left" valign="top"><p class="table">Device being configured</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>AP</strong></p></td>
+<td align="left" valign="top"><p class="table">Wireless Access Point <a href="#REF4">[REF4]</a></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>IE</strong></p></td>
+<td align="left" valign="top"><p class="table">802.11 Information Element</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>Apple Device IE</strong></p></td>
+<td align="left" valign="top"><p class="table">IE defined by Apple for use in discovering accessories via Wi-Fi</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>POSIX</strong></p></td>
+<td align="left" valign="top"><p class="table">Portable Operating System Interface <a href="#REF3">[REF3]</a></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>Bonjour</strong></p></td>
+<td align="left" valign="top"><p class="table">Apple&#8217;s zero-configuration network discovery technology <a href="#REF1">[REF1]</a></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>mDNSResponder</strong></p></td>
+<td align="left" valign="top"><p class="table">Open Source Bonjour implementation <a href="#REF2">[REF2]</a></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>TXT Record</strong></p></td>
+<td align="left" valign="top"><p class="table">DNS record for additional metadata associated with a DNS service</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>MFi</strong></p></td>
+<td align="left" valign="top"><p class="table">Apple&#8217;s Made for iPhone/iPod/iPad licensing program</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><strong>MFi-SAP</strong></p></td>
+<td align="left" valign="top"><p class="table">MFi Secure Association Protocol</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Project_Contents">1. Project Contents</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_directory_structure_overview">1.1. Directory Structure Overview</h3>
+<div class="listingblock">
+<div class="content">
+<pre><code>.
+├── Documentation
+│   └── index.html
+├── External
+│   ├── Curve25519
+│   │   ├── curve25519-donna-c64.c
+│   │   ├── curve25519-donna-test.c
+│   │   ├── curve25519-donna.c
+│   │   └── curve25519-donna.h
+│   └── GladmanAES
+│       ├── aes.h
+│       ├── aes_modes.c
+│       ├── aes_via_ace.h
+│       ├── aescrypt.c
+│       ├── aeskey.c
+│       ├── aesopt.h
+│       ├── aestab.c
+│       ├── aestab.h
+│       ├── brg_endian.h
+│       ├── brg_types.h
+│       ├── gcm.c
+│       ├── gcm.h
+│       ├── gf128mul.c
+│       ├── gf128mul.h
+│       ├── gf_mul_lo.h
+│       └── mode_hdr.h
+├── Makefile
+├── Platform
+│   ├── Platform.include.mk
+│   ├── PlatformApplyConfiguration.h
+│   ├── PlatformBonjour.h
+│   ├── PlatformLogging.h
+│   ├── PlatformMFiAuth.h
+│   ├── PlatformRandomNumber.h
+│   └── PlatformSoftwareAccessPoint.h
+├── README.txt
+├── Sources
+│   ├── Common.h
+│   ├── WACBonjour.c
+│   ├── WACBonjour.h
+│   ├── WACLogging.h
+│   ├── WACServer.c
+│   ├── WACServerAPI.h
+│   ├── WACServerVersion.h
+│   └── WACTLV.h
+└── Support
+    ├── AESUtils.c
+    ├── AESUtils.h
+    ├── AppleDeviceIE.c
+    ├── AppleDeviceIE.h
+    ├── Debug.h
+    ├── HTTPServer.c
+    ├── HTTPServer.h
+    ├── HTTPUtils.c
+    ├── HTTPUtils.h
+    ├── MFiSAPServer.c
+    ├── MFiSAPServer.h
+    ├── SHAUtils.c
+    ├── SHAUtils.h
+    ├── SecurityUtils.c
+    ├── SecurityUtils.h
+    ├── SocketUtils.c
+    ├── SocketUtils.h
+    ├── StringUtils.c
+    ├── StringUtils.h
+    ├── TLVUtils.c
+    ├── TLVUtils.h
+    ├── TimeUtils.c
+    ├── TimeUtils.h
+    ├── URLUtils.c
+    └── URLUtils.h</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_directory_structure_details">1.2. Directory Structure Details</h3>
+<div class="tableblock">
+<table rules="none"
+style="margin-left:0; margin-right:auto;"
+width="100%"
+frame="hsides"
+cellspacing="0" cellpadding="4">
+<col width="30%" />
+<col width="69%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Documentation">Documentation/</a></em></p></td>
+<td align="left" valign="top"><p class="table">Directory containing documentation</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Makefile">Makefile</a></em></p></td>
+<td align="left" valign="top"><p class="table">WAC Makefile</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Sources">Sources/</a></em></p></td>
+<td align="left" valign="top"><p class="table">Directory containing the Apple WAC source files</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Sources/WACServerAPI.h">Sources/WACServerAPI.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">The main header file and interface into the WAC source files</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Support">Support/</a></em></p></td>
+<td align="left" valign="top"><p class="table">Directory containing supporting source files for the WAC project</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../External">External/</a></em></p></td>
+<td align="left" valign="top"><p class="table">Directory containing external projects</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform">Platform/</a></em></p></td>
+<td align="left" valign="top"><p class="table">Directory containing the platform specific headers</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Porting_Overview">2. Porting Overview</h2>
+<div class="sectionbody">
+<div class="sidebarblock">
+<div class="content">
+<div class="paragraph"><p><strong>NOTE:</strong><br />
+The developer should only modify and/or add source in the <a href="../Platform">Platform directory</a>.</p></div>
+</div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+<strong>Setup a platform specific toolchain</strong><br />
+</p>
+<div class="paragraph"><p>Set up the compiler, linker, and any other tools needed to compile the source code for the intended target platform.</p></div>
+</li>
+<li>
+<p>
+<strong>Port Bonjour</strong><br />
+</p>
+<div class="paragraph"><p>WAC requires the Bonjour stack to operate. Please refer to the Bonjour page of Apple&#8217;s Developer
+portal <a href="#REF2">[REF2]</a> for more information on porting Bonjour to your platform.</p></div>
+</li>
+<li>
+<p>
+<strong>Update platform include makefile</strong><br />
+</p>
+<div class="paragraph"><p>Update the example Platform.include.mk file to provide information regarding the toolchain, library paths,
+include paths etc. Refer to the
+<a href="../Platform/Platform.include.mk">Platform.include.mk</a> file in
+the <a href="../Platform">Platform</a> directory for more details.</p></div>
+</li>
+<li>
+<p>
+<strong>Complete the implementation of the platform interfaces required by Wireless Accessory Configuration</strong><br />
+</p>
+<div class="paragraph"><p>Implement the interfaces required by WAC on top of the OS/Platform specific APIs of the target.
+Relevant comments, functions and examples have been tagged with <code><strong>PLATFORM_TO_DO</strong></code> keyword.</p></div>
+</li>
+<li>
+<p>
+<strong>Build Wireless Accessory Configuration and the platform implementation</strong><br />
+</p>
+<div class="paragraph"><p>Build WAC and the platform implementation for the target platform using the make command below.
+This will compile and link the WAC code with the platform implementation.</p></div>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>make platform_makefile=&lt;path_to_Platform.include.mk&gt;</code></pre>
+</div></div>
+<div class="sidebarblock">
+<div class="content">
+<div class="paragraph"><p><strong>NOTE:</strong><br />
+WAC <em>must</em> run in its own process on your target platform.</p></div>
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Interfaces">3. Interfaces</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>This section lists the various interfaces required/provided by the Wireless Accessory Configuration source code.</p></div>
+<div class="sect2">
+<h3 id="_interfaces_overview">3.1. Interfaces Overview</h3>
+<div class="tableblock">
+<table rules="rows"
+style="margin-left:0; margin-right:auto;"
+width="100%"
+frame="hsides"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 1. Called from developer code into WAC source</caption>
+<col width="22%" />
+<col width="27%" />
+<col width="50%" />
+<thead>
+<tr>
+<th align="left" valign="top"> <strong>Interface Header Documentation</strong>                                  </th>
+<th align="left" valign="top"> <strong>Header File</strong>                             </th>
+<th align="left" valign="top"> <strong>Purpose</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="HeaderDocs/WACServerAPI_h/index.html">WAC Server Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Sources/WACServerAPI.h">WACServerAPI.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by the platform application to control the WAC Server</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tableblock">
+<table rules="rows"
+style="margin-left:0; margin-right:auto;"
+width="100%"
+frame="hsides"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 2. Called from WAC source into developer code</caption>
+<col width="22%" />
+<col width="27%" />
+<col width="50%" />
+<thead>
+<tr>
+<th align="left" valign="top"> <strong>Interface</strong>                                       </th>
+<th align="left" valign="top"> <strong>Header File</strong>                                                                 </th>
+<th align="left" valign="top"> <strong>Purpose</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#SWAP">Software Access Point Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform/PlatformSoftwareAccessPoint.h">PlatformSoftwareAccessPoint.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by WAC to setup the platform&#8217;s Software Access Point</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#Apply_Config">Apply Configuration Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform/PlatformApplyConfiguration.h">PlatformApplyConfiguration.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by WAC to apply the received configuration information</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#Random_Number">Random Number Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform/PlatformRandomNumber.h">PlatformRandomNumber.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by WAC for random numbers</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#Bonjour">Bonjour Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform/PlatformBonjour.h">PlatformBonjour.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by WAC to control bonjour on the platform</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#MFi_Auth">Apple Authentication Coprocessor Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em><a href="../Platform/PlatformMFiAuth.h">PlatformMFiAuth.h</a></em></p></td>
+<td align="left" valign="top"><p class="table">APIs called by WAC for MFi SAP purposes</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><em><a href="#POSIX">POSIX Interface</a></em></p></td>
+<td align="left" valign="top"><p class="table"><em></em></p></td>
+<td align="left" valign="top"><p class="table">POSIX compliant APIs called by WAC for OS, network &amp; standard library purposes</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_interface_details">3.2. Interface Details</h3>
+<div class="sect3">
+<h4 id="SWAP">3.2.1. Software Access Point Interface</h4>
+<div class="paragraph"><p>The Software Access Point interface is responsible for controlling the platform&#8217;s
+access point functionality, namely, starting and stopping the interface and its dependencies.
+The platform Software Access Point implementation must include a DHCP server so that the client device can
+join the accessory&#8217;s AP and send the configuration information to the accessory.</p></div>
+<div class="paragraph"><p><a href="HeaderDocs/PlatformSoftwareAccessPoint_h/index.html">Details</a> |
+<a href="../Platform/PlatformSoftwareAccessPoint.h">Header</a></p></div>
+</div>
+<div class="sect3">
+<h4 id="Apply_Config">3.2.2. Apply Configuration Interface</h4>
+<div class="paragraph"><p>The Apply Configuration interface is responsible for conveying the new configuration
+information received from the WAC client. The following configuration information can
+be received:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+The SSID of the Wi-Fi network to join
+</p>
+</li>
+<li>
+<p>
+The passcode of the Wi-Fi network to join
+</p>
+</li>
+<li>
+<p>
+The new accessory name
+</p>
+</li>
+<li>
+<p>
+The new accessory AirPlay play password
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>These values should be stored in persistent memory and used for the accessory&#8217;s configuration until
+the accessory&#8217;s configuration is reset.</p></div>
+<div class="paragraph"><p><a href="HeaderDocs/PlatformApplyConfiguration_h/index.html">Details</a> |
+<a href="../Platform/PlatformApplyConfiguration.h">Header</a></p></div>
+<div class="sidebarblock">
+<div class="content">
+<div class="paragraph"><p><strong>NOTES:</strong><br /></p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+The platform <em>must not</em> reboot when switching from software access point mode to station mode.
+</p>
+</li>
+<li>
+<p>
+The platform <em>must</em> be capable of joining link local IPv4 networks.
+</p>
+</li>
+<li>
+<p>
+The platform <em>must</em> be capable of joining IPv6 networks.
+</p>
+</li>
+<li>
+<p>
+The platform <em>must</em> be capable of joining link local IPv6 networks.
+</p>
+</li>
+<li>
+<p>
+The platform <em>must</em> be compatible with UTF-8 strings. <a href="#REF8">[REF8]</a>
+</p>
+</li>
+</ul></div>
+</div></div>
+</div>
+<div class="sect3">
+<h4 id="Random_Number">3.2.3. Random Number Interface</h4>
+<div class="paragraph"><p>Random numbers are used for the cryptographic key exchange. All random numbers are requested through
+a single API which must generate cryptographic random numbers (e.g. can&#8217;t use ANSI rand(), POSIX random(), etc.).
+If there is not enough entropy to satisfy the request, it <em>must</em> block until sufficient entropy is available.</p></div>
+<div class="paragraph"><p><a href="HeaderDocs/PlatformRandomNumber_h/index.html">Details</a> |
+<a href="../Platform/PlatformRandomNumber.h">Header</a></p></div>
+</div>
+<div class="sect3">
+<h4 id="Bonjour">3.2.4. Bonjour Interface</h4>
+<div class="paragraph"><p>The Bonjour interface allows the WAC source to inform the platform when it needs to use mDNSResponder.
+If the WAC source asks that the platform start mDNSResponder and it is already running,
+then it should return with success. Similarly if the WAC source asks that the platform stop
+mDNSResponder but other threads and/or processes are using it, the platform should keep it alive and return success.</p></div>
+<div class="paragraph"><p><a href="HeaderDocs/PlatformBonjour_h/index.html">Details</a> |
+<a href="../Platform/PlatformBonjour.h">Header</a></p></div>
+</div>
+<div class="sect3">
+<h4 id="MFi_Auth">3.2.5. Apple Authentication Coprocessor Interface</h4>
+<div class="paragraph"><p>All Wireless Accessory Configuration accessories are required to have an Apple Authentication Coprocessor
+so that the client may authenticate and set up an encrypted communication channel with the accessory. The
+authentication and encryption protocol is provided as portable code that should work on any
+platform, however, access to the Apple Authentication Coprocessor is different for each platform.
+The functions containted in this interface need to be implemented to provide access to the Apple Authentication Coprocessor.</p></div>
+<div class="paragraph"><p><a href="HeaderDocs/PlatformMFiAuth_h/index.html">Details</a> |
+<a href="../Platform/PlatformMFiAuth.h">Header</a></p></div>
+<div class="sidebarblock">
+<div class="content">
+<div class="paragraph"><p><strong>Tips for interacting with the Apple Authentication Coprocessor</strong><br />
+It is important to implement a robust error detection and retry scheme when interacting with the coprocessor
+over the I2C interface. See the following sections of the Apple Authentication Coprocessor documentation for more information:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+NACK Responses Replace Clock Stretching
+</p>
+</li>
+<li>
+<p>
+Automatic Sleep State Entry and Exit
+</p>
+</li>
+</ul></div>
+</div></div>
+</div>
+<div class="sect3">
+<h4 id="POSIX">3.2.6. POSIX Interface</h4>
+<div class="paragraph"><p>Refer to the list of <a href="#Dependencies">Project Dependencies</a> for details on what POSIX interfaces are used.</p></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="Dependencies">3.3. List of Project Dependencies</h3>
+<div class="listingblock">
+<div class="content">
+<pre><code>DNSServiceRefDeallocate( )
+DNSServiceRegister( )
+PlatformApplyAirPlayPlayPassword( )
+PlatformApplyName( )
+PlatformCryptoStrongRandomBytes( )
+PlatformInitializemDNSResponder( )
+PlatformJoinDestinationWiFiNetwork( )
+PlatformMFiAuthCopyCertificate( )
+PlatformMFiAuthCreateSignature( )
+PlatformMFiAuthFinalize( )
+PlatformMFiAuthInitialize( )
+PlatformMayStopmDNSResponder( )
+PlatformSoftwareAccessPointStart( )
+PlatformSoftwareAccessPointStop( )
+TXTRecordCreate( )
+TXTRecordDeallocate( )
+TXTRecordGetBytesPtr( )
+TXTRecordGetLength( )
+TXTRecordSetValue( )
+accept( )
+bind( )
+calloc( )
+close( )
+exit( )
+fcntl( )
+free( )
+getsockname( )
+listen( )
+main( )
+malloc( )
+memcmp( )
+memcpy( )
+memmove( )
+perror( )
+pipe( )
+printf( )
+puts( )
+read( )
+select( )
+socket( )
+strlen( )
+strnlen( )
+write( )</code></pre>
+</div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="External_Source">4. External Source</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Some of the following open source projects have been included in the WAC source release. Any modifications to the source
+are described in the following sections.</p></div>
+<div class="sect2">
+<h3 id="External_Bonjour">4.1. Bonjour</h3>
+<div class="paragraph"><p>Bonjour <a href="#REF1">[REF1]</a> is Apple&#8217;s implementation of zero-configuration networking which enables automatic
+discovery of devices and services on a local network using industry standard IP protocols. WAC uses Bonjour
+for its accessory discovery purposes and links to the <code>libdns</code> library.
+The developer should port mDNSResponder (Apple&#8217;s bonjour implementaion), which is available as Open Source, to
+the accessory platform.</p></div>
+</div>
+<div class="sect2">
+<h3 id="GladmanAES">4.2. GladmanAES</h3>
+<div class="paragraph"><p>The WAC Source Release contains a modified version (<a href="../External/GladmanAES/"><code>External/GladmanAES/</code></a>)
+of the GladmanAES <a href="#REF6">[REF6]</a> Open Source project for its encryption/decryption purposes. The following modifications have been made to the project to better suit the needs of WAC:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Added support for in-place encrypt/decrypt.
+</p>
+</li>
+<li>
+<p>
+Added support for working without ACE support.
+</p>
+</li>
+<li>
+<p>
+Fixes for endian detection.
+</p>
+</li>
+<li>
+<p>
+Fixes for compiling on different compilers, 64-bit, etc.
+</p>
+</li>
+<li>
+<p>
+Fixes for warnings.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="Curve25519">4.3. Curve25519</h3>
+<div class="paragraph"><p>The WAC Source Release contains a modified version (<a href="../External/Curve25519/"><code>External/Curve25519/</code></a>)
+of the Curve25519 <a href="#REF7">[REF7]</a> Open Source project for its Public Key purposes. The following modifications
+have been made to the Open Source release of Curve25519 to better suit the needs of WAC:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Added default basepoint.
+</p>
+</li>
+<li>
+<p>
+Fixes for misaligned access.
+</p>
+</li>
+<li>
+<p>
+Fixes for compiling on different compilers, 64-bit, etc.
+</p>
+</li>
+<li>
+<p>
+Fixes for warnings.
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="References">5. References</h2>
+<div class="sectionbody">
+<div class="ulist"><ul>
+<li>
+<p>
+<a id="REF0"></a>[REF0] Apple Developer,<br />
+<a href="http://developer.apple.com/">http://developer.apple.com/</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF1"></a>[REF1] Bonjour - Apple Developer,<br />
+<a href="http://developer.apple.com/bonjour/">http://developer.apple.com/bonjour/</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF2"></a>[REF2] mDNSResponder open source releases,<br />
+<a href="http://www.opensource.apple.com/tarballs/mDNSResponder/">http://www.opensource.apple.com/tarballs/mDNSResponder/</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF3"></a>[REF3] POSIX - Portable Operating System Interface,<br />
+<a href="http://en.wikipedia.org/wiki/POSIX">http://en.wikipedia.org/wiki/POSIX</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF4"></a>[REF4] Wireless Access Point,<br />
+<a href="http://en.wikipedia.org/wiki/Wireless_access_point">http://en.wikipedia.org/wiki/Wireless_access_point</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF5"></a>[REF5] Software Access Point,<br />
+<a href="http://en.wikipedia.org/wiki/SoftAP">http://en.wikipedia.org/wiki/SoftAP</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF6"></a>[REF6] GladmanAES,<br />
+<a href="http://gladman.plushost.co.uk/oldsite/AES/">http://gladman.plushost.co.uk/oldsite/AES/</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF7"></a>[REF7] Curve25519-donna,<br />
+<a href="https://code.google.com/p/curve25519-donna/">https://code.google.com/p/curve25519-donna/</a>
+</p>
+</li>
+<li>
+<p>
+<a id="REF8"></a>[REF8] UTF-8,<br />
+<a href="http://en.wikipedia.org/wiki/UTF-8">http://en.wikipedia.org/wiki/UTF-8</a>
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2014-01-13 15:31:51 PST
+</div>
+</div>
+</body>
+</html>
