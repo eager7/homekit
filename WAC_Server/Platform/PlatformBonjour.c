@@ -33,31 +33,30 @@ static int checkProcessRunning(char *procName)
 {
 	PW_INFO("Function < checkProcessRunning > run \n");
 
-	FILE *pstr;
+	FILE *pFile;
 	char cmd[128], buff[512], *p;
 	int pidnum;
 
 	memset(cmd,0,sizeof(cmd));
-	sprintf(cmd, "ps -ef | grep %s ",procName);
-	pstr = popen(cmd, "r");                   //shell(ps -ef | grep xxxx)
-	if (NULL == pstr)
+	sprintf(cmd, "ps -aux | grep %s | grep sbin",procName);
+    pFile = popen(cmd, "r");                   //shell(ps -ef | grep xxxx)
+	if (NULL == pFile)
 	{
 		PW_ERROR("shell (ps -ef | grep xxxx) failed \n");
 		return -1;
 	}
 
 	memset(buff, 0, sizeof(buff));
-	char *ret = fgets(buff, 512, pstr);
-	(void)ret;
-	printf("%s", buff);
+	char *ret = fgets(buff, 512, pFile);
+	printf("%s", ret);
 
 	p = strtok(buff, " ");
-	p = strtok(NULL, " "); //这句是否去掉，取决于当前系统中ps后，进程ID号是否是第一个字段
-	pclose(pstr);
+	//p = strtok(NULL, " "); //这句是否去掉，取决于当前系统中ps后，进程ID号是否是第一个字段
+	pclose(pFile);
 
-	if((p == NULL) || strlen(p) == 0 || ((pidnum = atoi(p)) == 0))
+	if((p == NULL) || strlen(p) == 0)
 	{
-		PW_ERROR("(p == NULL) || strlen(p) == 0 || ((pidnum = atoi(p)) == 0) \n");
+		PW_ERROR("(p == NULL) || strlen(p) == 0 ) \n");
 		return -1;
 	}
 

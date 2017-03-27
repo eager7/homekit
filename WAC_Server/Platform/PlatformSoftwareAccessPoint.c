@@ -56,9 +56,9 @@ OSStatus PlatformSoftwareAccessPointStart( const uint8_t *inIE, size_t inIELen )
 	system("sudo ifconfig wlan0 up");
 #endif
 
-	int ret = system("killall easyconfigd");
-	ret = system("sh -x sbin/ap_sta_switch.sh ap");
-	printf("---------------------------------------- switch ap:%d\n", ret);
+	//int ret = system("killall easyconfigd");
+	//ret = system("sh -x sbin/ap_sta_switch.sh ap");
+	//printf("---------------------------------------- switch ap:%d\n", ret);
 
 	addIeToBeacon(inIE, inIELen);
 
