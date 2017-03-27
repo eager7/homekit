@@ -152,12 +152,12 @@ COMMONFLAGS     += -D_GNU_SOURCE
 COMMONFLAGS     += -DDEBUG_EXPORT_ERROR_STRINGS=1
 
 # debug=1 Flags
-ifeq ($(debug))
+ifeq ($(debug),)
 COMMONFLAGS += -DDEBUG=1
 COMMONFLAGS += -g
 # debug=1 trace=1 Flags
 # Trace will print function entries when debug=1
-ifeq ($(trace))
+ifeq ($(trace),)
 COMMONFLAGS += -DTRACE=1
 endif
 endif
