@@ -43,7 +43,7 @@ OSStatus PlatformSoftwareAccessPointStart( const uint8_t *inIE, size_t inIELen )
 	printf("inIE = ");
 	for (i = 0; i < inIELen; i++)
 	{
-		printf("%c", inIE[i]);
+		printf("0x%02x,", inIE[i]);
 	}
 	printf("\n");
 
@@ -88,9 +88,9 @@ OSStatus PlatformSoftwareAccessPointStop(void)
 	system("sudo ifconfig wlan0 up");
 #endif
 
-	int ret = system("killall udhcpd");
-	ret = system("sh -x sbin/ap_sta_switch.sh sta");
-	printf("---------------------------------------- switch sta:%d \n", ret);
+	//int ret = system("killall udhcpd");
+	//ret = system("sh -x sbin/ap_sta_switch.sh sta");
+	//printf("---------------------------------------- switch sta:%d \n", ret);
 
 	return kNoErr;
 }

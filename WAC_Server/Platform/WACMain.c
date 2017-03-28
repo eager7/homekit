@@ -119,12 +119,12 @@ static WACPlatformParameters_t *initPlatformParam(void)
 		return NULL;
 	}
 
-	platformParams->isUnconfigured = IS_UNCONFIGURED;
-	platformParams->supportsAirPlay = SUPPORT_AIRPLAY;
-	platformParams->supportsAirPrint = SUPPORT_AIRPRINT;
-	platformParams->supports2_4GHzWiFi = SUPPORT_WIFI_24;
-	platformParams->supports5GHzWiFi = SUPPORT_WIFI_5;
-	platformParams->supportsWakeOnWireless = SUP_WAKEON_WIRELESS;
+	platformParams->isUnconfigured = T_TRUE;
+	platformParams->supportsAirPlay = T_FALSE;
+	platformParams->supportsAirPrint = T_FALSE;
+	platformParams->supports2_4GHzWiFi = T_TRUE;
+	platformParams->supports5GHzWiFi = T_TRUE;
+	platformParams->supportsWakeOnWireless = T_TRUE;
 
 	platformParams->firmwareRevision = FIRMWARE_REVISION;
 	platformParams->hardwareRevision = HARDWARE_REVISION;
@@ -272,11 +272,7 @@ int main (void)
 
 	//停止WAC
 	WACServerStop( inContext );
-
-	if (inContext) {
-		destroyWACContext(inContext);
-		inContext = NULL;
-	}
+    destroyWACContext(inContext);
 
 	PW_OK("game over \n");
 }
