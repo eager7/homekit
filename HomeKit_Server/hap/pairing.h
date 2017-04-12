@@ -148,7 +148,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
 ** Author       : PCT
 *****************************************************************************/
 teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketFd, tsBonjour *psBonjour);
-teHapStatus eHandlePairing(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
+teHapStatus eHandlePairing(tsProfile *psProfile, const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len);
 bool_t bAccessoryIsPaired();
 /****************************************************************************/
 /***        Local    Functions                                            ***/

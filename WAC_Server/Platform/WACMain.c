@@ -124,7 +124,7 @@ static WACPlatformParameters_t *initPlatformParam(void)
 	platformParams->supportsAirPrint = T_FALSE;
 	platformParams->supports2_4GHzWiFi = T_TRUE;
 	platformParams->supports5GHzWiFi = T_TRUE;
-	platformParams->supportsWakeOnWireless = T_TRUE;
+	platformParams->supportsWakeOnWireless = T_FALSE;
 
 	platformParams->firmwareRevision = FIRMWARE_REVISION;
 	platformParams->hardwareRevision = HARDWARE_REVISION;

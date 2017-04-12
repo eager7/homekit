@@ -25,6 +25,7 @@
 #include "hkdf.h"
 #include "ip.h"
 #include "tlv.h"
+#include "bonjour.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -656,7 +657,7 @@ teHapStatus eHandlePairVerify(uint8 *psBuffer, int iLen, tsController *psSocketF
 
     return E_HAP_STATUS_SOCKET_ERROR;
 }
-teHapStatus eHandlePairing(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len)
+teHapStatus eHandlePairing(tsProfile *psProfile, const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp, uint16 *pu16Len)
 {
     teHapStatus eStatus = E_HAP_STATUS_OK;
     uint8 *psRepBuffer = NULL;
@@ -677,6 +678,8 @@ teHapStatus eHandlePairing(const uint8 *psBuffer, uint16 u16Len, uint8 **ppResp,
                                      ppResp);
             eTlvPackageRelease(psTlvResp);
             eIOSDeviceRemovePairing();
+            ((tsBonjour*)psProfile->psBonjour)->sBonjourText.u8StatusFlag = 0x01;
+            ((tsBonjour*)psProfile->psBonjour)->eBonjourUpdate();
         }
             break;
         case E_TLV_METHOD_ADD_PAIRING:{
@@ -761,7 +764,7 @@ teHapStatus eHandleAccessoryPackage(tsProfile *psProfile, const uint8 *psData, u
     else if(strstr((char*)psData, HTTP_URL_PAIRINGS))
     {
         NOT_vPrintln(DBG_PAIR, "Controller Request Add/Remove/List Pairing");
-        eHandlePairing(psData, u16Len, &psBufHttp, &u16LenHttp);
+        eHandlePairing(psProfile, psData, u16Len, &psBufHttp, &u16LenHttp);
         eHttpEncryptedSend(psBufHttp, u16LenHttp, psController);
         FREE(psBufHttp);
     }

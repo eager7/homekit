@@ -304,13 +304,14 @@ teHapStatus eBonjourInit(tsProfile *psProfile, char *psSetupCode)
     sBonjour.sBonjourText.auProtocolVersion[0] = 0x01;
     sBonjour.sBonjourText.auProtocolVersion[1] = 0x00;
     sBonjour.sBonjourText.u32CurrentStaNumber = 4;
-    sBonjour.sBonjourText.u8StatusFlag = 0x01;
+    sBonjour.sBonjourText.u8StatusFlag = 0x00;
     sBonjour.sBonjourText.eAccessoryCategoryID = psProfile->psAccessory->eAccessoryType;
 
     CHECK_RESULT(eBonjourSocketInit(), E_HAP_STATUS_OK, E_HAP_STATUS_ERROR);
     CHECK_RESULT(sBonjour.eBonjourRegister(), E_HAP_STATUS_OK, E_HAP_STATUS_ERROR);
     DBG_vPrintln(DBG_BONJOUR, "DNSServiceRegister Successful");
 
+    psProfile->psBonjour = (void*)&sBonjour;
     sBonjour.sBonjourThread.pvThreadData = psProfile;
     CHECK_RESULT(eThreadStart(pvBonjourThreadHandle, &sBonjour.sBonjourThread, E_THREAD_JOINABLE), E_THREAD_OK, E_HAP_STATUS_ERROR);
 

@@ -42,6 +42,7 @@ typedef teHapStatus (*feIdentify)();
 
 typedef struct {
     tsAccessory                 *psAccessory;
+    void                        *psBonjour;
     fpeInitCategory             peInitCategory;
     feHandleSetCmd              eHandleSetCmd;
     feHandleGetCmd              eHandleGetCmd;
