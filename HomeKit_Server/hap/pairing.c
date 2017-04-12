@@ -616,6 +616,7 @@ teHapStatus eHandlePairSetup(uint8 *psBuffer, int iLen, int iSocketFd, tsBonjour
                 eM6ExchangeResponse(iSocketFd, psBonjour->sBonjourText.psDeviceID, psIpMsg);
                 eLockunLock(&sPairSetup.mutex);
                 SRP_free(sPairSetup.pSrp);
+                psBonjour->sBonjourText.u8StatusFlag = 0x00;
                 psBonjour->eBonjourUpdate();
                 eIpMessageRelease(psIpMsg);
                 return E_HAP_STATUS_OK;
