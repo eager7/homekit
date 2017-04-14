@@ -66,7 +66,7 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
         tsCharacteristic *psCharacter = NULL;
         eQueueDequeue(&sQueueNotify, (void**)&psCharacter);
 
-        NOT_vPrintln(DBG_PROFILE, "Notify the character %llu changed", psCharacter->u64IID);
+        NOT_vPrintln(DBG_PROFILE, "Notify the character %llu changed, format:%d", psCharacter->u64IID, psCharacter->eFormat);
         json_object *psJsonResp = json_object_new_object();
         json_object *psJsonCharacter = json_object_new_object();
         json_object *psArrayCharacter = json_object_new_array();
@@ -75,10 +75,13 @@ static void *pvNotifyThreadHandle(void *psThreadInfoVoid)
         switch (psCharacter->eFormat){
             case E_TYPE_UINT8:
                 json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.u8Data));break;
+                NOT_vPrintln(DBG_PROFILE, "changed value:%d", psCharacter->uValue.u8Data);
             case E_TYPE_INT:
                 json_object_object_add(psJsonCharacter, "value", json_object_new_int(psCharacter->uValue.iData));break;
+                NOT_vPrintln(DBG_PROFILE, "changed value:%d", psCharacter->uValue.iData);
             case E_TYPE_FLOAT:
                 json_object_object_add(psJsonCharacter, "value", json_object_new_double(psCharacter->uValue.fData));break;
+                NOT_vPrintln(DBG_PROFILE, "changed value:%f", psCharacter->uValue.fData);
 
             default:
                 break;

@@ -119,6 +119,7 @@ bool_t bIsControllerNotify(tsController *psController, tsCharacteristic *psChara
 
 void vBroadcastMessage(tsController *psController, uint8 *psBuffer, size_t sLength)
 {
+    DBG_vPrintln(DBG_CONTROLLER, "vBroadcastMessage:%s", psBuffer);
     chacha20_ctx ctx;    bzero(&ctx, sizeof(ctx));
     char temp[64];  bzero(temp, 64); char temp2[64];  bzero(temp2, 64);
     uint8 *reply = malloc(sLength+18);

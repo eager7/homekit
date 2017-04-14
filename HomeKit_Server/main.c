@@ -28,12 +28,17 @@ int main(void)
     //tsProfile *psProfileDevice = psSpeakerProfileInit("Speaker", 0x221034235134, "12345678", "TopBand", "Model1.0");
     CHECK_RESULT(eBonjourInit(psProfileDevice, "119-76-391"), E_HAP_STATUS_OK, -1);
 
+    tsCharacteristic *psCharacter = psAccessoryGetCharacterByType(psProfileDevice->psAccessory, E_CHARACTERISTIC_CURRENT_POSITION);
     while(bRunning){
-        sleep(10);
+        sleep(1);
+#if 0
+        DBG_vPrintln(T_TRUE, "Please input the current position of window covering");
+        uint8 u8Position = 0;
+        scanf("%d", (int*)&u8Position);
         //TODO:在此处理设备的当前状态，然后上报
-        //tsCharacteristic *psCharacter = psAccessoryGetCharacterByType(psProfileDevice->psAccessory, E_CHARACTERISTIC_CURRENT_POSITION);
-        //psCharacter->uValue.u8Data = 100;
-        //eNotifyEnQueue(psCharacter);
+        psCharacter->uValue.u8Data = u8Position;
+        eNotifyEnQueue(psCharacter);
+#endif
     }
     eBonjourFinished();
     eWindowCoveringProfileRelease(psProfileDevice);
