@@ -221,9 +221,10 @@ static void *pvBonjourThreadHandle(void *psThreadInfoVoid)
                             DBG_vPrintln(DBG_BONJOUR, "A client receive data");
                             bool_t bDisconnected = T_FALSE;
                             iLen = (int)recv(psController->iSocketFd, auBuffer, sizeof(auBuffer), 0);
-                            if(0 == iLen){
+                            if(0 >= iLen){
                                 bDisconnected = T_TRUE;
                             } else {
+                                WAR_vPrintln(T_TRUE, "Len:%d, Buf:\n%s\n", iLen, auBuffer);
                                 tsHttpEntry *psHttpEntry = psHttpParser(auBuffer, (uint16)iLen);
                                 if(strstr((char*)psHttpEntry->acDirectory, HTTP_URL_PAIR_SETUP)) {
                                     DBG_vPrintln(DBG_BONJOUR, "IOS Device Pair Setup");
